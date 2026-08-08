@@ -1,0 +1,343 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3f6fb;
+  --bg-elevated: #ffffff;
+  --sidebar: #0c1424;
+  --sidebar-hover: #152238;
+  --sidebar-border: #1e2f4a;
+  --text: #101828;
+  --text-muted: #667085;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --border: #e4eaf3;
+  --user-bubble: #2563eb;
+  --danger: #b42318;
+  --ring: rgba(37, 99, 235, 0.28);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-border: var(--border);
+  --color-user-bubble: var(--user-bubble);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.markdown-body {
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.markdown-body p {
+  margin: 0 0 0.85em;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.25rem;
+}
+
+.markdown-body pre {
+  margin: 0.75em 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: #0f1218;
+  color: #e8edf5;
+  font-size: 0.875rem;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.markdown-body :not(pre) > code {
+  padding: 0.15em 0.4em;
+  border-radius: 0.35rem;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-body blockquote {
+  margin: 0.75em 0;
+  padding-left: 0.9rem;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.28s ease-out both;
+}
+
+@keyframes pulse-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Ambient landing / auth background */
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+.orb-a {
+  width: 42vw;
+  height: 42vw;
+  min-width: 280px;
+  min-height: 280px;
+  left: -8%;
+  top: -12%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.55), transparent 70%);
+  animation: orb-drift-a 18s ease-in-out infinite alternate;
+}
+
+.orb-b {
+  width: 36vw;
+  height: 36vw;
+  min-width: 240px;
+  min-height: 240px;
+  right: -10%;
+  bottom: -8%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.42), transparent 70%);
+  animation: orb-drift-b 22s ease-in-out infinite alternate;
+}
+
+.orb-c {
+  width: 28vw;
+  height: 28vw;
+  min-width: 200px;
+  min-height: 200px;
+  left: 40%;
+  top: 45%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.32), transparent 70%);
+  animation: orb-drift-c 16s ease-in-out infinite alternate;
+}
+
+.ambient-grid {
+  background-image:
+    linear-gradient(rgba(147, 197, 253, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(147, 197, 253, 0.09) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+  animation: grid-pan 40s linear infinite;
+}
+
+@keyframes orb-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8%, 12%, 0) scale(1.12);
+  }
+}
+
+@keyframes orb-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-10%, -8%, 0) scale(1.15);
+  }
+}
+
+@keyframes orb-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  to {
+    transform: translate3d(-6%, 10%, 0) scale(1.2);
+  }
+}
+
+@keyframes grid-pan {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 56px 56px, 56px 56px;
+  }
+}
+
+.guest-markdown .markdown-body {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.guest-markdown .markdown-body :not(pre) > code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #9fd4ff;
+}
+
+.guest-markdown .markdown-body a {
+  color: #8ab4f8;
+}
+
+.guest-markdown .markdown-body blockquote {
+  border-left-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.usage-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.usage-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  transition: width 0.35s ease;
+}
+
+.composer-shell {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+
+.chat-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.35);
+}
+
+.soft-rise {
+  animation: soft-rise 0.45s ease both;
+}
+
+@keyframes soft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.logo-breathe {
+  animation: logo-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes logo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.28));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 28px rgba(56, 189, 248, 0.42));
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .ambient-grid,
+  .logo-breathe,
+  .soft-rise {
+    animation: none !important;
+  }
+}
