@@ -18,6 +18,7 @@ import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CopyButton } from "@/components/CopyButton";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 
 type ChatTurn = {
@@ -275,7 +276,7 @@ export const HomeTryChat = () => {
     ready && (isSending || limitHit || !model || !guestEnabled);
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden text-white">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
       <AnimatedBackground />
 
       <header className="relative z-10 flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
@@ -290,10 +291,12 @@ export const HomeTryChat = () => {
             priority
           />
           <div>
-            <p className="text-[15px] font-semibold tracking-[0.04em] text-sky-50">
+            <p className="text-[15px] font-semibold tracking-[0.04em] text-[var(--home-fg)]">
               SINAMGPT
             </p>
-            <p className="text-[11px] text-sky-200/40">Local company AI</p>
+            <p className="text-[11px] text-[var(--home-faint)]">
+              Local company AI
+            </p>
           </div>
         </div>
 
@@ -303,10 +306,14 @@ export const HomeTryChat = () => {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               disabled={isSending}
-              className="max-w-[9.5rem] rounded-full border border-sky-400/15 bg-sky-500/5 px-3 py-1.5 text-xs text-sky-100/80 outline-none sm:max-w-[12rem]"
+              className="max-w-[9.5rem] rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-3 py-1.5 text-xs text-[var(--home-chip-fg)] outline-none sm:max-w-[12rem]"
             >
               {models.map((item) => (
-                <option key={item.name} value={item.name} className="bg-[#0c1424]">
+                <option
+                  key={item.name}
+                  value={item.name}
+                  className="bg-[var(--home-option-bg)]"
+                >
                   {item.display_name || item.name}
                   {item.backend === "vllm"
                     ? " · vLLM"
@@ -317,9 +324,10 @@ export const HomeTryChat = () => {
               ))}
             </select>
           ) : null}
+          <ThemeToggle size="sm" />
           <Link
             href="/login"
-            className="rounded-full px-3 py-2 text-sm text-sky-200/70 transition hover:bg-sky-500/10 hover:text-sky-100 sm:px-4"
+            className="rounded-full px-3 py-2 text-sm text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4"
           >
             Sign in
           </Link>
@@ -345,24 +353,24 @@ export const HomeTryChat = () => {
                 style={{ width: "auto", height: "auto" }}
                 priority
               />
-              <p className="mt-7 text-sm font-semibold tracking-[0.22em] text-sky-100/90">
+              <p className="mt-7 text-sm font-semibold tracking-[0.22em] text-[var(--home-fg)]/90">
                 SINAMGPT
               </p>
             </div>
 
             <div className="hero-copy mt-4">
-              <h1 className="text-[2.15rem] font-normal tracking-tight text-white sm:text-[2.9rem]">
+              <h1 className="text-[2.15rem] font-normal tracking-tight text-[var(--home-fg)] sm:text-[2.9rem]">
                 {guestEnabled
                   ? "Where should we start?"
                   : "Sign in to continue"}
               </h1>
-              <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-sky-200/50">
+              <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--home-muted)]">
                 {guestEnabled
                   ? "Ask anything work-related — or pick a starter below."
                   : "Guest try-chat is currently disabled by an admin."}
               </p>
               {guestEnabled && usage ? (
-                <p className="mt-3 text-xs text-sky-200/35">
+                <p className="mt-3 text-xs text-[var(--home-faint)]">
                   {usage.remaining} free guest{" "}
                   {usage.remaining === 1 ? "message" : "messages"} left today
                 </p>
@@ -377,13 +385,13 @@ export const HomeTryChat = () => {
                     type="button"
                     onClick={() => void handleSend(item.prompt)}
                     disabled={actionsLocked}
-                    className="suggestion-tile soft-rise rounded-2xl border border-sky-400/12 bg-sky-500/[0.06] px-5 py-4 text-left hover:-translate-y-0.5 hover:border-sky-400/30 hover:bg-sky-500/[0.1] disabled:opacity-40"
+                    className="suggestion-tile soft-rise rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-chip-bg)] px-5 py-4 text-left hover:-translate-y-0.5 hover:border-[var(--accent)]/40 disabled:opacity-40"
                     style={{ animationDelay: `${0.08 + 0.06 * index}s` }}
                   >
-                    <span className="block text-sm font-medium text-sky-50">
+                    <span className="block text-sm font-medium text-[var(--home-fg)]">
                       {item.title}
                     </span>
-                    <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-sky-200/45">
+                    <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-[var(--home-muted)]">
                       {item.prompt}
                     </span>
                   </button>
@@ -399,7 +407,7 @@ export const HomeTryChat = () => {
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-white/5 px-6 py-2.5 text-sm font-medium text-sky-50"
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-6 py-2.5 text-sm font-medium text-[var(--home-fg)]"
                 >
                   Create account
                 </Link>
@@ -407,7 +415,10 @@ export const HomeTryChat = () => {
             )}
 
             {limitHit ? (
-              <div className="relative mt-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-sky-400/20 bg-[#0c1424]/90 px-5 py-4 text-left shadow-[0_12px_36px_rgba(15,40,90,0.35)] backdrop-blur-md">
+              <div
+                className="relative mt-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 py-4 text-left backdrop-blur-md"
+                style={{ boxShadow: "var(--home-card-shadow)" }}
+              >
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0"
@@ -418,17 +429,17 @@ export const HomeTryChat = () => {
                 />
                 <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-400/25 bg-sky-500/15 text-sky-200">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
                       <InfinityIcon size={16} strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300/70">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--home-faint)]">
                         Daily guest limit
                       </p>
-                      <p className="mt-0.5 text-sm font-semibold tracking-tight text-white">
+                      <p className="mt-0.5 text-sm font-semibold tracking-tight text-[var(--home-fg)]">
                         You’ve used today’s free messages
                       </p>
-                      <p className="mt-0.5 text-xs leading-snug text-sky-100/50">
+                      <p className="mt-0.5 text-xs leading-snug text-[var(--home-muted)]">
                         Sign in for unlimited chat and saved history.
                       </p>
                     </div>
@@ -442,7 +453,7 @@ export const HomeTryChat = () => {
                     </Link>
                     <Link
                       href="/register"
-                      className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-white/5 px-4 py-2 text-xs font-medium text-sky-50 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                      className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-4 py-2 text-xs font-medium text-[var(--home-fg)] transition hover:border-[var(--accent)]/40"
                     >
                       Create account
                     </Link>
@@ -457,7 +468,7 @@ export const HomeTryChat = () => {
               <button
                 type="button"
                 onClick={handleNewTry}
-                className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100/80 transition hover:bg-sky-500/15"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-3 py-1.5 text-xs text-[var(--home-chip-fg)] transition hover:opacity-90"
               >
                 <MessageSquarePlus size={13} />
                 New try
@@ -473,8 +484,8 @@ export const HomeTryChat = () => {
                 >
                   <div className={`max-w-[92%] md:max-w-[85%] ${isUser ? "" : "w-full"}`}>
                     <div
-                      className={`mb-1.5 flex items-center gap-2 text-[11px] ${
-                        isUser ? "justify-end text-sky-200/45" : "text-sky-200/45"
+                      className={`mb-1.5 flex items-center gap-2 text-[11px] text-[var(--home-faint)] ${
+                        isUser ? "justify-end" : ""
                       }`}
                     >
                       {!isUser ? (
@@ -498,17 +509,17 @@ export const HomeTryChat = () => {
                       className={`rounded-2xl px-4 py-3 text-sm ${
                         isUser
                           ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white"
-                          : "border border-sky-400/12 bg-sky-500/[0.06] text-sky-50/90"
+                          : "border border-[var(--home-assistant-border)] bg-[var(--home-assistant-bg)] text-[var(--home-assistant-fg)]"
                       }`}
                     >
                       {isUser ? (
                         <p className="whitespace-pre-wrap">{message.content}</p>
                       ) : message.content ? (
-                        <div className="guest-markdown">
+                        <div className="home-markdown">
                           <MarkdownMessage content={message.content} />
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 text-white/50">
+                        <div className="flex items-center gap-1.5 text-[var(--home-faint)]">
                           <span className="typing-dot" />
                           <span className="typing-dot" />
                           <span className="typing-dot" />
@@ -519,7 +530,7 @@ export const HomeTryChat = () => {
                       <div className="mt-1">
                         <CopyButton
                           text={message.content}
-                          className="text-sky-200/45 hover:bg-sky-500/10 hover:text-sky-100"
+                          className="text-[var(--home-faint)] hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)]"
                         />
                       </div>
                     ) : null}
@@ -532,7 +543,10 @@ export const HomeTryChat = () => {
         )}
 
         {limitHit && messages.length > 0 ? (
-          <div className="relative mb-2 overflow-hidden rounded-2xl border border-sky-400/20 bg-[#0c1424]/90 px-4 py-3 shadow-[0_12px_36px_rgba(15,40,90,0.35)] backdrop-blur-md">
+          <div
+            className="relative mb-2 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 backdrop-blur-md"
+            style={{ boxShadow: "var(--home-card-shadow)" }}
+          >
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
@@ -543,13 +557,13 @@ export const HomeTryChat = () => {
             />
             <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-300/70">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--home-faint)]">
                   Daily guest limit
                 </p>
-                <p className="mt-0.5 text-sm font-semibold text-white">
+                <p className="mt-0.5 text-sm font-semibold text-[var(--home-fg)]">
                   You’ve used today’s free messages
                 </p>
-                <p className="mt-0.5 text-xs text-sky-100/50">
+                <p className="mt-0.5 text-xs text-[var(--home-muted)]">
                   Sign in for unlimited chat and saved history.
                 </p>
               </div>
@@ -562,7 +576,7 @@ export const HomeTryChat = () => {
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-white/5 px-4 py-2 text-xs font-medium text-sky-50 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-4 py-2 text-xs font-medium text-[var(--home-fg)] transition hover:border-[var(--accent)]/40"
                 >
                   Create account
                 </Link>
@@ -572,12 +586,15 @@ export const HomeTryChat = () => {
         ) : null}
 
         {error && !limitHit ? (
-          <p className="mb-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-center text-sm text-red-200">
+          <p className="mb-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-center text-sm text-[var(--danger)]">
             {error}
           </p>
         ) : null}
 
-        <div className="composer-shell rounded-[28px] border border-sky-400/15 bg-[#0c1424]/80 p-2 shadow-[0_20px_60px_rgba(15,40,90,0.4)] backdrop-blur-md focus-within:border-sky-400/40 focus-within:shadow-[0_0_0_4px_rgba(56,189,248,0.12)]">
+        <div
+          className="composer-shell rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+          style={{ boxShadow: "var(--home-card-shadow)" }}
+        >
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
@@ -593,13 +610,13 @@ export const HomeTryChat = () => {
                     : "Ask SINAMGPT anything…"
               }
               disabled={limitHit || !guestEnabled}
-              className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-[15px] text-white outline-none placeholder:text-sky-200/35 disabled:opacity-50"
+              className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-[15px] text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50"
             />
             {isSending ? (
               <button
                 type="button"
                 onClick={handleStop}
-                className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/20 text-sky-100"
+                className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]"
                 aria-label="Stop"
               >
                 <Square size={14} fill="currentColor" />
@@ -618,7 +635,7 @@ export const HomeTryChat = () => {
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-sky-200/35">
+        <p className="mt-3 text-center text-[11px] text-[var(--home-faint)]">
           Enter to send · Shift+Enter for new line · Guest history is not saved
         </p>
       </main>

@@ -21,7 +21,7 @@ export const AnimatedBackground = () => {
       aria-hidden
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
-      <div className="absolute inset-0 bg-[#060a14]" />
+      <div className="absolute inset-0 bg-[var(--ambient-base)] transition-colors duration-300" />
 
       <div
         className="absolute inset-0"
@@ -59,7 +59,17 @@ export const AnimatedBackground = () => {
 
       <div className="shimmer-sweep" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_12%,rgba(4,8,18,0.72)_100%)]" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 12%, var(--ambient-vignette) 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "var(--ambient-veil)" }}
+      />
     </div>
   );
 };

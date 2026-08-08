@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { ThemeToggle } from "./ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import type { Conversation, Message, User } from "@/lib/types";
 
@@ -563,7 +564,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const Sidebar = (
-    <aside className="flex h-full w-80 shrink-0 flex-col bg-[var(--sidebar)] text-white">
+    <aside className="flex h-full w-80 shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-4 py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Image
@@ -576,7 +577,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           />
           <div className="min-w-0">
             <p className="text-lg font-semibold tracking-tight">SINAMGPT</p>
-            <p className="text-xs text-sky-200/45">Saved · unlimited</p>
+            <p className="text-xs text-[var(--sidebar-muted)]">
+              Saved · unlimited
+            </p>
           </div>
         </div>
         <button
@@ -585,7 +588,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             setSidebarOpen(false);
             setMobileSidebar(false);
           }}
-          className="rounded-lg p-2 text-white/70 hover:bg-[var(--sidebar-hover)] hover:text-white"
+          className="rounded-lg p-2 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
           aria-label="Close sidebar"
         >
           <PanelLeftClose size={18} />
@@ -602,30 +605,32 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           New chat
         </button>
 
-        <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-          <Search size={14} className="text-white/40" />
+        <label className="flex items-center gap-2 rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-3 py-2">
+          <Search size={14} className="text-[var(--sidebar-muted)]" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search title or messages"
-            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+            className="w-full bg-transparent text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)]"
           />
         </label>
       </div>
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {isLoadingList ? (
-          <p className="px-2 py-3 text-sm text-white/45">Loading chats…</p>
+          <p className="px-2 py-3 text-sm text-[var(--sidebar-muted)]">
+            Loading chats…
+          </p>
         ) : conversations.length === 0 ? (
           <div className="px-2 py-6 text-center">
-            <p className="text-sm text-white/45">
+            <p className="text-sm text-[var(--sidebar-muted)]">
               {search ? "No chats match your search." : "No chats yet."}
             </p>
             {!search ? (
               <button
                 type="button"
                 onClick={handleNewChat}
-                className="mt-3 text-xs text-sky-300 hover:underline"
+                className="mt-3 text-xs text-[var(--accent)] hover:underline"
               >
                 Start your first chat
               </button>
@@ -643,23 +648,23 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     onClick={() => void openConversation(chat.id)}
                     className={`w-full rounded-xl px-3 py-2.5 pr-16 text-left text-sm transition ${
                       isActive
-                        ? "bg-[var(--sidebar-hover)] text-white ring-1 ring-sky-400/25"
-                        : "text-white/75 hover:bg-white/5 hover:text-white"
+                        ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-fg)] ring-1 ring-[var(--sidebar-active-ring)]"
+                        : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
                       {pinned ? (
                         <Pin
                           size={12}
-                          className="shrink-0 text-sky-300"
+                          className="shrink-0 text-[var(--accent)]"
                           fill="currentColor"
                         />
                       ) : null}
-                      <span className="line-clamp-1 font-medium">
+                      <span className="line-clamp-1 font-medium text-[var(--sidebar-fg)]">
                         {chat.title}
                       </span>
                     </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-white/40">
+                    <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-[var(--sidebar-muted)]">
                       <span className="truncate">{modelLabel(chat.model)}</span>
                       <span className="shrink-0">
                         {relativeTime(chat.updated_at)}
@@ -670,7 +675,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     <button
                       type="button"
                       onClick={() => void handleTogglePin(chat)}
-                      className="rounded-md p-1.5 text-white/40 hover:bg-white/10 hover:text-sky-200"
+                      className="rounded-md p-1.5 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--accent)]"
                       aria-label={pinned ? "Unpin chat" : "Pin chat"}
                       title={pinned ? "Unpin" : "Pin"}
                     >
@@ -679,7 +684,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     <button
                       type="button"
                       onClick={() => void handleDelete(chat.id)}
-                      className="rounded-md p-1.5 text-white/35 hover:bg-white/10 hover:text-red-300"
+                      className="rounded-md p-1.5 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]"
                       aria-label="Delete chat"
                     >
                       <Trash2 size={14} />
@@ -693,14 +698,16 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       </div>
 
       <div className="border-t border-[var(--sidebar-border)] p-3">
-        <div className="mb-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-          <p className="truncate text-sm text-white">
+        <div className="mb-2 rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-3 py-2">
+          <p className="truncate text-sm text-[var(--sidebar-fg)]">
             {user.username}
             {user.role === "admin" ? (
-              <span className="ml-1 text-[11px] text-sky-300">· admin</span>
+              <span className="ml-1 text-[11px] text-[var(--accent)]">
+                · admin
+              </span>
             ) : null}
           </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-emerald-300/90">
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[var(--chip-ok-text)]">
             <InfinityIcon size={11} />
             Unlimited messages
           </p>
@@ -708,7 +715,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         {user.role === "admin" ? (
           <Link
             href="/admin"
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100 transition hover:bg-sky-500/20"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-active-ring)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm text-[var(--chip-info-text)] transition hover:opacity-90"
           >
             <Shield size={15} />
             Admin panel
@@ -717,7 +724,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         <button
           type="button"
           onClick={() => void handleLogout()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-border)] px-3 py-2 text-sm text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
         >
           <LogOut size={15} />
           Sign out
@@ -746,7 +753,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/90 px-3 py-3 backdrop-blur md:px-5">
           <button
             type="button"
-            className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-black/5 md:hidden"
+            className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
             onClick={() => setMobileSidebar(true)}
             aria-label="Open sidebar"
           >
@@ -756,7 +763,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           {!sidebarOpen ? (
             <button
               type="button"
-              className="hidden rounded-lg p-2 text-[var(--text-muted)] hover:bg-black/5 md:inline-flex"
+              className="hidden rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:inline-flex"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
             >
@@ -769,10 +776,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               {activeConversation?.title ?? "New chat"}
             </h1>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="chip border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <span className="chip chip-ok">
                 <InfinityIcon size={11} /> Unlimited
               </span>
-              <span className="chip border border-sky-200 bg-sky-50 text-sky-700">
+              <span className="chip chip-info">
                 <Sparkles size={11} /> History saved
               </span>
             </div>
@@ -784,7 +791,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               disabled={ready && (isSending || models.length === 0)}
-              className="max-w-[10rem] rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[14rem]"
+              className="max-w-[10rem] rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[14rem]"
             >
               {models.length === 0 ? (
                 <option value="">No models</option>
@@ -802,10 +809,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               )}
             </select>
           </label>
+          <ThemeToggle size="sm" />
         </header>
 
         {(modelsError || error) && (
-          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <div className="border-b border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-[var(--text)]">
             <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
               <p>{error || modelsError}</p>
               <button
@@ -815,7 +823,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   setModelsError("");
                   void loadModels();
                 }}
-                className="shrink-0 rounded-md p-1 hover:bg-amber-100"
+                className="shrink-0 rounded-md p-1 hover:bg-amber-500/15"
                 aria-label="Dismiss"
               >
                 <X size={14} />
@@ -849,7 +857,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     type="button"
                     onClick={() => void handleSend(item.prompt)}
                     disabled={ready && (isSending || !model)}
-                    className="soft-rise rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3.5 text-left transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md disabled:opacity-50"
+                    className="soft-rise rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3.5 text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-md disabled:opacity-50"
                     style={{ animationDelay: `${0.05 * index}s` }}
                   >
                     <span className="block text-sm font-medium text-[var(--text)]">
@@ -959,14 +967,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           {!isUser && message.content ? (
                             <CopyButton
                               text={message.content}
-                              className="text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                              className="text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                             />
                           ) : null}
                           {isUser && isLastUser ? (
                             <button
                               type="button"
                               onClick={() => handleStartEdit(message)}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                             >
                               <Pencil size={12} />
                               Edit
@@ -976,7 +984,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             <button
                               type="button"
                               onClick={() => void handleRegenerate()}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                             >
                               <RefreshCw size={12} />
                               Regenerate
@@ -994,7 +1002,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         </div>
 
         <div className="border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
-          <div className="composer-shell mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] border border-[var(--border)] bg-white p-2 shadow-[0_10px_30px_rgba(16,24,40,0.06)] focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-500/15">
+          <div
+            className="composer-shell mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+            style={{ boxShadow: "var(--composer-shadow)" }}
+          >
             <textarea
               ref={textareaRef}
               value={input}
@@ -1008,7 +1019,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               <button
                 type="button"
                 onClick={handleStop}
-                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--sidebar)] text-white transition hover:opacity-90"
+                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
                 aria-label="Stop generating"
               >
                 <Square size={14} fill="currentColor" />

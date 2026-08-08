@@ -113,10 +113,10 @@ const fmtTime = (value: string) => {
 
 const statusTone = (status: string) => {
   if (status === "ok" || status === "streaming") {
-    return "bg-emerald-500/15 text-emerald-200";
+    return "status-pill status-ok";
   }
-  if (status === "error") return "bg-red-500/15 text-red-200";
-  return "bg-amber-500/15 text-amber-200";
+  if (status === "error") return "status-pill status-bad";
+  return "status-pill status-warn";
 };
 
 export const AdminUsagePanel = () => {
@@ -180,7 +180,7 @@ export const AdminUsagePanel = () => {
   return (
     <div className="space-y-5 animate-fade-up">
       {error ? (
-        <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">
+        <p className="rounded-2xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]">
           {error}
         </p>
       ) : null}
@@ -188,7 +188,7 @@ export const AdminUsagePanel = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Live AI usage & performance</h2>
-          <p className="text-xs text-sky-200/45">
+          <p className="text-xs text-[var(--admin-muted)]">
             Auto-refreshes every 3s · real speed, load, and history
           </p>
         </div>
@@ -208,18 +208,14 @@ export const AdminUsagePanel = () => {
           ).map((b) => (
             <span
               key={b.backend}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                b.ok
-                  ? "bg-emerald-500/15 text-emerald-200"
-                  : "bg-red-500/15 text-red-200"
-              }`}
+              className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
             >
               <Server size={12} />
               {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
               {b.ok ? "online" : "down"} · {fmtMs(b.latencyMs)}
             </span>
           ))}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-100">
+          <span className="status-pill status-info">
             <Radio size={12} className={data?.live.length ? "animate-pulse" : ""} />
             {data?.live.length ?? 0} live
           </span>
@@ -254,11 +250,11 @@ export const AdminUsagePanel = () => {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 px-4 py-4"
+            className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 px-4 py-4"
           >
             <div className="flex items-center justify-between">
-              <p className="text-xs text-sky-200/45">{card.label}</p>
-              <card.icon size={14} className="text-sky-400/70" />
+              <p className="text-xs text-[var(--admin-muted)]">{card.label}</p>
+              <card.icon size={14} className="text-[var(--accent)]" />
             </div>
             <p className="mt-1 text-2xl font-semibold tracking-tight">
               {isLoading && !data ? "…" : card.value}
@@ -276,25 +272,25 @@ export const AdminUsagePanel = () => {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/70 px-4 py-3"
+            className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-4 py-3"
           >
-            <p className="text-xs text-sky-200/45">{card.label}</p>
+            <p className="text-xs text-[var(--admin-muted)]">{card.label}</p>
             <p className="mt-1 text-lg font-semibold">{card.value}</p>
           </div>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80">
-        <div className="border-b border-sky-400/10 px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90">
+        <div className="border-b border-[var(--admin-border)] px-4 py-3">
           <h3 className="text-sm font-semibold">Live process</h3>
-          <p className="text-xs text-sky-200/45">
+          <p className="text-xs text-[var(--admin-muted)]">
             Requests currently streaming from Ollama right now
           </p>
         </div>
         {data?.live.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
+              <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
                 <tr>
                   <th className="px-4 py-3 font-medium">Who</th>
                   <th className="px-4 py-3 font-medium">Model</th>
@@ -307,15 +303,15 @@ export const AdminUsagePanel = () => {
               </thead>
               <tbody>
                 {data.live.map((row) => (
-                  <tr key={row.id} className="border-t border-sky-400/10">
+                  <tr key={row.id} className="border-t border-[var(--admin-border)]">
                     <td className="px-4 py-3">
                       <span className="font-medium">{row.username}</span>
-                      <span className="ml-2 text-[11px] text-sky-200/40">
+                      <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                         {row.source}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sky-100/80">{row.model}</td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-sky-200/55">
+                    <td className="px-4 py-3 text-[var(--admin-fg)]">{row.model}</td>
+                    <td className="max-w-[220px] truncate px-4 py-3 text-[var(--admin-muted)]">
                       {row.promptPreview}
                     </td>
                     <td className="px-4 py-3">{fmtMs(row.elapsedMs)}</td>
@@ -334,16 +330,16 @@ export const AdminUsagePanel = () => {
             </table>
           </div>
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-sky-200/45">
+          <p className="px-4 py-8 text-center text-sm text-[var(--admin-muted)]">
             No active generations right now. Send a chat to see live process.
           </p>
         )}
       </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
           <h3 className="text-sm font-semibold">Last 24 hours</h3>
-          <p className="mb-4 text-xs text-sky-200/45">Requests per hour</p>
+          <p className="mb-4 text-xs text-[var(--admin-muted)]">Requests per hour</p>
           {data?.analytics.byHour.length ? (
             <div className="flex h-36 items-end gap-1">
               {data.analytics.byHour.map((bucket) => (
@@ -358,15 +354,15 @@ export const AdminUsagePanel = () => {
               ))}
             </div>
           ) : (
-            <p className="py-10 text-center text-sm text-sky-200/45">
+            <p className="py-10 text-center text-sm text-[var(--admin-muted)]">
               No usage in the last 24 hours yet.
             </p>
           )}
         </section>
 
-        <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
           <h3 className="text-sm font-semibold">By model</h3>
-          <p className="mb-3 text-xs text-sky-200/45">
+          <p className="mb-3 text-xs text-[var(--admin-muted)]">
             Volume and average speed
           </p>
           <div className="space-y-2">
@@ -374,15 +370,15 @@ export const AdminUsagePanel = () => {
               data?.analytics.byModel.map((row) => (
                 <div
                   key={row.model}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-sky-400/10 bg-sky-500/[0.04] px-3 py-2.5"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-2.5"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{row.model}</p>
-                    <p className="text-[11px] text-sky-200/45">
+                    <p className="text-[11px] text-[var(--admin-muted)]">
                       {row.requests} req · avg {fmtMs(row.avg_duration_ms)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm text-sky-100">
+                  <p className="shrink-0 text-sm text-[var(--admin-fg)]">
                     {row.avg_tokens_per_sec != null
                       ? `${row.avg_tokens_per_sec} t/s`
                       : "—"}
@@ -390,7 +386,7 @@ export const AdminUsagePanel = () => {
                 </div>
               ))
             ) : (
-              <p className="py-8 text-center text-sm text-sky-200/45">
+              <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
                 Model stats appear after the first chats.
               </p>
             )}
@@ -399,60 +395,60 @@ export const AdminUsagePanel = () => {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
           <h3 className="text-sm font-semibold">Top users</h3>
           <div className="mt-3 space-y-2">
             {(data?.analytics.topUsers ?? []).length ? (
               data?.analytics.topUsers.map((row) => (
                 <div
                   key={`${row.source}-${row.username}`}
-                  className="flex items-center justify-between rounded-xl border border-sky-400/10 px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-medium">{row.username}</p>
-                    <p className="text-[11px] text-sky-200/45">{row.source}</p>
+                    <p className="text-[11px] text-[var(--admin-muted)]">{row.source}</p>
                   </div>
                   <div className="text-right text-sm">
                     <p>{row.requests} req</p>
-                    <p className="text-[11px] text-sky-200/45">
+                    <p className="text-[11px] text-[var(--admin-muted)]">
                       avg {fmtMs(row.avg_duration_ms)}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="py-8 text-center text-sm text-sky-200/45">
+              <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
                 No user usage yet.
               </p>
             )}
           </div>
         </section>
 
-        <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
           <h3 className="text-sm font-semibold">Throughput totals</h3>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-sky-400/10 px-3 py-3">
-              <p className="text-xs text-sky-200/45">Prompt chars</p>
+            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
+              <p className="text-xs text-[var(--admin-muted)]">Prompt chars</p>
               <p className="mt-1 text-lg font-semibold">
                 {fmtNum(summary?.total_prompt_chars)}
               </p>
             </div>
-            <div className="rounded-xl border border-sky-400/10 px-3 py-3">
-              <p className="text-xs text-sky-200/45">Response chars</p>
+            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
+              <p className="text-xs text-[var(--admin-muted)]">Response chars</p>
               <p className="mt-1 text-lg font-semibold">
                 {fmtNum(summary?.total_response_chars)}
               </p>
             </div>
-            <div className="rounded-xl border border-sky-400/10 px-3 py-3">
-              <p className="text-xs text-sky-200/45">Success rate</p>
+            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
+              <p className="text-xs text-[var(--admin-muted)]">Success rate</p>
               <p className="mt-1 text-lg font-semibold">
                 {summary?.total_requests
                   ? `${Math.round(((summary.ok_requests ?? 0) / summary.total_requests) * 100)}%`
                   : "—"}
               </p>
             </div>
-            <div className="rounded-xl border border-sky-400/10 px-3 py-3">
-              <p className="text-xs text-sky-200/45">7-day volume</p>
+            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
+              <p className="text-xs text-[var(--admin-muted)]">7-day volume</p>
               <p className="mt-1 text-lg font-semibold">
                 {fmtNum(summary?.requests_7d)}
               </p>
@@ -461,18 +457,18 @@ export const AdminUsagePanel = () => {
         </section>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80">
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-sky-400/10 px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold">Past usage</h3>
-            <p className="text-xs text-sky-200/45">
+            <p className="text-xs text-[var(--admin-muted)]">
               AI calls with real duration and speed
               {totalRows
                 ? ` · showing ${rangeStart}–${rangeEnd} of ${totalRows}`
                 : ""}
             </p>
           </div>
-          <label className="flex items-center gap-2 text-xs text-sky-200/55">
+          <label className="flex items-center gap-2 text-xs text-[var(--admin-muted)]">
             Rows
             <select
               value={pageSize}
@@ -481,7 +477,7 @@ export const AdminUsagePanel = () => {
                   Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
                 )
               }
-              className="rounded-lg border border-sky-400/15 bg-[#0a1220] px-2 py-1.5 text-sky-100 outline-none focus:border-sky-400/40"
+              className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2 py-1.5 text-[var(--admin-fg)] outline-none focus:border-[var(--accent)]/50"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>
@@ -493,7 +489,7 @@ export const AdminUsagePanel = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
+            <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">When</th>
                 <th className="px-4 py-3 font-medium">Who</th>
@@ -509,18 +505,18 @@ export const AdminUsagePanel = () => {
             <tbody>
               {(data?.recent ?? []).length ? (
                 data?.recent.map((row) => (
-                  <tr key={row.id} className="border-t border-sky-400/10">
-                    <td className="whitespace-nowrap px-4 py-3 text-sky-200/55">
+                  <tr key={row.id} className="border-t border-[var(--admin-border)]">
+                    <td className="whitespace-nowrap px-4 py-3 text-[var(--admin-muted)]">
                       {fmtTime(row.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-medium">{row.username}</span>
-                      <span className="ml-2 text-[11px] text-sky-200/40">
+                      <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                         {row.source}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sky-100/80">{row.model}</td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-sky-200/55">
+                    <td className="px-4 py-3 text-[var(--admin-fg)]">{row.model}</td>
+                    <td className="max-w-[200px] truncate px-4 py-3 text-[var(--admin-muted)]">
                       {row.prompt_preview}
                     </td>
                     <td className="px-4 py-3">{fmtMs(row.ttft_ms)}</td>
@@ -530,7 +526,7 @@ export const AdminUsagePanel = () => {
                         ? `${row.tokens_per_sec} t/s`
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-sky-200/55">
+                    <td className="px-4 py-3 text-[var(--admin-muted)]">
                       {row.tokens_eval != null
                         ? `${row.tokens_prompt ?? "—"}→${row.tokens_eval}`
                         : `${row.prompt_chars}/${row.response_chars}c`}
@@ -548,7 +544,7 @@ export const AdminUsagePanel = () => {
                 <tr>
                   <td
                     colSpan={9}
-                    className="px-4 py-10 text-center text-sky-200/45"
+                    className="px-4 py-10 text-center text-[var(--admin-muted)]"
                   >
                     {isLoading
                       ? "Loading usage…"
@@ -559,8 +555,8 @@ export const AdminUsagePanel = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sky-400/10 px-4 py-3">
-          <p className="text-xs text-sky-200/45">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
+          <p className="text-xs text-[var(--admin-muted)]">
             Page {Math.min(page, totalPages)} of {totalPages}
           </p>
           <div className="flex items-center gap-2">
@@ -568,7 +564,7 @@ export const AdminUsagePanel = () => {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft size={14} />
               Prev
@@ -577,7 +573,7 @@ export const AdminUsagePanel = () => {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
               <ChevronRight size={14} />

@@ -302,7 +302,11 @@ export const looksLikeCompanyQuestion = (query: string): boolean => {
 
 /** Always-on language instruction for the system prompt. */
 export const MULTILANG_SYSTEM_RULES = `LANGUAGE:
-- Detect the user's language from their latest message and reply in that same language (Azerbaijani, Russian, English, Turkish, or others).
-- Keep the same language for follow-ups unless the user switches.
+- Detect the user's language from their latest message and reply in THAT language only (Azerbaijani, Russian, English, Turkish, or others).
+- Write the entire reply in one language. Do NOT add translations, glosses, or English in parentheses.
+- Never do dual-language answers like "Merhaba... (Hello...)" or "Здравствуйте... (Hello...)".
+- Keep the same language for follow-ups unless the user clearly switches.
+- If the message is ambiguous or very short (e.g. "salam", "hi"), default to English unless earlier turns already set a language.
+- Only provide a translation when the user explicitly asks for one.
 - Guardrails and safety rules apply in every language — never bypass them via translation or code-switching.
-- When using COMPANY KNOWLEDGE, translate/adapt the facts into the user's language; keep names, emails, phones, URLs exact.`;
+- When using COMPANY KNOWLEDGE, rewrite the facts in the user's single reply language; keep names, emails, phones, URLs exact.`;

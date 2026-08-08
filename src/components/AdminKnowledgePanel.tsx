@@ -288,7 +288,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
   if (isLoading) {
     return (
-      <section className="animate-fade-up rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 px-4 py-10 text-center text-sm text-sky-200/50">
+      <section className="animate-fade-up rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
         Loading company knowledge…
       </section>
     );
@@ -296,14 +296,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
   return (
     <div className="animate-fade-up space-y-4">
-      <section className="overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-sky-400/10 px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <BookOpen size={16} className="text-sky-400" />
+              <BookOpen size={16} className="text-[var(--accent)]" />
               <h2 className="text-sm font-semibold">Company Knowledge</h2>
             </div>
-            <p className="mt-1 max-w-2xl text-xs text-sky-200/45">
+            <p className="mt-1 max-w-2xl text-xs text-[var(--admin-muted)]">
               Local facts injected into chat context (RAG-lite). Retrieval works
               across languages; the model answers in the user&apos;s language.
               Starter pack from{" "}
@@ -311,7 +311,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 href="https://sinam.net"
                 target="_blank"
                 rel="noreferrer"
-                className="text-sky-300 underline underline-offset-2"
+                className="text-[var(--accent)] underline underline-offset-2"
               >
                 sinam.net
               </a>
@@ -329,7 +329,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         </div>
 
         {settings ? (
-          <div className="flex flex-wrap items-end gap-3 border-b border-sky-400/10 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3 border-b border-[var(--admin-border)] px-4 py-3">
             {(
               [
                 ["enabled", "On"],
@@ -339,7 +339,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             ).map(([key, label]) => (
               <label
                 key={key}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-sky-400/12 bg-sky-500/[0.04] px-2.5 py-1.5 text-xs text-sky-100/85"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--admin-border)] bg-sky-500/[0.04] px-2.5 py-1.5 text-xs text-[var(--admin-fg)]/85"
               >
                 <input
                   type="checkbox"
@@ -351,7 +351,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 {label}
               </label>
             ))}
-            <label className="flex items-center gap-1.5 text-xs text-sky-200/55">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--admin-muted)]">
               Max docs
               <input
                 type="number"
@@ -364,10 +364,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     maxDocs: Number(e.target.value),
                   })
                 }
-                className="w-14 rounded-lg border border-sky-400/15 bg-[#071018]/70 px-2 py-1.5 text-sm text-sky-100 outline-none"
+                className="w-14 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2 py-1.5 text-sm text-[var(--admin-fg)] outline-none"
               />
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-sky-200/55">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--admin-muted)]">
               Max chars
               <input
                 type="number"
@@ -380,7 +380,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     maxChars: Number(e.target.value),
                   })
                 }
-                className="w-20 rounded-lg border border-sky-400/15 bg-[#071018]/70 px-2 py-1.5 text-sm text-sky-100 outline-none"
+                className="w-20 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2 py-1.5 text-sm text-[var(--admin-fg)] outline-none"
               />
             </label>
             <button
@@ -395,7 +395,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               type="button"
               disabled={isSaving}
               onClick={() => void handleSeed(false)}
-              className="rounded-lg border border-sky-400/15 px-3 py-1.5 text-xs text-sky-100/80 hover:bg-sky-500/10"
+              className="rounded-lg border border-[var(--admin-border)] px-3 py-1.5 text-xs text-[var(--admin-fg)] hover:bg-[var(--hover)]"
             >
               Add SINAM pack
             </button>
@@ -403,20 +403,20 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               type="button"
               disabled={isSaving}
               onClick={() => void handleSeed(true)}
-              className="rounded-lg border border-amber-400/20 px-3 py-1.5 text-xs text-amber-100/80 hover:bg-amber-500/10"
+              className="rounded-lg border border-amber-400/20 px-3 py-1.5 text-xs text-[var(--status-warn-fg)] hover:bg-amber-500/10"
             >
               Replace pack
             </button>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sky-400/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold">
               Library ({filteredDocs.length}
               {filteredDocs.length !== docs.length ? ` / ${docs.length}` : ""})
             </h3>
-            <p className="text-xs text-sky-200/40">
+            <p className="text-xs text-[var(--admin-muted)]">
               {filteredDocs.length
                 ? `Showing ${rangeStart}–${rangeEnd} · click Edit to change`
                 : "Full list · click Edit to change an entry"}
@@ -426,13 +426,13 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             <div className="relative">
               <Search
                 size={14}
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sky-200/40"
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--admin-muted)]"
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search title, tags, content"
-                className="w-52 rounded-lg border border-sky-400/15 bg-[#071018]/70 py-1.5 pl-8 pr-2.5 text-sm outline-none placeholder:text-sky-200/30 focus:border-sky-400/40"
+                className="w-52 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 py-1.5 pl-8 pr-2.5 text-sm outline-none placeholder:text-[var(--admin-muted)]/30 focus:border-[var(--accent)]/50"
               />
             </div>
             <select
@@ -440,13 +440,13 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               onChange={(e) =>
                 setFilter(e.target.value as "all" | "enabled" | "disabled")
               }
-              className="rounded-lg border border-sky-400/15 bg-[#071018]/70 px-2.5 py-1.5 text-sm outline-none"
+              className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2.5 py-1.5 text-sm outline-none"
             >
               <option value="all">All</option>
               <option value="enabled">Enabled</option>
               <option value="disabled">Disabled</option>
             </select>
-            <label className="flex items-center gap-1.5 text-xs text-sky-200/55">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--admin-muted)]">
               Rows
               <select
                 value={pageSize}
@@ -455,7 +455,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
                   )
                 }
-                className="rounded-lg border border-sky-400/15 bg-[#071018]/70 px-2 py-1.5 text-sm outline-none"
+                className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2 py-1.5 text-sm outline-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>
@@ -469,7 +469,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
+            <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
               <tr>
                 <th className="px-4 py-2.5 font-medium">Title</th>
                 <th className="px-4 py-2.5 font-medium">Category</th>
@@ -487,7 +487,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-sky-200/45"
+                    className="px-4 py-10 text-center text-[var(--admin-muted)]"
                   >
                     {docs.length === 0
                       ? "No docs yet. Add an entry or seed the SINAM pack."
@@ -496,43 +496,41 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </tr>
               ) : (
                 pagedDocs.map((doc) => (
-                  <tr key={doc.id} className="border-t border-sky-400/10">
+                  <tr key={doc.id} className="border-t border-[var(--admin-border)]">
                     <td className="px-4 py-2.5">
                       <p className="max-w-[200px] truncate font-medium">
                         {doc.title}
                       </p>
                       {doc.tags ? (
-                        <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-sky-200/35">
+                        <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-[var(--admin-muted)]">
                           {doc.tags}
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-sky-200/60">
+                    <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                       {doc.category}
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-sky-200/60">
+                    <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                       {doc.priority}
                     </td>
                     <td className="px-4 py-2.5">
                       {doc.always_include === 1 ? (
-                        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] text-sky-200">
+                        <span className="rounded-full bg-[var(--chip-info-bg)] px-2 py-0.5 text-[11px] text-[var(--admin-muted)]">
                           always
                         </span>
                       ) : (
-                        <span className="text-[11px] text-sky-200/30">—</span>
+                        <span className="text-[11px] text-[var(--admin-muted)]/30">—</span>
                       )}
                     </td>
                     <td className="max-w-[320px] px-4 py-2.5">
-                      <p className="line-clamp-2 text-xs text-sky-200/50">
+                      <p className="line-clamp-2 text-xs text-[var(--admin-muted)]">
                         {doc.content}
                       </p>
                     </td>
                     <td className="px-4 py-2.5">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          doc.is_enabled === 1
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-red-500/15 text-red-300"
+                        className={`status-pill ${
+                          doc.is_enabled === 1 ? "status-ok" : "status-bad"
                         }`}
                       >
                         {doc.is_enabled === 1 ? "enabled" : "disabled"}
@@ -543,7 +541,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                         <button
                           type="button"
                           onClick={() => openEdit(doc)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-sky-100 hover:bg-sky-500/10"
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--admin-fg)] hover:bg-[var(--hover)]"
                         >
                           <Pencil size={12} />
                           Edit
@@ -551,14 +549,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                         <button
                           type="button"
                           onClick={() => void handleToggle(doc)}
-                          className="rounded-lg px-2 py-1 text-xs text-sky-200/70 hover:bg-sky-500/10"
+                          className="rounded-lg px-2 py-1 text-xs text-[var(--admin-muted)] hover:bg-[var(--hover)]"
                         >
                           {doc.is_enabled === 1 ? "Disable" : "Enable"}
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleDelete(doc)}
-                          className="rounded-lg p-1 text-red-300/80 hover:bg-red-500/10"
+                          className="rounded-lg p-1 text-[var(--status-bad-fg)] hover:bg-red-500/10"
                           aria-label="Delete"
                         >
                           <Trash2 size={14} />
@@ -572,8 +570,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sky-400/10 px-4 py-3">
-          <p className="text-xs text-sky-200/45">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
+          <p className="text-xs text-[var(--admin-muted)]">
             Page {safePage} of {totalPages}
           </p>
           <div className="flex items-center gap-2">
@@ -581,7 +579,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               type="button"
               disabled={safePage <= 1}
               onClick={() => setPage(safePage - 1)}
-              className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft size={14} />
               Prev
@@ -590,7 +588,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => setPage(safePage + 1)}
-              className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
               <ChevronRight size={14} />
@@ -609,10 +607,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="knowledge-modal-title"
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-sky-400/15 bg-[#0c1424] shadow-2xl"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-sky-400/10 bg-[#0c1424]/95 px-4 py-3 backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
               <div>
                 <h3
                   id="knowledge-modal-title"
@@ -620,14 +618,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 >
                   {editingId ? "Edit knowledge entry" : "Add knowledge entry"}
                 </h3>
-                <p className="text-xs text-sky-200/45">
+                <p className="text-xs text-[var(--admin-muted)]">
                   Facts the model can pull into answers
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg p-1.5 text-sky-200/60 transition hover:bg-sky-500/10 hover:text-sky-100"
+                className="rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
                 aria-label="Close"
               >
                 <X size={16} />
@@ -636,19 +634,19 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
             <div className="space-y-3 px-4 py-4">
               <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
-                <label className="block text-sm text-sky-100/80">
+                <label className="block text-sm text-[var(--admin-fg)]">
                   Title
                   <input
                     value={form.title}
                     onChange={(e) =>
                       setForm({ ...form, title: e.target.value })
                     }
-                    className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                    className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                     placeholder="e.g. HR leave policy"
                     autoFocus
                   />
                 </label>
-                <label className="block text-sm text-sky-100/80">
+                <label className="block text-sm text-[var(--admin-fg)]">
                   Category
                   <select
                     value={form.category}
@@ -658,7 +656,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                         category: e.target.value as KnowledgeCategory,
                       })
                     }
-                    className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>
@@ -669,7 +667,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </label>
               </div>
 
-              <label className="block text-sm text-sky-100/80">
+              <label className="block text-sm text-[var(--admin-fg)]">
                 Content
                 <textarea
                   value={form.content}
@@ -677,24 +675,24 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     setForm({ ...form, content: e.target.value })
                   }
                   rows={9}
-                  className="mt-1.5 w-full resize-y rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 text-sm outline-none focus:border-sky-400/40"
+                  className="mt-1.5 w-full resize-y rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 text-sm outline-none focus:border-[var(--accent)]/50"
                   placeholder="Facts the model should know…"
                 />
               </label>
 
               <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
-                <label className="block text-sm text-sky-100/80">
+                <label className="block text-sm text-[var(--admin-fg)]">
                   Tags
                   <input
                     value={form.tags}
                     onChange={(e) =>
                       setForm({ ...form, tags: e.target.value })
                     }
-                    className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none"
                     placeholder="sinam, hr, leave"
                   />
                 </label>
-                <label className="block text-sm text-sky-100/80">
+                <label className="block text-sm text-[var(--admin-fg)]">
                   Priority
                   <input
                     type="number"
@@ -704,12 +702,12 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     onChange={(e) =>
                       setForm({ ...form, priority: Number(e.target.value) })
                     }
-                    className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none"
+                    className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none"
                   />
                 </label>
               </div>
 
-              <div className="flex flex-wrap gap-4 text-sm text-sky-100/80">
+              <div className="flex flex-wrap gap-4 text-sm text-[var(--admin-fg)]">
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -733,11 +731,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               </div>
             </div>
 
-            <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-sky-400/10 bg-[#0c1424]/95 px-4 py-3 backdrop-blur">
+            <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-xl border border-sky-400/15 px-4 py-2 text-sm text-sky-100/70 hover:bg-sky-500/10"
+                className="rounded-xl border border-[var(--admin-border)] px-4 py-2 text-sm text-[var(--admin-fg)]/70 hover:bg-[var(--hover)]"
               >
                 Cancel
               </button>

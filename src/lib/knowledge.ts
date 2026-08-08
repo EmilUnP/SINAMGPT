@@ -273,7 +273,7 @@ export const buildKnowledgeBlock = (
 
   const chunks: string[] = [
     "COMPANY KNOWLEDGE (trusted local facts — use when answering about SINAM / company / projects; do not invent facts beyond this):",
-    "Answer in the user's language. Translate/adapt these facts as needed; keep names, phones, emails, and URLs exact.",
+    "Answer in the user's language only (one language for the whole reply — no parenthetical translations). Adapt these facts into that language; keep names, phones, emails, and URLs exact.",
   ];
 
   let used = chunks.join("\n").length;

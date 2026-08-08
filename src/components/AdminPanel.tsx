@@ -30,6 +30,7 @@ import sinamLogo from "@/assets/sinam_logo.png";
 import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
 import { AdminUsagePanel } from "@/components/AdminUsagePanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { AdminUserRow, User } from "@/lib/types";
 
 type Totals = {
@@ -671,7 +672,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   };
 
   return (
-    <div className="min-h-dvh bg-[#060a14] text-white">
+    <div className="min-h-dvh bg-[var(--bg)] text-[var(--admin-fg)]">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0"
@@ -681,12 +682,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         }}
       />
 
-      <header className="relative z-10 border-b border-sky-400/10 bg-[#0a1220]/80 backdrop-blur-md">
+      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-sky-200/60 transition hover:bg-sky-500/10 hover:text-sky-100"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
             >
               <ArrowLeft size={16} />
               Chat
@@ -703,30 +704,33 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               />
               <div>
                 <div className="flex items-center gap-2">
-                  <Shield size={16} className="text-sky-400" />
+                  <Shield size={16} className="text-[var(--accent)]" />
                   <h1 className="text-lg font-semibold tracking-tight">
                     Admin
                   </h1>
                 </div>
-                <p className="text-xs text-sky-200/45">
+                <p className="text-xs text-[var(--admin-muted)]">
                   {admin.username} · SINAMGPT
                 </p>
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-xl border border-sky-400/15 bg-sky-500/10 px-3 py-2 text-sm font-medium text-sky-100 transition hover:bg-sky-500/20"
-          >
-            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle size="sm" />
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
+            >
+              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+              Refresh
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <nav className="flex flex-wrap gap-1 rounded-2xl border border-sky-400/10 bg-[#0c1424]/80 p-1.5 backdrop-blur-md">
+        <nav className="flex flex-wrap gap-1 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-1.5 backdrop-blur-md">
           {tabs.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
             return (
@@ -737,7 +741,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition sm:flex-none ${
                   active
                     ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-[0_8px_24px_rgba(37,99,235,0.3)]"
-                    : "text-sky-200/60 hover:bg-sky-500/10 hover:text-sky-100"
+                    : "text-[var(--admin-fg)]/70 hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
                 }`}
               >
                 <Icon size={16} />
@@ -745,7 +749,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {id === "users" ? (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                      active ? "bg-white/20" : "bg-sky-500/15 text-sky-200/70"
+                      active ? "bg-white/20" : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
                     }`}
                   >
                     {users.length}
@@ -754,7 +758,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {id === "models" ? (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                      active ? "bg-white/20" : "bg-sky-500/15 text-sky-200/70"
+                      active ? "bg-white/20" : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
                     }`}
                   >
                     {enabledModels}/{models.length}
@@ -766,12 +770,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         </nav>
 
         {error ? (
-          <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">
+          <p className="rounded-2xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]">
             {error}
           </p>
         ) : null}
         {notice ? (
-          <p className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">
+          <p className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-2.5 text-sm text-[var(--status-ok-fg)]">
             {notice}
           </p>
         ) : null}
@@ -794,11 +798,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               ).map((b) => (
                 <span
                   key={b.backend}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                    b.ok
-                      ? "bg-emerald-500/15 text-emerald-200"
-                      : "bg-red-500/15 text-red-200"
-                  }`}
+                  className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                 >
                   <Server size={12} />
                   {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
@@ -806,7 +806,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   {` · ${fmtMs(b.latencyMs)}`}
                 </span>
               ))}
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-100">
+              <span className="status-pill status-info">
                 <Radio
                   size={12}
                   className={pulse?.liveCount ? "animate-pulse" : ""}
@@ -814,10 +814,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {pulse?.liveCount ?? 0} live streams
               </span>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                  meta?.guardrailsOn
-                    ? "bg-emerald-500/15 text-emerald-200"
-                    : "bg-amber-500/15 text-amber-200"
+                className={`status-pill ${
+                  meta?.guardrailsOn ? "status-ok" : "status-warn"
                 }`}
               >
                 <ShieldAlert size={12} />
@@ -825,10 +823,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {meta ? ` · ${meta.keywordRules} hard rules` : ""}
               </span>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                  meta?.knowledgeOn
-                    ? "bg-emerald-500/15 text-emerald-200"
-                    : "bg-sky-500/10 text-sky-200/70"
+                className={`status-pill ${
+                  meta?.knowledgeOn ? "status-ok" : "status-info"
                 }`}
               >
                 <BookOpen size={12} />
@@ -871,16 +867,20 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 px-4 py-4 backdrop-blur-md"
+                  className="admin-card rounded-2xl px-4 py-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-sky-200/45">{card.label}</p>
-                    <card.icon size={14} className="text-sky-400/70" />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-[var(--admin-muted)]">
+                      {card.label}
+                    </p>
+                    <card.icon size={14} className="text-[var(--accent)]" />
                   </div>
-                  <p className="mt-1 text-2xl font-semibold tracking-tight">
-                    {isLoading && !pulse ? "…" : card.value}
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--admin-fg)]">
+                    {card.value}
                   </p>
-                  <p className="mt-1 text-xs text-sky-200/40">{card.hint}</p>
+                  <p className="mt-1 text-xs text-[var(--admin-muted)]">
+                    {card.hint}
+                  </p>
                 </div>
               ))}
             </div>
@@ -915,29 +915,35 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/70 px-4 py-3"
+                  className="admin-card rounded-2xl px-4 py-3"
                 >
-                  <p className="text-xs text-sky-200/45">{card.label}</p>
-                  <p className="mt-1 text-xl font-semibold tracking-tight">
+                  <p className="text-xs font-medium text-[var(--admin-muted)]">
+                    {card.label}
+                  </p>
+                  <p className="mt-1 text-xl font-semibold tracking-tight text-[var(--admin-fg)]">
                     {isLoading ? "…" : card.value}
                   </p>
-                  <p className="mt-1 text-[11px] text-sky-200/40">{card.hint}</p>
+                  <p className="mt-1 text-[11px] text-[var(--admin-muted)]">
+                    {card.hint}
+                  </p>
                 </div>
               ))}
             </div>
 
-            <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+            <section className="admin-card rounded-2xl p-4">
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold">Traffic · last 24h</h2>
-                  <p className="text-xs text-sky-200/45">
+                  <h2 className="text-sm font-semibold text-[var(--admin-fg)]">
+                    Traffic · last 24h
+                  </h2>
+                  <p className="text-xs text-[var(--admin-muted)]">
                     Request volume by hour
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setTab("usage")}
-                  className="text-xs text-sky-300/70 transition hover:text-sky-100"
+                  className="text-xs font-medium text-[var(--accent)] transition hover:opacity-80"
                 >
                   Open live usage →
                 </button>
@@ -960,7 +966,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           className="w-full rounded-t-sm bg-gradient-to-t from-blue-600/80 to-sky-400/80 transition group-hover:from-blue-500 group-hover:to-sky-300"
                           style={{ height: `${heightPx}px` }}
                         />
-                        <span className="mt-1 hidden text-[9px] text-sky-200/35 sm:block">
+                        <span className="mt-1 hidden text-[9px] text-[var(--admin-muted)] sm:block">
                           {label}
                         </span>
                       </div>
@@ -968,16 +974,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   })}
                 </div>
               ) : (
-                <p className="py-8 text-center text-sm text-sky-200/40">
+                <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
                   No AI traffic in the last 24 hours yet
                 </p>
               )}
             </section>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
                 <h2 className="text-sm font-semibold">Top models</h2>
-                <p className="mb-3 text-xs text-sky-200/45">
+                <p className="mb-3 text-xs text-[var(--admin-muted)]">
                   Most used · avg generation speed
                 </p>
                 {pulse?.byModel.length ? (
@@ -987,10 +993,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         key={row.model}
                         className="flex items-center justify-between gap-3 text-sm"
                       >
-                        <span className="truncate text-sky-100/90">
+                        <span className="truncate text-[var(--admin-fg)]">
                           {row.model}
                         </span>
-                        <span className="shrink-0 text-xs text-sky-200/45">
+                        <span className="shrink-0 text-xs text-[var(--admin-muted)]">
                           {row.requests} req
                           {row.avg_tokens_per_sec != null
                             ? ` · ${row.avg_tokens_per_sec} t/s`
@@ -1000,13 +1006,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-sky-200/40">No model usage yet</p>
+                  <p className="text-sm text-[var(--admin-muted)]">No model usage yet</p>
                 )}
               </section>
 
-              <section className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4">
+              <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
                 <h2 className="text-sm font-semibold">Top chatters</h2>
-                <p className="mb-3 text-xs text-sky-200/45">
+                <p className="mb-3 text-xs text-[var(--admin-muted)]">
                   Highest request volume
                 </p>
                 {pulse?.topUsers.length ? (
@@ -1017,19 +1023,19 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         className="flex items-center justify-between gap-3 text-sm"
                       >
                         <span className="truncate">
-                          <span className="text-sky-100/90">{row.username}</span>
-                          <span className="ml-2 text-[11px] text-sky-200/35">
+                          <span className="text-[var(--admin-fg)]">{row.username}</span>
+                          <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                             {row.source}
                           </span>
                         </span>
-                        <span className="shrink-0 text-xs text-sky-200/45">
+                        <span className="shrink-0 text-xs text-[var(--admin-muted)]">
                           {row.requests} req
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-sky-200/40">No chatters yet</p>
+                  <p className="text-sm text-[var(--admin-muted)]">No chatters yet</p>
                 )}
               </section>
             </div>
@@ -1038,52 +1044,52 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               <button
                 type="button"
                 onClick={() => setTab("usage")}
-                className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4 text-left transition hover:border-sky-400/25 hover:bg-sky-500/[0.06]"
+                className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-sky-200/45">AI performance</p>
+                <p className="text-xs text-[var(--admin-muted)]">AI performance</p>
                 <p className="mt-1 text-xl font-semibold">Live usage</p>
-                <p className="mt-1 text-sm text-sky-200/50">
+                <p className="mt-1 text-sm text-[var(--admin-muted)]">
                   Streams, latency history, backend health
                 </p>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("models")}
-                className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4 text-left transition hover:border-sky-400/25 hover:bg-sky-500/[0.06]"
+                className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-sky-200/45">Models</p>
+                <p className="text-xs text-[var(--admin-muted)]">Models</p>
                 <p className="mt-1 text-xl font-semibold">
                   {enabledModels} enabled
                 </p>
-                <p className="mt-1 text-sm text-sky-200/50">
+                <p className="mt-1 text-sm text-[var(--admin-muted)]">
                   {models.length - enabledModels} disabled · manage catalog
                 </p>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("knowledge")}
-                className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4 text-left transition hover:border-sky-400/25 hover:bg-sky-500/[0.06]"
+                className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-sky-200/45">Company knowledge</p>
+                <p className="text-xs text-[var(--admin-muted)]">Company knowledge</p>
                 <p className="mt-1 text-xl font-semibold">
                   {meta?.knowledgeEnabled ?? "—"} live docs
                 </p>
-                <p className="mt-1 text-sm text-sky-200/50">
+                <p className="mt-1 text-sm text-[var(--admin-muted)]">
                   {meta?.knowledgeDocs ?? 0} total · RAG context for answers
                 </p>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("settings")}
-                className="rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 p-4 text-left transition hover:border-sky-400/25 hover:bg-sky-500/[0.06]"
+                className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-sky-200/45">Access settings</p>
+                <p className="text-xs text-[var(--admin-muted)]">Access settings</p>
                 <p className="mt-1 text-xl font-semibold">
                   {settings?.guestEnabled === false
                     ? "Guest off"
                     : `${settings?.guestDailyLimit ?? "—"} / day`}
                 </p>
-                <p className="mt-1 text-sm text-sky-200/50">
+                <p className="mt-1 text-sm text-[var(--admin-muted)]">
                   {settings?.registrationEnabled === false
                     ? "Registration closed"
                     : "Registration open"}{" "}
@@ -1127,11 +1133,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         ) : null}
 
         {tab === "users" ? (
-          <section className="animate-fade-up overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 backdrop-blur-md">
-            <div className="flex flex-col gap-3 border-b border-sky-400/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <section className="animate-fade-up overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
+            <div className="flex flex-col gap-3 border-b border-[var(--admin-border)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-sm font-semibold">All users</h2>
-                <p className="text-xs text-sky-200/45">
+                <p className="text-xs text-[var(--admin-muted)]">
                   Search, filter, disable login, or delete accounts and chats
                   {filteredUsers.length
                     ? ` · showing ${userRangeStart}–${userRangeEnd} of ${filteredUsers.length}`
@@ -1142,13 +1148,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 <div className="relative">
                   <Search
                     size={14}
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sky-200/40"
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--admin-muted)]"
                   />
                   <input
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
                     placeholder="Search username"
-                    className="w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-sky-200/30 focus:border-sky-400/40 sm:w-48"
+                    className="w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-[var(--admin-muted)]/30 focus:border-[var(--accent)]/50 sm:w-48"
                   />
                 </div>
                 <select
@@ -1158,14 +1164,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       e.target.value as "all" | "active" | "disabled" | "admin",
                     )
                   }
-                  className="rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 text-sm outline-none focus:border-sky-400/40"
+                  className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 text-sm outline-none focus:border-[var(--accent)]/50"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
                   <option value="disabled">Disabled</option>
                   <option value="admin">Admins</option>
                 </select>
-                <label className="flex items-center gap-2 text-xs text-sky-200/55">
+                <label className="flex items-center gap-2 text-xs text-[var(--admin-muted)]">
                   Rows
                   <select
                     value={userPageSize}
@@ -1174,7 +1180,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         Number(e.target.value) as (typeof USER_PAGE_SIZE_OPTIONS)[number],
                       )
                     }
-                    className="rounded-xl border border-sky-400/15 bg-[#071018]/70 px-2 py-2 text-sm outline-none focus:border-sky-400/40"
+                    className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2 py-2 text-sm outline-none focus:border-[var(--accent)]/50"
                   >
                     {USER_PAGE_SIZE_OPTIONS.map((size) => (
                       <option key={size} value={size}>
@@ -1188,7 +1194,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
 
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
+                <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
                   <tr>
                     <th className="px-4 py-3 font-medium">User</th>
                     <th className="px-4 py-3 font-medium">Role</th>
@@ -1206,7 +1212,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     <tr>
                       <td
                         colSpan={9}
-                        className="px-4 py-10 text-center text-sky-200/45"
+                        className="px-4 py-10 text-center text-[var(--admin-muted)]"
                       >
                         Loading…
                       </td>
@@ -1215,7 +1221,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     <tr>
                       <td
                         colSpan={9}
-                        className="px-4 py-10 text-center text-sky-200/45"
+                        className="px-4 py-10 text-center text-[var(--admin-muted)]"
                       >
                         No users match this filter
                       </td>
@@ -1227,22 +1233,22 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       return (
                         <tr
                           key={user.id}
-                          className="border-t border-sky-400/10"
+                          className="border-t border-[var(--admin-border)]"
                         >
                           <td className="px-4 py-3 font-medium">
                             {user.username}
                             {isSelf ? (
-                              <span className="ml-2 text-xs text-sky-200/40">
+                              <span className="ml-2 text-xs text-[var(--admin-muted)]">
                                 (you)
                               </span>
                             ) : null}
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              className={`status-pill ${
                                 user.role === "admin"
-                                  ? "bg-sky-500/15 text-sky-200"
-                                  : "bg-white/5 text-sky-200/70"
+                                  ? "status-info"
+                                  : "status-neutral"
                               }`}
                             >
                               {user.role}
@@ -1250,19 +1256,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                user.is_active === 1
-                                  ? "bg-emerald-500/15 text-emerald-300"
-                                  : "bg-red-500/15 text-red-300"
+                              className={`status-pill ${
+                                user.is_active === 1 ? "status-ok" : "status-bad"
                               }`}
                             >
                               {user.is_active === 1 ? "active" : "disabled"}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-sky-200/50">
+                          <td className="whitespace-nowrap px-4 py-3 text-[var(--admin-muted)]">
                             {formatDate(user.created_at)}
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-sky-200/50">
+                          <td className="whitespace-nowrap px-4 py-3 text-[var(--admin-muted)]">
                             {formatDate(user.last_active_at)}
                           </td>
                           <td className="px-4 py-3">{user.conversation_count}</td>
@@ -1274,7 +1278,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 type="button"
                                 disabled={isBusy || isSelf}
                                 onClick={() => void handleToggleActive(user)}
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-sky-100 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--admin-fg)] hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 {user.is_active === 1 ? (
                                   <>
@@ -1290,7 +1294,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 type="button"
                                 disabled={isBusy || isSelf}
                                 onClick={() => void handleDelete(user)}
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--status-bad-fg)] hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Trash2 size={14} />
                                 Delete
@@ -1304,8 +1308,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sky-400/10 px-4 py-3">
-              <p className="text-xs text-sky-200/45">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
+              <p className="text-xs text-[var(--admin-muted)]">
                 Page {safeUserPage} of {userTotalPages}
               </p>
               <div className="flex items-center gap-2">
@@ -1313,7 +1317,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   type="button"
                   disabled={safeUserPage <= 1}
                   onClick={() => setUserPage(safeUserPage - 1)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft size={14} />
                   Prev
@@ -1322,7 +1326,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   type="button"
                   disabled={safeUserPage >= userTotalPages}
                   onClick={() => setUserPage(safeUserPage + 1)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
                   <ChevronRight size={14} />
@@ -1333,10 +1337,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         ) : null}
 
         {tab === "models" ? (
-          <section className="animate-fade-up overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 backdrop-blur-md">
-            <div className="border-b border-sky-400/10 px-4 py-3">
+          <section className="animate-fade-up overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
+            <div className="border-b border-[var(--admin-border)] px-4 py-3">
               <h2 className="text-sm font-semibold">LLM models</h2>
-              <p className="text-xs text-sky-200/45">
+              <p className="text-xs text-[var(--admin-muted)]">
                 Synced in parallel from Ollama and/or vLLM. Edit the display
                 name shown in chat pickers. Clear + save to reset to the model
                 id.
@@ -1344,18 +1348,18 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             </div>
 
             {isLoading ? (
-              <p className="px-4 py-10 text-center text-sm text-sky-200/45">
+              <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
                 Loading…
               </p>
             ) : models.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-sky-200/45">
+              <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
                 No models found. Start Ollama (`ollama list`) and/or vLLM, and
                 set{" "}
-                <code className="rounded bg-sky-500/10 px-1.5 py-0.5 text-sky-200">
+                <code className="rounded bg-[var(--chip-info-bg)] px-1.5 py-0.5 text-[var(--admin-muted)]">
                   LLM_BACKENDS=ollama,vllm
                 </code>{" "}
                 in{" "}
-                <code className="rounded bg-sky-500/10 px-1.5 py-0.5 text-sky-200">
+                <code className="rounded bg-[var(--chip-info-bg)] px-1.5 py-0.5 text-[var(--admin-muted)]">
                   .env.local
                 </code>
                 .
@@ -1363,7 +1367,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
+                  <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
                     <tr>
                       <th className="px-4 py-2.5 font-medium">Model id</th>
                       <th className="px-4 py-2.5 font-medium">Backend</th>
@@ -1386,14 +1390,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       return (
                         <tr
                           key={model.name}
-                          className="border-t border-sky-400/10"
+                          className="border-t border-[var(--admin-border)]"
                         >
                           <td className="px-4 py-2.5">
-                            <p className="max-w-[180px] truncate font-mono text-xs text-sky-100/90">
+                            <p className="max-w-[180px] truncate font-mono text-xs text-[var(--admin-fg)]">
                               {model.name}
                             </p>
                             {model.modified_at ? (
-                              <p className="mt-0.5 text-[11px] text-sky-200/35">
+                              <p className="mt-0.5 text-[11px] text-[var(--admin-muted)]">
                                 {formatDate(model.modified_at)}
                               </p>
                             ) : null}
@@ -1403,13 +1407,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
                                 model.backend === "vllm"
                                   ? "bg-violet-500/15 text-violet-200"
-                                  : "bg-sky-500/15 text-sky-200"
+                                  : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
                               }`}
                             >
                               {model.backend === "vllm" ? "vLLM" : "Ollama"}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-2.5 text-xs text-sky-200/55">
+                          <td className="whitespace-nowrap px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                             {formatSize(model.size)}
                           </td>
                           <td className="px-4 py-2.5">
@@ -1424,7 +1428,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 }
                                 placeholder={model.name}
                                 maxLength={120}
-                                className="w-full max-w-[220px] rounded-lg border border-sky-400/15 bg-[#071018]/70 px-2.5 py-1.5 text-sm outline-none placeholder:text-sky-200/30 focus:border-sky-400/40"
+                                className="w-full max-w-[220px] rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-2.5 py-1.5 text-sm outline-none placeholder:text-[var(--admin-muted)]/30 focus:border-[var(--accent)]/50"
                               />
                               <button
                                 type="button"
@@ -1440,10 +1444,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           </td>
                           <td className="px-4 py-2.5">
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                model.is_enabled
-                                  ? "bg-emerald-500/15 text-emerald-300"
-                                  : "bg-red-500/15 text-red-300"
+                              className={`status-pill ${
+                                model.is_enabled ? "status-ok" : "status-bad"
                               }`}
                             >
                               {model.is_enabled ? "enabled" : "disabled"}
@@ -1456,7 +1458,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               onClick={() => void handleToggleModel(model)}
                               className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-40 ${
                                 model.is_enabled
-                                  ? "border border-sky-400/15 text-sky-100 hover:bg-sky-500/10"
+                                  ? "border border-[var(--admin-border)] text-[var(--admin-fg)] hover:bg-[var(--hover)]"
                                   : "bg-gradient-to-r from-blue-600 to-sky-500 text-white"
                               }`}
                             >
@@ -1479,11 +1481,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
 
         {tab === "settings" ? (
           <div className="animate-fade-up space-y-4">
-            <section className="overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 backdrop-blur-md">
-              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-sky-400/10 px-4 py-3">
+            <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
+              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
                 <div>
                   <h2 className="text-sm font-semibold">App settings</h2>
-                  <p className="text-xs text-sky-200/45">
+                  <p className="text-xs text-[var(--admin-muted)]">
                     Access, defaults, context limits, and generation behavior
                   </p>
                 </div>
@@ -1499,11 +1501,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
 
               <div className="space-y-5 px-4 py-5">
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/45">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
                     Guest try-chat
                   </h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-sky-400/12 bg-sky-500/[0.04] px-3 py-3 text-sm sm:col-span-2 lg:col-span-1">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-3 text-sm sm:col-span-2 lg:col-span-1">
                       <input
                         type="checkbox"
                         checked={settingsDraft.guestEnabled}
@@ -1516,7 +1518,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       />
                       Guest chat enabled
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       Daily messages
                       <input
                         type="number"
@@ -1529,13 +1531,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             guestDailyLimit: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         0 = guests blocked by quota
                       </span>
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       Max message chars
                       <input
                         type="number"
@@ -1548,10 +1550,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             guestMaxMessageChars: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       History turns
                       <input
                         type="number"
@@ -1564,21 +1566,21 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             guestHistoryLimit: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         Past messages sent to the model
                       </span>
                     </label>
                   </div>
                 </div>
 
-                <div className="border-t border-sky-400/10 pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/45">
+                <div className="border-t border-[var(--admin-border)] pt-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
                     Accounts
                   </h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-sky-400/12 bg-sky-500/[0.04] px-3 py-3 text-sm">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-3 text-sm">
                       <input
                         type="checkbox"
                         checked={settingsDraft.registrationEnabled}
@@ -1591,9 +1593,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       />
                       Allow new user registration
                     </label>
-                    <p className="rounded-xl border border-sky-400/10 px-3 py-3 text-xs text-sky-200/45">
+                    <p className="rounded-xl border border-[var(--admin-border)] px-3 py-3 text-xs text-[var(--admin-muted)]">
                       Logged-in chat stays{" "}
-                      <span className="font-medium text-emerald-300">
+                      <span className="font-medium text-[var(--status-ok-fg)]">
                         unlimited
                       </span>{" "}
                       by message count. Use max chars / history below to control
@@ -1602,12 +1604,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   </div>
                 </div>
 
-                <div className="border-t border-sky-400/10 pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/45">
+                <div className="border-t border-[var(--admin-border)] pt-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
                     Chat & model defaults
                   </h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <label className="block text-sm text-sky-100/80 sm:col-span-2 lg:col-span-1">
+                    <label className="block text-sm text-[var(--admin-fg)] sm:col-span-2 lg:col-span-1">
                       Default model
                       <select
                         value={settingsDraft.defaultModel}
@@ -1617,7 +1619,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             defaultModel: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       >
                         <option value="">First enabled / env default</option>
                         {models.map((m) => (
@@ -1627,11 +1629,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           </option>
                         ))}
                       </select>
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         Used when guest/user opens a new chat
                       </span>
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       User max message chars
                       <input
                         type="number"
@@ -1644,10 +1646,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             userMaxMessageChars: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       User history messages
                       <input
                         type="number"
@@ -1660,21 +1662,21 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             userHistoryLimit: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         0 = send full conversation to the model
                       </span>
                     </label>
                   </div>
                 </div>
 
-                <div className="border-t border-sky-400/10 pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/45">
+                <div className="border-t border-[var(--admin-border)] pt-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
                     Generation
                   </h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       Temperature
                       <input
                         type="number"
@@ -1688,13 +1690,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             temperature: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         0 = focused · 0.7 default · 1.2+ more creative
                       </span>
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       Max reply tokens
                       <input
                         type="number"
@@ -1707,13 +1709,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             numPredict: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         -1 = backend default · lower = shorter/faster replies
                       </span>
                     </label>
-                    <label className="block text-sm text-sky-100/80">
+                    <label className="block text-sm text-[var(--admin-fg)]">
                       Top-p (nucleus)
                       <input
                         type="number"
@@ -1727,9 +1729,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             topP: e.target.value,
                           }))
                         }
-                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
                       />
-                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         0.9 default · lower = tighter/safer · works on Ollama +
                         vLLM
                       </span>
@@ -1738,10 +1740,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sky-400/10 px-4 py-3">
-                <p className="text-xs text-sky-200/40">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
+                <p className="text-xs text-[var(--admin-muted)]">
                   Current saved default model:{" "}
-                  <span className="text-sky-200/70">
+                  <span className="text-[var(--admin-muted)]">
                     {settings?.defaultModel || "env / first enabled"}
                   </span>
                 </p>

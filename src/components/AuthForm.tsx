@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { History, Infinity as InfinityIcon, ShieldCheck } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Mode = "login" | "register";
 
@@ -81,8 +82,12 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-white">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)]">
       <AnimatedBackground />
+
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <ThemeToggle size="sm" />
+      </div>
 
       <div className="relative z-10 w-full max-w-md animate-fade-up">
         <div className="mb-8 text-center">
@@ -96,14 +101,14 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               style={{ width: "auto", height: "auto" }}
               priority
             />
-            <span className="text-sm font-semibold tracking-wide text-sky-100">
+            <span className="text-sm font-semibold tracking-wide text-[var(--home-fg)]">
               SINAMGPT
             </span>
           </Link>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-[var(--home-fg)] sm:text-3xl">
             {isLogin ? "Sign in to your account" : "Create your account"}
           </h1>
-          <p className="mt-2 text-sm text-sky-200/50">
+          <p className="mt-2 text-sm text-[var(--home-muted)]">
             {isLogin
               ? "Saved chats, full history, and unlimited messages."
               : registrationEnabled
@@ -111,13 +116,13 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 : "New registrations are currently closed by an admin."}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="chip border border-sky-400/15 bg-sky-500/10 text-sky-100/80">
+            <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
               <InfinityIcon size={12} /> Unlimited
             </span>
-            <span className="chip border border-sky-400/15 bg-sky-500/10 text-sky-100/80">
+            <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
               <History size={12} /> Saved history
             </span>
-            <span className="chip border border-sky-400/15 bg-sky-500/10 text-sky-100/80">
+            <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
               <ShieldCheck size={12} /> Local private
             </span>
           </div>
@@ -125,21 +130,22 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-sky-400/15 bg-[#0c1424]/80 p-6 shadow-[0_24px_80px_rgba(15,40,90,0.45)] backdrop-blur-md"
+          className="rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-6 backdrop-blur-md"
+          style={{ boxShadow: "var(--home-card-shadow)" }}
         >
-          <label className="block text-sm font-medium text-sky-100/80">
+          <label className="block text-sm font-medium text-[var(--home-fg)]/80">
             Username
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               required
-              className="mt-1.5 w-full rounded-2xl border border-sky-400/15 bg-[#071018]/70 px-4 py-3 text-[15px] text-white outline-none transition placeholder:text-sky-200/30 focus:border-sky-400/50 focus:ring-4 focus:ring-sky-500/15"
+              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-[15px] text-[var(--home-input)] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
               placeholder="e.g. emil"
             />
           </label>
 
-          <label className="mt-4 block text-sm font-medium text-sky-100/80">
+          <label className="mt-4 block text-sm font-medium text-[var(--home-fg)]/80">
             Password
             <input
               type="password"
@@ -148,13 +154,13 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               autoComplete={isLogin ? "current-password" : "new-password"}
               required
               minLength={isLogin ? 1 : 6}
-              className="mt-1.5 w-full rounded-2xl border border-sky-400/15 bg-[#071018]/70 px-4 py-3 text-[15px] text-white outline-none transition placeholder:text-sky-200/30 focus:border-sky-400/50 focus:ring-4 focus:ring-sky-500/15"
+              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-[15px] text-[var(--home-input)] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
               placeholder={isLogin ? "••••••••" : "At least 6 characters"}
             />
           </label>
 
           {error ? (
-            <p className="mt-4 rounded-2xl bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            <p className="mt-4 rounded-2xl bg-red-500/10 px-3 py-2 text-sm text-[var(--danger)]">
               {error}
             </p>
           ) : null}
@@ -175,14 +181,14 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                   : "Registration closed"}
           </button>
 
-          <p className="mt-5 text-center text-sm text-sky-200/45">
+          <p className="mt-5 text-center text-sm text-[var(--home-muted)]">
             {isLogin ? (
               registrationEnabled ? (
                 <>
                   No account?{" "}
                   <Link
                     href="/register"
-                    className="text-sky-300 underline decoration-sky-400/30 underline-offset-4 hover:text-sky-200"
+                    className="text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
                   >
                     Register
                   </Link>
@@ -195,7 +201,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="text-sky-300 underline decoration-sky-400/30 underline-offset-4 hover:text-sky-200"
+                  className="text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
                 >
                   Sign in
                 </Link>
@@ -205,17 +211,17 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         </form>
 
         {guestEnabled ? (
-          <p className="mt-6 text-center text-sm text-sky-200/40">
+          <p className="mt-6 text-center text-sm text-[var(--home-faint)]">
             Or{" "}
             <Link
               href="/"
-              className="text-sky-300/80 underline decoration-sky-400/25 underline-offset-4 hover:text-sky-200"
+              className="text-[var(--accent)] underline decoration-[var(--accent)]/25 underline-offset-4 hover:opacity-90"
             >
               try SINAMGPT without signing in
             </Link>
           </p>
         ) : (
-          <p className="mt-6 text-center text-sm text-sky-200/40">
+          <p className="mt-6 text-center text-sm text-[var(--home-faint)]">
             Guest try-chat is currently disabled
           </p>
         )}
