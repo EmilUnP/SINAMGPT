@@ -1,5 +1,10 @@
 import { getDb } from "@/lib/db";
-import { getDefaultModel, listModels, type OllamaModel } from "@/lib/ollama";
+import {
+  getDefaultModel,
+  listModels,
+  type LlmBackend,
+  type LlmModel,
+} from "@/lib/llm";
 
 const KEY_GUEST_DAILY_LIMIT = "guest_daily_limit";
 const KEY_GUEST_MAX_CHARS = "guest_max_message_chars";
@@ -11,13 +16,14 @@ const KEY_USER_MAX_CHARS = "user_max_message_chars";
 const KEY_USER_HISTORY_LIMIT = "user_history_limit";
 const KEY_TEMPERATURE = "chat_temperature";
 const KEY_NUM_PREDICT = "chat_num_predict";
+const KEY_TOP_P = "chat_top_p";
 
-export type ManagedModel = OllamaModel & {
+export type ManagedModel = LlmModel & {
   is_enabled: boolean;
   display_name: string;
 };
 
-export type PublicModel = OllamaModel & {
+export type PublicModel = LlmModel & {
   display_name: string;
 };
 
@@ -32,6 +38,7 @@ export type AppSettings = {
   userHistoryLimit: number;
   temperature: number;
   numPredict: number;
+  topP: number;
   loggedInUnlimited: true;
 };
 
@@ -192,6 +199,15 @@ export const setNumPredictSetting = (value: number) => {
   return safe;
 };
 
+export const getTopPSetting = (): number =>
+  parseFloatClamped(getSetting(KEY_TOP_P), 0.9, 0.05, 1);
+
+export const setTopPSetting = (value: number) => {
+  const safe = parseFloatClamped(String(value), 0.9, 0.05, 1);
+  setSetting(KEY_TOP_P, String(safe));
+  return safe;
+};
+
 export const getAppSettings = (): AppSettings => ({
   guestEnabled: getGuestEnabledSetting(),
   guestDailyLimit: getGuestDailyLimitSetting(),
@@ -203,6 +219,7 @@ export const getAppSettings = (): AppSettings => ({
   userHistoryLimit: getUserHistoryLimitSetting(),
   temperature: getTemperatureSetting(),
   numPredict: getNumPredictSetting(),
+  topP: getTopPSetting(),
   loggedInUnlimited: true,
 });
 
@@ -219,6 +236,7 @@ export const getPublicAppSettings = () => {
 export const getChatRuntimeOptions = () => ({
   temperature: getTemperatureSetting(),
   numPredict: getNumPredictSetting(),
+  topP: getTopPSetting(),
 });
 
 const normalizeDisplayName = (
@@ -229,28 +247,33 @@ const normalizeDisplayName = (
   return trimmed || fallback;
 };
 
-/** Sync Ollama tags into DB; new models default to enabled. */
+/** Sync live backends (Ollama and/or vLLM in parallel) into DB. */
 export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
-  const ollamaModels = await listModels();
+  const liveModels = await listModels();
   const db = getDb();
 
   const upsert = db.prepare(
-    `INSERT INTO models (name, is_enabled, updated_at)
-     VALUES (?, 1, datetime('now'))
-     ON CONFLICT(name) DO UPDATE SET updated_at = datetime('now')`,
+    `INSERT INTO models (name, is_enabled, backend, updated_at)
+     VALUES (?, 1, ?, datetime('now'))
+     ON CONFLICT(name) DO UPDATE SET
+       backend = excluded.backend,
+       updated_at = datetime('now')`,
   );
 
-  const sync = db.transaction((names: string[]) => {
-    for (const name of names) upsert.run(name);
-  });
-  sync(ollamaModels.map((m) => m.name));
+  const sync = db.transaction(
+    (rows: Array<{ name: string; backend: LlmBackend }>) => {
+      for (const row of rows) upsert.run(row.name, row.backend);
+    },
+  );
+  sync(liveModels.map((m) => ({ name: m.name, backend: m.backend })));
 
   const rows = db
-    .prepare(`SELECT name, is_enabled, display_name FROM models`)
+    .prepare(`SELECT name, is_enabled, display_name, backend FROM models`)
     .all() as Array<{
     name: string;
     is_enabled: number;
     display_name: string | null;
+    backend: string | null;
   }>;
   const metaMap = new Map(
     rows.map((row) => [
@@ -258,14 +281,16 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       {
         is_enabled: row.is_enabled === 1,
         display_name: row.display_name,
+        backend: (row.backend === "vllm" ? "vllm" : "ollama") as LlmBackend,
       },
     ]),
   );
 
-  return ollamaModels.map((m) => {
+  return liveModels.map((m) => {
     const meta = metaMap.get(m.name);
     return {
       ...m,
+      backend: meta?.backend ?? m.backend,
       is_enabled: meta?.is_enabled ?? true,
       display_name: normalizeDisplayName(meta?.display_name, m.name),
     };
@@ -299,7 +324,7 @@ export const setModelDisplayName = (name: string, displayName: string) => {
     .run(name, stored);
 };
 
-/** Map UI label or Ollama id → real Ollama model name. */
+/** Map UI label or model id → stored model name. */
 export const resolveOllamaModelName = (requested: string): string => {
   const value = requested.trim();
   if (!value) return value;

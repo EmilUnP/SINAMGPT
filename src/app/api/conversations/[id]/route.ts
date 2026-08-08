@@ -6,10 +6,12 @@ import type { Conversation, Message } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
 
+const CONVERSATION_SELECT = `id, user_id, title, model, is_pinned, created_at, updated_at`;
+
 const getOwnedConversation = (id: string, userId: string) => {
   return getDb()
     .prepare(
-      `SELECT id, user_id, title, model, created_at, updated_at
+      `SELECT ${CONVERSATION_SELECT}
        FROM conversations WHERE id = ? AND user_id = ?`,
     )
     .get(id, userId) as Conversation | undefined;
@@ -43,6 +45,7 @@ export async function GET(_request: Request, { params }: Params) {
 const patchSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   model: z.string().trim().min(1).max(120).optional(),
+  is_pinned: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -70,14 +73,20 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const title = parsed.data.title ?? conversation.title;
   const model = parsed.data.model ?? conversation.model;
+  const isPinned =
+    parsed.data.is_pinned === undefined
+      ? conversation.is_pinned
+      : parsed.data.is_pinned
+        ? 1
+        : 0;
 
   getDb()
     .prepare(
       `UPDATE conversations
-       SET title = ?, model = ?, updated_at = datetime('now')
+       SET title = ?, model = ?, is_pinned = ?, updated_at = datetime('now')
        WHERE id = ?`,
     )
-    .run(title, model, id);
+    .run(title, model, isPinned, id);
 
   const updated = getOwnedConversation(id, user.id);
   return NextResponse.json({ conversation: updated });

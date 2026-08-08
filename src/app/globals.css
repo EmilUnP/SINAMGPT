@@ -193,6 +193,82 @@ body {
   animation: orb-drift-c 16s ease-in-out infinite alternate;
 }
 
+.orb-d {
+  width: 22vw;
+  height: 22vw;
+  min-width: 160px;
+  min-height: 160px;
+  right: 18%;
+  top: 8%;
+  opacity: 0.4;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.35), transparent 72%);
+  animation: orb-drift-d 20s ease-in-out infinite alternate;
+}
+
+.aurora {
+  position: absolute;
+  inset: -20% -10%;
+  opacity: 0.35;
+  filter: blur(40px);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.aurora-a {
+  background:
+    conic-gradient(
+      from 120deg at 30% 40%,
+      transparent 0deg,
+      rgba(37, 99, 235, 0.35) 60deg,
+      transparent 140deg,
+      rgba(14, 165, 233, 0.28) 220deg,
+      transparent 320deg
+    );
+  animation: aurora-spin 28s linear infinite;
+}
+
+.aurora-b {
+  opacity: 0.22;
+  background:
+    conic-gradient(
+      from 280deg at 70% 55%,
+      transparent 0deg,
+      rgba(59, 130, 246, 0.3) 80deg,
+      transparent 160deg,
+      rgba(125, 211, 252, 0.22) 240deg,
+      transparent 320deg
+    );
+  animation: aurora-spin 36s linear infinite reverse;
+}
+
+.particle-field {
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(186, 230, 253, 0.75);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+  animation: particle-float 7s ease-in-out infinite;
+  opacity: 0;
+}
+
+.shimmer-sweep {
+  position: absolute;
+  inset: -30% -40%;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(147, 197, 253, 0.06) 48%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(147, 197, 253, 0.06) 52%,
+    transparent 65%
+  );
+  animation: shimmer-sweep 12s ease-in-out infinite;
+}
+
 .ambient-grid {
   background-image:
     linear-gradient(rgba(147, 197, 253, 0.09) 1px, transparent 1px),
@@ -226,6 +302,54 @@ body {
   }
   to {
     transform: translate3d(-6%, 10%, 0) scale(1.2);
+  }
+}
+
+@keyframes orb-drift-d {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-12%, 14%, 0) scale(1.18);
+  }
+}
+
+@keyframes aurora-spin {
+  from {
+    transform: rotate(0deg) scale(1.05);
+  }
+  to {
+    transform: rotate(360deg) scale(1.05);
+  }
+}
+
+@keyframes particle-float {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  20% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate3d(4px, -12px, 0);
+  }
+  80% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes shimmer-sweep {
+  0%,
+  100% {
+    transform: translate3d(-12%, 0, 0) rotate(0.001deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(12%, 4%, 0) rotate(0.001deg);
+    opacity: 0.7;
   }
 }
 
@@ -333,11 +457,43 @@ body {
   letter-spacing: 0.01em;
 }
 
+.hero-brand {
+  animation: soft-rise 0.55s ease both;
+}
+
+.hero-copy {
+  animation: soft-rise 0.55s ease both;
+  animation-delay: 0.08s;
+}
+
+.hero-actions {
+  animation: soft-rise 0.55s ease both;
+  animation-delay: 0.16s;
+}
+
+.suggestion-tile {
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.suggestion-tile:hover:not(:disabled) {
+  box-shadow: 0 12px 36px rgba(15, 40, 90, 0.28);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orb,
+  .aurora,
+  .particle,
+  .shimmer-sweep,
   .ambient-grid,
   .logo-breathe,
-  .soft-rise {
+  .soft-rise,
+  .hero-brand,
+  .hero-copy,
+  .hero-actions {
     animation: none !important;
   }
 }

@@ -293,23 +293,7 @@ export const getUsageAnalytics = () => {
   return { summary, byModel, byHour, topUsers };
 };
 
-export const pingOllama = async (
-  baseUrl = process.env.OLLAMA_BASE_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:11434",
-): Promise<{ ok: boolean; latencyMs: number; error?: string }> => {
-  const started = Date.now();
-  try {
-    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store" });
-    const latencyMs = Date.now() - started;
-    if (!res.ok) {
-      return { ok: false, latencyMs, error: `HTTP ${res.status}` };
-    }
-    return { ok: true, latencyMs };
-  } catch (error) {
-    return {
-      ok: false,
-      latencyMs: Date.now() - started,
-      error: error instanceof Error ? error.message : "Unreachable",
-    };
-  }
-};
+export { pingBackends, pingLlm } from "@/lib/llm";
+
+/** @deprecated Prefer pingLlm / pingBackends — kept for older callers */
+export { pingLlm as pingOllama } from "@/lib/llm";

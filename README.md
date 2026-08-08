@@ -4,14 +4,14 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 
 **Current version:** [1.0.0](./CHANGELOG.md) · [Versioning guide](./docs/VERSIONING.md)
 
-- **Local models** via [Ollama](https://ollama.com)
+- **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker, new/delete chats
 - **Admin** — users, models, live usage, knowledge base, guardrails
 - **Guest try-chat** on the home page (daily limit; signed-in users unlimited)
 
-No cloud AI APIs. Nothing leaves your machine except what you put in Ollama.
+No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
 
 ## Requirements
 
@@ -83,7 +83,11 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | Variable | Meaning |
 |----------|---------|
 | `SESSION_SECRET` | Cookie signing secret (change for company use) |
+| `LLM_BACKENDS` | `ollama`, `vllm`, or `ollama,vllm` (parallel discovery) |
 | `OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434` |
+| `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
+| `VLLM_BASE_URL` | OpenAI-compatible vLLM URL (`http://127.0.0.1:8000`) |
+| `VLLM_API_KEY` | Optional bearer token for vLLM |
 | `DEFAULT_MODEL` | Preferred model name if installed |
 | `ADMIN_USERNAME` | Seeded admin username |
 | `ADMIN_PASSWORD` | Seeded admin password (change this) |
@@ -110,7 +114,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./
 
 ## Stack
 
-Next.js · React · Tailwind · SQLite (`better-sqlite3`) · Ollama · Zod
+Next.js · React · Tailwind · SQLite (`better-sqlite3`) · Ollama / vLLM · Zod
 
 ## License
 

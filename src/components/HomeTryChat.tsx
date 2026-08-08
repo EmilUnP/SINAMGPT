@@ -10,10 +10,8 @@ import {
 } from "react";
 import {
   Infinity as InfinityIcon,
-  Lock,
   MessageSquarePlus,
   SendHorizonal,
-  Sparkles,
   Square,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
@@ -71,7 +69,7 @@ export const HomeTryChat = () => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState("");
   const [models, setModels] = useState<
-    Array<{ name: string; display_name?: string }>
+    Array<{ name: string; display_name?: string; backend?: string }>
   >([]);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [guestEnabled, setGuestEnabled] = useState(true);
@@ -91,7 +89,7 @@ export const HomeTryChat = () => {
       try {
         const res = await fetch("/api/guest/models");
         const data = (await res.json()) as {
-          models?: Array<{ name: string; display_name?: string }>;
+          models?: Array<{ name: string; display_name?: string; backend?: string }>;
           defaultModel?: string;
           usage?: Usage;
           guestEnabled?: boolean;
@@ -280,27 +278,27 @@ export const HomeTryChat = () => {
     <div className="relative flex min-h-dvh flex-col overflow-hidden text-white">
       <AnimatedBackground />
 
-      <header className="relative z-10 flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2.5">
+      <header className="relative z-10 flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
+        <div className="flex items-center gap-3">
           <Image
             src={sinamLogo}
             alt="SINAMGPT"
-            width={34}
-            height={34}
-            className="h-[34px] w-[34px] rounded-full"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-full"
             style={{ width: "auto", height: "auto" }}
             priority
           />
           <div>
-            <p className="text-sm font-semibold tracking-wide text-sky-100">
+            <p className="text-[15px] font-semibold tracking-[0.04em] text-sky-50">
               SINAMGPT
             </p>
-            <p className="text-[11px] text-sky-200/45">Guest try mode</p>
+            <p className="text-[11px] text-sky-200/40">Local company AI</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {models.length > 0 ? (
+          {models.length > 0 && guestEnabled ? (
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -310,6 +308,11 @@ export const HomeTryChat = () => {
               {models.map((item) => (
                 <option key={item.name} value={item.name} className="bg-[#0c1424]">
                   {item.display_name || item.name}
+                  {item.backend === "vllm"
+                    ? " · vLLM"
+                    : item.backend === "ollama"
+                      ? " · Ollama"
+                      : ""}
                 </option>
               ))}
             </select>
@@ -329,74 +332,74 @@ export const HomeTryChat = () => {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-6 pt-4 sm:px-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 pb-7 pt-2 sm:px-8">
         {messages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="soft-rise">
+          <div className="flex flex-1 flex-col items-center justify-center px-1 pb-4 text-center">
+            <div className="hero-brand">
               <Image
                 src={sinamLogo}
-                alt=""
-                width={96}
-                height={96}
-                className="logo-breathe mx-auto h-24 w-24 rounded-full"
+                alt="SINAMGPT"
+                width={112}
+                height={112}
+                className="logo-breathe mx-auto h-28 w-28 rounded-full"
                 style={{ width: "auto", height: "auto" }}
                 priority
               />
-              <h1 className="mt-6 text-[2rem] font-normal tracking-tight text-white sm:text-[2.75rem]">
+              <p className="mt-7 text-sm font-semibold tracking-[0.22em] text-sky-100/90">
+                SINAMGPT
+              </p>
+            </div>
+
+            <div className="hero-copy mt-4">
+              <h1 className="text-[2.15rem] font-normal tracking-tight text-white sm:text-[2.9rem]">
                 {guestEnabled
                   ? "Where should we start?"
-                  : "Sign in to use SINAMGPT"}
+                  : "Sign in to continue"}
               </h1>
-              <p className="mx-auto mt-3 max-w-md text-sm text-sky-200/50">
+              <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-sky-200/50">
                 {guestEnabled
-                  ? "Click an idea below — or type your own question."
+                  ? "Ask anything work-related — or pick a starter below."
                   : "Guest try-chat is currently disabled by an admin."}
               </p>
-
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <span className="chip border border-sky-400/15 bg-sky-500/10 text-sky-100/80">
-                  <Sparkles size={12} /> Local model
-                </span>
-                <span className="chip border border-sky-400/15 bg-sky-500/10 text-sky-100/80">
-                  <Lock size={12} /> Guest capped
-                </span>
-                <span className="chip border border-emerald-400/20 bg-emerald-500/10 text-emerald-100/90">
-                  <InfinityIcon size={12} /> Sign in = unlimited
-                </span>
-              </div>
+              {guestEnabled && usage ? (
+                <p className="mt-3 text-xs text-sky-200/35">
+                  {usage.remaining} free guest{" "}
+                  {usage.remaining === 1 ? "message" : "messages"} left today
+                </p>
+              ) : null}
             </div>
 
             {guestEnabled ? (
-              <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="hero-actions mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
                 {suggestions.map((item, index) => (
                   <button
                     key={item.title}
                     type="button"
                     onClick={() => void handleSend(item.prompt)}
                     disabled={actionsLocked}
-                    className="soft-rise rounded-2xl border border-sky-400/12 bg-sky-500/[0.06] px-4 py-3.5 text-left transition hover:-translate-y-0.5 hover:border-sky-400/25 hover:bg-sky-500/[0.1] disabled:opacity-40"
-                    style={{ animationDelay: `${0.06 * index}s` }}
+                    className="suggestion-tile soft-rise rounded-2xl border border-sky-400/12 bg-sky-500/[0.06] px-5 py-4 text-left hover:-translate-y-0.5 hover:border-sky-400/30 hover:bg-sky-500/[0.1] disabled:opacity-40"
+                    style={{ animationDelay: `${0.08 + 0.06 * index}s` }}
                   >
                     <span className="block text-sm font-medium text-sky-50">
                       {item.title}
                     </span>
-                    <span className="mt-1 line-clamp-2 block text-xs text-sky-200/45">
+                    <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-sky-200/45">
                       {item.prompt}
                     </span>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <div className="hero-actions mt-10 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)]"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)]"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-white/5 px-5 py-2.5 text-sm font-medium text-sky-50"
+                  className="inline-flex items-center justify-center rounded-full border border-sky-400/25 bg-white/5 px-6 py-2.5 text-sm font-medium text-sky-50"
                 >
                   Create account
                 </Link>
@@ -404,7 +407,7 @@ export const HomeTryChat = () => {
             )}
 
             {limitHit ? (
-              <div className="relative mt-2 w-full max-w-2xl overflow-hidden rounded-2xl border border-sky-400/20 bg-[#0c1424]/90 px-4 py-3 text-left shadow-[0_12px_36px_rgba(15,40,90,0.35)] backdrop-blur-md">
+              <div className="relative mt-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-sky-400/20 bg-[#0c1424]/90 px-5 py-4 text-left shadow-[0_12px_36px_rgba(15,40,90,0.35)] backdrop-blur-md">
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0"

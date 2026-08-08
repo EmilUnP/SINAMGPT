@@ -75,7 +75,19 @@ type UsagePayload = {
       avg_duration_ms: number | null;
     }>;
   };
-  ollama: { ok: boolean; latencyMs: number; error?: string };
+  ollama: {
+    ok: boolean;
+    latencyMs: number;
+    error?: string;
+    backend?: string;
+  };
+  backends?: Array<{
+    backend: "ollama" | "vllm";
+    ok: boolean;
+    latencyMs: number;
+    error?: string;
+    baseUrl?: string;
+  }>;
   serverTime: string;
 };
 
@@ -181,17 +193,32 @@ export const AdminUsagePanel = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-              data?.ollama.ok
-                ? "bg-emerald-500/15 text-emerald-200"
-                : "bg-red-500/15 text-red-200"
-            }`}
-          >
-            <Server size={12} />
-            Ollama {data?.ollama.ok ? "online" : "down"} ·{" "}
-            {fmtMs(data?.ollama.latencyMs)}
-          </span>
+          {(data?.backends?.length
+            ? data.backends
+            : data?.ollama
+              ? [
+                  {
+                    backend: "ollama" as const,
+                    ok: data.ollama.ok,
+                    latencyMs: data.ollama.latencyMs,
+                    error: data.ollama.error,
+                  },
+                ]
+              : []
+          ).map((b) => (
+            <span
+              key={b.backend}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                b.ok
+                  ? "bg-emerald-500/15 text-emerald-200"
+                  : "bg-red-500/15 text-red-200"
+              }`}
+            >
+              <Server size={12} />
+              {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
+              {b.ok ? "online" : "down"} · {fmtMs(b.latencyMs)}
+            </span>
+          ))}
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-100">
             <Radio size={12} className={data?.live.length ? "animate-pulse" : ""} />
             {data?.live.length ?? 0} live

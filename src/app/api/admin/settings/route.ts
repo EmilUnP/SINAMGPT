@@ -11,6 +11,7 @@ import {
   setNumPredictSetting,
   setRegistrationEnabledSetting,
   setTemperatureSetting,
+  setTopPSetting,
   setUserHistoryLimitSetting,
   setUserMaxCharsSetting,
 } from "@/lib/settings";
@@ -35,6 +36,7 @@ const patchSchema = z.object({
   userHistoryLimit: z.number().int().min(0).max(200).optional(),
   temperature: z.number().min(0).max(2).optional(),
   numPredict: z.number().int().min(-1).max(8192).optional(),
+  topP: z.number().min(0.05).max(1).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -75,6 +77,7 @@ export async function PATCH(request: Request) {
   }
   if (d.temperature !== undefined) setTemperatureSetting(d.temperature);
   if (d.numPredict !== undefined) setNumPredictSetting(d.numPredict);
+  if (d.topP !== undefined) setTopPSetting(d.topP);
 
   return NextResponse.json({ settings: getAppSettings() });
 }

@@ -14,6 +14,7 @@ export type Conversation = {
   user_id: string;
   title: string;
   model: string;
+  is_pinned: number;
   created_at: string;
   updated_at: string;
 };

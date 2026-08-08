@@ -6,6 +6,10 @@ import {
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
+  Pin,
+  PinOff,
+  RefreshCw,
   Search,
   SendHorizonal,
   Square,
@@ -77,7 +81,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [models, setModels] = useState<
-    Array<{ name: string; display_name?: string }>
+    Array<{ name: string; display_name?: string; backend?: string }>
   >([]);
   const [model, setModel] = useState("");
   const [input, setInput] = useState("");
@@ -90,10 +94,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   // Keep disabled attrs identical on SSR + first client paint (hydration-safe).
   const [ready, setReady] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const searchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setReady(true);
@@ -104,19 +111,19 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     [conversations, activeId],
   );
 
-  const filteredConversations = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => {
-      const label =
-        models.find((m) => m.name === c.model)?.display_name || c.model;
-      return (
-        c.title.toLowerCase().includes(q) ||
-        c.model.toLowerCase().includes(q) ||
-        label.toLowerCase().includes(q)
-      );
-    });
-  }, [conversations, search, models]);
+  const lastUserMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "user") return messages[i];
+    }
+    return null;
+  }, [messages]);
+
+  const lastAssistantMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "assistant") return messages[i];
+    }
+    return null;
+  }, [messages]);
 
   const modelLabel = (name: string) =>
     models.find((m) => m.name === name)?.display_name || name;
@@ -133,8 +140,12 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     autoResizeTextarea(textareaRef.current);
   }, [input]);
 
-  const loadConversations = useCallback(async () => {
-    const res = await fetch("/api/conversations");
+  const loadConversations = useCallback(async (query?: string) => {
+    const q = (query ?? "").trim();
+    const url = q
+      ? `/api/conversations?q=${encodeURIComponent(q)}`
+      : "/api/conversations";
+    const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to load chats");
     const data = (await res.json()) as { conversations: Conversation[] };
     setConversations(data.conversations);
@@ -144,7 +155,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const loadModels = useCallback(async () => {
     const res = await fetch("/api/models");
     const data = (await res.json()) as {
-      models?: Array<{ name: string; display_name?: string }>;
+      models?: Array<{ name: string; display_name?: string; backend?: string }>;
       defaultModel?: string;
       error?: string;
     };
@@ -177,8 +188,23 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     void boot();
   }, [loadConversations, loadModels]);
 
+  useEffect(() => {
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = window.setTimeout(() => {
+      void loadConversations(search).catch(() => undefined);
+    }, 250);
+    return () => {
+      if (searchTimerRef.current) {
+        window.clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [search, loadConversations]);
+
   const openConversation = async (id: string) => {
     setError("");
+    setEditingId(null);
     setActiveId(id);
     setMobileSidebar(false);
 
@@ -203,6 +229,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     setMessages([]);
     setInput("");
     setError("");
+    setEditingId(null);
     setMobileSidebar(false);
     textareaRef.current?.focus();
   };
@@ -218,6 +245,34 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     if (activeId === id) {
       setActiveId(null);
       setMessages([]);
+      setEditingId(null);
+    }
+  };
+
+  const handleTogglePin = async (chat: Conversation) => {
+    const nextPinned = chat.is_pinned !== 1;
+    const res = await fetch(`/api/conversations/${chat.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_pinned: nextPinned }),
+    });
+    if (!res.ok) {
+      setError("Could not update pin");
+      return;
+    }
+    const data = (await res.json()) as { conversation?: Conversation };
+    if (data.conversation) {
+      setConversations((prev) => {
+        const next = prev.map((c) =>
+          c.id === chat.id ? data.conversation! : c,
+        );
+        return next.sort((a, b) => {
+          if (a.is_pinned !== b.is_pinned) return b.is_pinned - a.is_pinned;
+          return b.updated_at.localeCompare(a.updated_at);
+        });
+      });
+    } else {
+      void loadConversations(search);
     }
   };
 
@@ -231,36 +286,25 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     abortRef.current?.abort();
   };
 
-  const handleSend = async (preset?: string) => {
-    const text = (preset ?? input).trim();
-    if (!text || isSending) return;
+  const runChatRequest = async (opts: {
+    body: Record<string, unknown>;
+    prepareMessages: () => {
+      tempUserId?: string;
+      tempAssistantId: string;
+    };
+    restoreOnError?: string;
+  }) => {
+    if (isSending) return;
     if (!model) {
       setError("No local model selected. Start Ollama and pull a model.");
       return;
     }
 
     setError("");
-    setInput("");
     setIsSending(true);
+    setEditingId(null);
 
-    const tempUser: UiMessage = {
-      id: `temp-user-${Date.now()}`,
-      conversation_id: activeId ?? "pending",
-      role: "user",
-      content: text,
-      created_at: new Date().toISOString(),
-    };
-
-    const tempAssistant: UiMessage = {
-      id: `temp-assistant-${Date.now()}`,
-      conversation_id: activeId ?? "pending",
-      role: "assistant",
-      content: "",
-      created_at: new Date().toISOString(),
-      isStreaming: true,
-    };
-
-    setMessages((prev) => [...prev, tempUser, tempAssistant]);
+    const { tempUserId, tempAssistantId } = opts.prepareMessages();
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -270,11 +314,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          conversationId: activeId ?? undefined,
-          message: text,
-          model,
-        }),
+        body: JSON.stringify(opts.body),
       });
 
       if (!res.ok || !res.body) {
@@ -309,16 +349,25 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             setActiveId(meta.conversationId);
             setConversations((prev) => {
               const others = prev.filter((c) => c.id !== meta.conversationId);
-              return [meta.conversation, ...others];
+              const next = [meta.conversation, ...others];
+              return next.sort((a, b) => {
+                if (a.is_pinned !== b.is_pinned) return b.is_pinned - a.is_pinned;
+                return b.updated_at.localeCompare(a.updated_at);
+              });
             });
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === tempUser.id
-                  ? { ...meta.userMessage }
-                  : m.id === tempAssistant.id
-                    ? { ...m, conversation_id: meta.conversationId }
-                    : m,
-              ),
+              prev.map((m) => {
+                if (tempUserId && m.id === tempUserId) {
+                  return { ...meta.userMessage };
+                }
+                if (m.id === tempAssistantId) {
+                  return { ...m, conversation_id: meta.conversationId };
+                }
+                if (m.id === meta.userMessage.id) {
+                  return { ...meta.userMessage };
+                }
+                return m;
+              }),
             );
           }
 
@@ -326,7 +375,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             const token = (parsed.data as { content: string }).content;
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === tempAssistant.id
+                m.id === tempAssistantId
                   ? { ...m, content: m.content + token }
                   : m,
               ),
@@ -337,13 +386,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             const doneData = parsed.data as { assistantMessage: Message };
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === tempAssistant.id
+                m.id === tempAssistantId
                   ? { ...doneData.assistantMessage }
                   : m,
               ),
             );
             if (conversationId) {
-              void loadConversations();
+              void loadConversations(search);
             }
           }
 
@@ -358,7 +407,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       if ((err as Error).name === "AbortError") {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === tempAssistant.id
+            m.id === tempAssistantId
               ? {
                   ...m,
                   isStreaming: false,
@@ -373,10 +422,12 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         setError(message);
         setMessages((prev) =>
           prev.filter(
-            (m) => m.id !== tempUser.id && m.id !== tempAssistant.id,
+            (m) => m.id !== tempUserId && m.id !== tempAssistantId,
           ),
         );
-        setInput(text);
+        if (opts.restoreOnError != null) {
+          setInput(opts.restoreOnError);
+        }
       }
     } finally {
       setIsSending(false);
@@ -385,6 +436,123 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         prev.map((m) => ({ ...m, isStreaming: false })),
       );
     }
+  };
+
+  const handleSend = async (preset?: string) => {
+    const text = (preset ?? input).trim();
+    if (!text || isSending) return;
+
+    setInput("");
+
+    await runChatRequest({
+      body: {
+        conversationId: activeId ?? undefined,
+        message: text,
+        model,
+        mode: "send",
+      },
+      restoreOnError: text,
+      prepareMessages: () => {
+        const tempUserId = `temp-user-${Date.now()}`;
+        const tempAssistantId = `temp-assistant-${Date.now()}`;
+        const tempUser: UiMessage = {
+          id: tempUserId,
+          conversation_id: activeId ?? "pending",
+          role: "user",
+          content: text,
+          created_at: new Date().toISOString(),
+        };
+        const tempAssistant: UiMessage = {
+          id: tempAssistantId,
+          conversation_id: activeId ?? "pending",
+          role: "assistant",
+          content: "",
+          created_at: new Date().toISOString(),
+          isStreaming: true,
+        };
+        setMessages((prev) => [...prev, tempUser, tempAssistant]);
+        return { tempUserId, tempAssistantId };
+      },
+    });
+  };
+
+  const handleRegenerate = async () => {
+    if (!activeId || !lastUserMessage || isSending) return;
+
+    await runChatRequest({
+      body: {
+        conversationId: activeId,
+        model,
+        mode: "regenerate",
+      },
+      prepareMessages: () => {
+        const tempAssistantId = `temp-assistant-${Date.now()}`;
+        const tempAssistant: UiMessage = {
+          id: tempAssistantId,
+          conversation_id: activeId,
+          role: "assistant",
+          content: "",
+          created_at: new Date().toISOString(),
+          isStreaming: true,
+        };
+        setMessages((prev) => {
+          const withoutTrailingAssistant =
+            prev.length && prev[prev.length - 1].role === "assistant"
+              ? prev.slice(0, -1)
+              : prev;
+          return [...withoutTrailingAssistant, tempAssistant];
+        });
+        return { tempAssistantId };
+      },
+    });
+  };
+
+  const handleStartEdit = (message: UiMessage) => {
+    if (isSending) return;
+    setEditingId(message.id);
+    setEditDraft(message.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditDraft("");
+  };
+
+  const handleSaveEdit = async () => {
+    const text = editDraft.trim();
+    if (!text || !editingId || !activeId) return;
+
+    const editMessageId = editingId;
+
+    await runChatRequest({
+      body: {
+        conversationId: activeId,
+        message: text,
+        model,
+        mode: "edit",
+        editMessageId,
+      },
+      prepareMessages: () => {
+        const tempAssistantId = `temp-assistant-${Date.now()}`;
+        const tempAssistant: UiMessage = {
+          id: tempAssistantId,
+          conversation_id: activeId,
+          role: "assistant",
+          content: "",
+          created_at: new Date().toISOString(),
+          isStreaming: true,
+        };
+        setMessages((prev) => {
+          const idx = prev.findIndex((m) => m.id === editMessageId);
+          if (idx < 0) return prev;
+          const kept = prev.slice(0, idx + 1).map((m) =>
+            m.id === editMessageId ? { ...m, content: text } : m,
+          );
+          return [...kept, tempAssistant];
+        });
+        return { tempAssistantId };
+      },
+    });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -439,7 +607,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chats"
+            placeholder="Search title or messages"
             className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
           />
         </label>
@@ -448,7 +616,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {isLoadingList ? (
           <p className="px-2 py-3 text-sm text-white/45">Loading chats…</p>
-        ) : filteredConversations.length === 0 ? (
+        ) : conversations.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-sm text-white/45">
               {search ? "No chats match your search." : "No chats yet."}
@@ -465,20 +633,32 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           </div>
         ) : (
           <ul className="space-y-1">
-            {filteredConversations.map((chat) => {
+            {conversations.map((chat) => {
               const isActive = chat.id === activeId;
+              const pinned = chat.is_pinned === 1;
               return (
                 <li key={chat.id} className="group relative">
                   <button
                     type="button"
                     onClick={() => void openConversation(chat.id)}
-                    className={`w-full rounded-xl px-3 py-2.5 pr-10 text-left text-sm transition ${
+                    className={`w-full rounded-xl px-3 py-2.5 pr-16 text-left text-sm transition ${
                       isActive
                         ? "bg-[var(--sidebar-hover)] text-white ring-1 ring-sky-400/25"
                         : "text-white/75 hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    <span className="line-clamp-1 font-medium">{chat.title}</span>
+                    <span className="flex items-center gap-1.5">
+                      {pinned ? (
+                        <Pin
+                          size={12}
+                          className="shrink-0 text-sky-300"
+                          fill="currentColor"
+                        />
+                      ) : null}
+                      <span className="line-clamp-1 font-medium">
+                        {chat.title}
+                      </span>
+                    </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-white/40">
                       <span className="truncate">{modelLabel(chat.model)}</span>
                       <span className="shrink-0">
@@ -486,14 +666,25 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       </span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(chat.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-white/35 opacity-0 transition hover:bg-white/10 hover:text-red-300 group-hover:opacity-100"
-                    aria-label="Delete chat"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => void handleTogglePin(chat)}
+                      className="rounded-md p-1.5 text-white/40 hover:bg-white/10 hover:text-sky-200"
+                      aria-label={pinned ? "Unpin chat" : "Pin chat"}
+                      title={pinned ? "Unpin" : "Pin"}
+                    >
+                      {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(chat.id)}
+                      className="rounded-md p-1.5 text-white/35 hover:bg-white/10 hover:text-red-300"
+                      aria-label="Delete chat"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </li>
               );
             })}
@@ -601,6 +792,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 models.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.display_name || item.name}
+                    {item.backend === "vllm"
+                      ? " · vLLM"
+                      : item.backend === "ollama"
+                        ? " · Ollama"
+                        : ""}
                   </option>
                 ))
               )}
@@ -670,12 +866,19 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-6">
               {messages.map((message) => {
                 const isUser = message.role === "user";
+                const isLastUser = lastUserMessage?.id === message.id;
+                const isLastAssistant =
+                  lastAssistantMessage?.id === message.id;
+                const isEditing = editingId === message.id;
+
                 return (
                   <div
                     key={message.id}
                     className={`animate-fade-up flex ${isUser ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`max-w-[92%] md:max-w-[85%] ${isUser ? "" : "w-full"}`}>
+                    <div
+                      className={`max-w-[92%] md:max-w-[85%] ${isUser ? "" : "w-full"}`}
+                    >
                       <div
                         className={`mb-1.5 flex items-center gap-2 text-[11px] text-[var(--text-muted)] ${
                           isUser ? "justify-end" : ""
@@ -705,8 +908,38 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             : "border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] shadow-sm"
                         }`}
                       >
-                        {isUser ? (
-                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editDraft}
+                              onChange={(e) => setEditDraft(e.target.value)}
+                              rows={4}
+                              className="w-full resize-y rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/50"
+                              autoFocus
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                disabled={isSending || !editDraft.trim()}
+                                onClick={() => void handleSaveEdit()}
+                                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 disabled:opacity-40"
+                              >
+                                Save & regenerate
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isSending}
+                                onClick={handleCancelEdit}
+                                className="rounded-lg border border-white/30 px-3 py-1.5 text-xs text-white/90"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : isUser ? (
+                          <p className="whitespace-pre-wrap">
+                            {message.content}
+                          </p>
                         ) : message.content ? (
                           <MarkdownMessage content={message.content} />
                         ) : (
@@ -717,12 +950,38 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           </div>
                         )}
                       </div>
-                      {!isUser && message.content ? (
-                        <div className="mt-1">
-                          <CopyButton
-                            text={message.content}
-                            className="text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
-                          />
+                      {!isSending && !isEditing ? (
+                        <div
+                          className={`mt-1 flex items-center gap-1 ${
+                            isUser ? "justify-end" : ""
+                          }`}
+                        >
+                          {!isUser && message.content ? (
+                            <CopyButton
+                              text={message.content}
+                              className="text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                            />
+                          ) : null}
+                          {isUser && isLastUser ? (
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(message)}
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                            >
+                              <Pencil size={12} />
+                              Edit
+                            </button>
+                          ) : null}
+                          {!isUser && isLastAssistant && message.content ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleRegenerate()}
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text)]"
+                            >
+                              <RefreshCw size={12} />
+                              Regenerate
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

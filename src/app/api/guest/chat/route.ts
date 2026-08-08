@@ -135,13 +135,14 @@ export async function POST(request: Request) {
       ollamaRes = await streamChat(model, messages, {
         temperature: runtime.temperature,
         numPredict: runtime.numPredict,
+        topP: runtime.topP,
       });
     } catch (error) {
       finishUsage(usageId, {
         responseChars: 0,
         status: "error",
         errorMessage:
-          error instanceof Error ? error.message : "Ollama request failed",
+          error instanceof Error ? error.message : "LLM request failed",
       });
       throw error;
     }

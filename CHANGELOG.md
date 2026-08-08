@@ -7,6 +7,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Multi-backend LLM** — Ollama and vLLM can run in parallel (`LLM_BACKENDS=ollama,vllm`); models sync from both, chat routes by backend, admin health shows each server
+- **Generation controls** — temperature, max tokens, and top-p apply to both backends (Admin → Settings)
+- **Ollama keep-alive** — `OLLAMA_KEEP_ALIVE` keeps weights warm for faster follow-up turns
+
 ### Planned
 - Nothing queued yet — add notes here before the next release.
 

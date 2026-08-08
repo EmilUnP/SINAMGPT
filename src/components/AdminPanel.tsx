@@ -40,9 +40,18 @@ type Totals = {
   total_user_messages: number;
 };
 
+type BackendPulse = {
+  backend: "ollama" | "vllm";
+  ok: boolean;
+  latencyMs: number;
+  error?: string;
+  baseUrl?: string;
+};
+
 type OverviewPulse = {
   liveCount: number;
-  ollama: { ok: boolean; latencyMs: number; error?: string };
+  ollama: { ok: boolean; latencyMs: number; error?: string; backend?: string };
+  backends: BackendPulse[];
   summary: {
     total_requests: number | null;
     ok_requests: number | null;
@@ -83,6 +92,7 @@ type ManagedModel = {
   modified_at: string;
   is_enabled: boolean;
   display_name: string;
+  backend?: "ollama" | "vllm";
 };
 
 type AppSettings = {
@@ -96,6 +106,7 @@ type AppSettings = {
   userHistoryLimit: number;
   temperature: number;
   numPredict: number;
+  topP: number;
   loggedInUnlimited: boolean;
 };
 
@@ -182,6 +193,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     userHistoryLimit: "40",
     temperature: "0.7",
     numPredict: "-1",
+    topP: "0.9",
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -231,6 +243,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       const usageData = (await usageRes.json()) as {
         live?: Array<{ id: string }>;
         ollama?: OverviewPulse["ollama"];
+        backends?: BackendPulse[];
         analytics?: {
           summary?: OverviewPulse["summary"];
           byHour?: OverviewPulse["byHour"];
@@ -289,6 +302,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           userHistoryLimit: String(s.userHistoryLimit ?? 40),
           temperature: String(s.temperature ?? 0.7),
           numPredict: String(s.numPredict ?? -1),
+          topP: String(s.topP ?? 0.9),
         });
       }
 
@@ -296,6 +310,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         setPulse({
           liveCount: usageData.live?.length ?? 0,
           ollama: usageData.ollama,
+          backends: usageData.backends ?? [
+            {
+              backend: "ollama",
+              ok: usageData.ollama.ok,
+              latencyMs: usageData.ollama.latencyMs,
+              error: usageData.ollama.error,
+            },
+          ],
           summary: usageData.analytics.summary,
           byHour: usageData.analytics.byHour ?? [],
           byModel: (usageData.analytics.byModel ?? []).slice(0, 5),
@@ -522,7 +544,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       setNotice(
         next
           ? `“${model.name}” will show as “${next}”`
-          : `Reset “${model.name}” to its Ollama name`,
+          : `Reset “${model.name}” to its model id`,
       );
     } catch {
       setError("Network error");
@@ -539,6 +561,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     const userHistoryLimit = Number(settingsDraft.userHistoryLimit);
     const temperature = Number(settingsDraft.temperature);
     const numPredict = Number(settingsDraft.numPredict);
+    const topP = Number(settingsDraft.topP);
 
     if (!Number.isFinite(guestDailyLimit) || guestDailyLimit < 0 || guestDailyLimit > 1000) {
       setError("Guest daily limit must be between 0 and 1000");
@@ -588,6 +611,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       setError("Max reply tokens must be -1 (default) or 1–8192");
       return;
     }
+    if (!Number.isFinite(topP) || topP < 0.05 || topP > 1) {
+      setError("Top-p must be between 0.05 and 1");
+      return;
+    }
 
     setSavingSettings(true);
     setError("");
@@ -607,6 +634,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           userHistoryLimit: Math.floor(userHistoryLimit),
           temperature,
           numPredict: Math.floor(numPredict),
+          topP,
         }),
       });
       const data = (await res.json()) as {
@@ -631,6 +659,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           userHistoryLimit: String(s.userHistoryLimit),
           temperature: String(s.temperature),
           numPredict: String(s.numPredict),
+          topP: String(s.topP),
         });
       }
       setNotice("Settings saved.");
@@ -750,17 +779,33 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         {tab === "overview" ? (
           <div className="space-y-5 animate-fade-up">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                  pulse?.ollama.ok
-                    ? "bg-emerald-500/15 text-emerald-200"
-                    : "bg-red-500/15 text-red-200"
-                }`}
-              >
-                <Server size={12} />
-                Ollama {pulse?.ollama.ok ? "online" : "down"}
-                {pulse ? ` · ${fmtMs(pulse.ollama.latencyMs)}` : ""}
-              </span>
+              {(pulse?.backends?.length
+                ? pulse.backends
+                : pulse
+                  ? [
+                      {
+                        backend: "ollama" as const,
+                        ok: pulse.ollama.ok,
+                        latencyMs: pulse.ollama.latencyMs,
+                        error: pulse.ollama.error,
+                      },
+                    ]
+                  : []
+              ).map((b) => (
+                <span
+                  key={b.backend}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                    b.ok
+                      ? "bg-emerald-500/15 text-emerald-200"
+                      : "bg-red-500/15 text-red-200"
+                  }`}
+                >
+                  <Server size={12} />
+                  {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
+                  {b.ok ? "online" : "down"}
+                  {` · ${fmtMs(b.latencyMs)}`}
+                </span>
+              ))}
               <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-100">
                 <Radio
                   size={12}
@@ -998,7 +1043,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 <p className="text-xs text-sky-200/45">AI performance</p>
                 <p className="mt-1 text-xl font-semibold">Live usage</p>
                 <p className="mt-1 text-sm text-sky-200/50">
-                  Streams, latency history, Ollama ping
+                  Streams, latency history, backend health
                 </p>
               </button>
               <button
@@ -1042,7 +1087,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   {settings?.registrationEnabled === false
                     ? "Registration closed"
                     : "Registration open"}{" "}
-                  · temp {settings?.temperature ?? "—"}
+                  · temp {settings?.temperature ?? "—"} · top-p{" "}
+                  {settings?.topP ?? "—"}
+                  {settings?.numPredict != null && settings.numPredict >= 0
+                    ? ` · max ${settings.numPredict} tok`
+                    : ""}
                 </p>
               </button>
             </div>
@@ -1286,10 +1335,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         {tab === "models" ? (
           <section className="animate-fade-up overflow-hidden rounded-2xl border border-sky-400/12 bg-[#0c1424]/80 backdrop-blur-md">
             <div className="border-b border-sky-400/10 px-4 py-3">
-              <h2 className="text-sm font-semibold">Ollama models</h2>
+              <h2 className="text-sm font-semibold">LLM models</h2>
               <p className="text-xs text-sky-200/45">
-                Edit the display name shown in chat pickers. Clear + save to
-                reset to the Ollama id.
+                Synced in parallel from Ollama and/or vLLM. Edit the display
+                name shown in chat pickers. Clear + save to reset to the model
+                id.
               </p>
             </div>
 
@@ -1299,17 +1349,24 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               </p>
             ) : models.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-sky-200/45">
-                No Ollama models found. Run{" "}
+                No models found. Start Ollama (`ollama list`) and/or vLLM, and
+                set{" "}
                 <code className="rounded bg-sky-500/10 px-1.5 py-0.5 text-sky-200">
-                  ollama list
+                  LLM_BACKENDS=ollama,vllm
+                </code>{" "}
+                in{" "}
+                <code className="rounded bg-sky-500/10 px-1.5 py-0.5 text-sky-200">
+                  .env.local
                 </code>
+                .
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-sky-200/45">
                     <tr>
-                      <th className="px-4 py-2.5 font-medium">Ollama id</th>
+                      <th className="px-4 py-2.5 font-medium">Model id</th>
+                      <th className="px-4 py-2.5 font-medium">Backend</th>
                       <th className="px-4 py-2.5 font-medium">Size</th>
                       <th className="min-w-[220px] px-4 py-2.5 font-medium">
                         Display name
@@ -1340,6 +1397,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 {formatDate(model.modified_at)}
                               </p>
                             ) : null}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                                model.backend === "vllm"
+                                  ? "bg-violet-500/15 text-violet-200"
+                                  : "bg-sky-500/15 text-sky-200"
+                              }`}
+                            >
+                              {model.backend === "vllm" ? "vLLM" : "Ollama"}
+                            </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-xs text-sky-200/55">
                             {formatSize(model.size)}
@@ -1642,7 +1710,28 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
                       />
                       <span className="mt-1 block text-[11px] text-sky-200/40">
-                        -1 = Ollama default · lower = shorter/faster replies
+                        -1 = backend default · lower = shorter/faster replies
+                      </span>
+                    </label>
+                    <label className="block text-sm text-sky-100/80">
+                      Top-p (nucleus)
+                      <input
+                        type="number"
+                        min={0.05}
+                        max={1}
+                        step={0.05}
+                        value={settingsDraft.topP}
+                        onChange={(e) =>
+                          setSettingsDraft((d) => ({
+                            ...d,
+                            topP: e.target.value,
+                          }))
+                        }
+                        className="mt-1.5 w-full rounded-xl border border-sky-400/15 bg-[#071018]/70 px-3 py-2 outline-none focus:border-sky-400/40"
+                      />
+                      <span className="mt-1 block text-[11px] text-sky-200/40">
+                        0.9 default · lower = tighter/safer · works on Ollama +
+                        vLLM
                       </span>
                     </label>
                   </div>

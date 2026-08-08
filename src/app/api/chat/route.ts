@@ -20,155 +20,119 @@ import {
 } from "@/lib/usage";
 import type { Conversation, Message } from "@/lib/types";
 
-const schema = z.object({
-  conversationId: z.string().min(1).optional(),
-  message: z.string().trim().min(1).max(32000),
-  model: z.string().trim().min(1).max(120),
-});
+const schema = z
+  .object({
+    conversationId: z.string().min(1).optional(),
+    message: z.string().trim().min(1).max(32000).optional(),
+    model: z.string().trim().min(1).max(120),
+    mode: z.enum(["send", "regenerate", "edit"]).default("send"),
+    editMessageId: z.string().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === "send" && !data.message) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Message is required",
+        path: ["message"],
+      });
+    }
+    if (data.mode === "edit" && !data.message) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Edited message is required",
+        path: ["message"],
+      });
+    }
+    if (data.mode === "edit" && !data.editMessageId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "editMessageId is required",
+        path: ["editMessageId"],
+      });
+    }
+    if (
+      (data.mode === "regenerate" || data.mode === "edit") &&
+      !data.conversationId
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "conversationId is required",
+        path: ["conversationId"],
+      });
+    }
+  });
+
+const CONVERSATION_SELECT =
+  "id, user_id, title, model, is_pinned, created_at, updated_at";
 
 const titleFromMessage = (text: string): string => {
   const cleaned = text.replace(/\s+/g, " ").trim();
   return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
 };
 
-export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+type DbMessage = {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+};
 
-  markActive(user.id);
+const streamAssistantReply = (input: {
+  userId: string;
+  username: string;
+  conversationId: string;
+  conversation: Conversation;
+  model: string;
+  promptText: string;
+  userMessage: Message;
+  history: ChatMessage[];
+}) => {
+  const {
+    userId,
+    username,
+    conversationId,
+    conversation,
+    model,
+    promptText,
+    userMessage,
+    history,
+  } = input;
 
-  try {
-    const body = await request.json();
-    const parsed = schema.safeParse(body);
+  const db = getDb();
+  const usageId = startUsage({
+    source: "user",
+    username,
+    userId,
+    model,
+    prompt: promptText,
+  });
 
-    if (!parsed.success) {
-      return Response.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-        { status: 400 },
-      );
-    }
+  const historyLimit = getUserHistoryLimitSetting();
+  const contextHistory =
+    historyLimit > 0 ? history.slice(-historyLimit) : history;
+  const promptedHistory = withSystemPrompt(contextHistory, "user");
+  const runtime = getChatRuntimeOptions();
 
-    const { message, model: requestedModel } = parsed.data;
-    const model = resolveOllamaModelName(requestedModel);
-    const maxChars = getUserMaxCharsSetting();
-
-    if (message.length > maxChars) {
-      return Response.json(
-        { error: `Messages are limited to ${maxChars} characters.` },
-        { status: 400 },
-      );
-    }
-
-    if (!isModelEnabled(model)) {
-      return Response.json(
-        { error: "This model is disabled by admin. Choose another model." },
-        { status: 403 },
-      );
-    }
-
-    const guard = checkInputGuardrails(message, "user");
-    if (guard.blocked) {
-      return Response.json(
-        {
-          error: guard.refusal,
-          blocked: true,
-          reason: guard.reason,
-        },
-        { status: 422 },
-      );
-    }
-
-    const db = getDb();
-    let conversationId = parsed.data.conversationId;
-
-    if (conversationId) {
-      const owned = db
-        .prepare(
-          `SELECT id FROM conversations WHERE id = ? AND user_id = ?`,
-        )
-        .get(conversationId, user.id);
-
-      if (!owned) {
-        return Response.json({ error: "Conversation not found" }, { status: 404 });
-      }
-
-      db.prepare(
-        `UPDATE conversations
-         SET model = ?, updated_at = datetime('now')
-         WHERE id = ?`,
-      ).run(model, conversationId);
-    } else {
-      conversationId = newId();
-      db.prepare(
-        `INSERT INTO conversations (id, user_id, title, model)
-         VALUES (?, ?, ?, ?)`,
-      ).run(conversationId, user.id, titleFromMessage(message), model);
-    }
-
-    const userMessageId = newId();
-    db.prepare(
-      `INSERT INTO messages (id, conversation_id, role, content)
-       VALUES (?, ?, 'user', ?)`,
-    ).run(userMessageId, conversationId, message);
-
-    const history = db
-      .prepare(
-        `SELECT role, content FROM messages
-         WHERE conversation_id = ?
-         ORDER BY created_at ASC`,
-      )
-      .all(conversationId) as ChatMessage[];
-
-    const conversation = db
-      .prepare(
-        `SELECT id, user_id, title, model, created_at, updated_at
-         FROM conversations WHERE id = ?`,
-      )
-      .get(conversationId) as Conversation;
-
-    const isFirstExchange =
-      history.filter((m) => m.role === "user").length === 1;
-
-    if (isFirstExchange && conversation.title === "New chat") {
-      const title = titleFromMessage(message);
-      db.prepare(
-        `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
-      ).run(title, conversationId);
-      conversation.title = title;
-    }
-
-    const usageId = startUsage({
-      source: "user",
-      username: user.username,
-      userId: user.id,
-      model,
-      prompt: message,
-    });
-
-    const historyLimit = getUserHistoryLimitSetting();
-    const contextHistory =
-      historyLimit > 0 ? history.slice(-historyLimit) : history;
-    const promptedHistory = withSystemPrompt(contextHistory, "user");
-    const runtime = getChatRuntimeOptions();
-
-    let ollamaRes: Response;
+  const startStream = async () => {
     try {
-      ollamaRes = await streamChat(model, promptedHistory, {
+      return await streamChat(model, promptedHistory, {
         temperature: runtime.temperature,
         numPredict: runtime.numPredict,
+        topP: runtime.topP,
       });
     } catch (error) {
       finishUsage(usageId, {
         responseChars: 0,
         status: "error",
         errorMessage:
-          error instanceof Error ? error.message : "Ollama request failed",
+          error instanceof Error ? error.message : "LLM request failed",
         conversationId,
       });
       throw error;
     }
+  };
+
+  return startStream().then((ollamaRes) => {
     const reader = ollamaRes.body!.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
@@ -190,13 +154,7 @@ export async function POST(request: Request) {
         send("meta", {
           conversationId,
           conversation,
-          userMessage: {
-            id: userMessageId,
-            conversation_id: conversationId,
-            role: "user",
-            content: message,
-            created_at: new Date().toISOString(),
-          } satisfies Message,
+          userMessage,
         });
 
         try {
@@ -317,6 +275,377 @@ export async function POST(request: Request) {
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
       },
+    });
+  });
+};
+
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  markActive(user.id);
+
+  try {
+    const body = await request.json();
+    const parsed = schema.safeParse(body);
+
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+        { status: 400 },
+      );
+    }
+
+    const mode = parsed.data.mode;
+    const model = resolveOllamaModelName(parsed.data.model);
+    const maxChars = getUserMaxCharsSetting();
+    const db = getDb();
+
+    if (!isModelEnabled(model)) {
+      return Response.json(
+        { error: "This model is disabled by admin. Choose another model." },
+        { status: 403 },
+      );
+    }
+
+    // ——— Regenerate last assistant reply ———
+    if (mode === "regenerate") {
+      const conversationId = parsed.data.conversationId!;
+      const owned = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT}
+           FROM conversations WHERE id = ? AND user_id = ?`,
+        )
+        .get(conversationId, user.id) as Conversation | undefined;
+
+      if (!owned) {
+        return Response.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
+      }
+
+      const rows = db
+        .prepare(
+          `SELECT id, role, content, created_at FROM messages
+           WHERE conversation_id = ?
+           ORDER BY created_at ASC`,
+        )
+        .all(conversationId) as DbMessage[];
+
+      let lastUserIdx = -1;
+      for (let i = rows.length - 1; i >= 0; i -= 1) {
+        if (rows[i].role === "user") {
+          lastUserIdx = i;
+          break;
+        }
+      }
+
+      if (lastUserIdx < 0) {
+        return Response.json(
+          { error: "Nothing to regenerate" },
+          { status: 400 },
+        );
+      }
+
+      const lastUser = rows[lastUserIdx];
+      const guard = checkInputGuardrails(lastUser.content, "user");
+      if (guard.blocked) {
+        return Response.json(
+          {
+            error: guard.refusal,
+            blocked: true,
+            reason: guard.reason,
+          },
+          { status: 422 },
+        );
+      }
+
+      // Drop trailing assistant (and anything after last user)
+      const toDelete = rows.slice(lastUserIdx + 1);
+      if (toDelete.length) {
+        const del = db.prepare(`DELETE FROM messages WHERE id = ?`);
+        const tx = db.transaction(() => {
+          for (const row of toDelete) del.run(row.id);
+        });
+        tx();
+      }
+
+      db.prepare(
+        `UPDATE conversations
+         SET model = ?, updated_at = datetime('now')
+         WHERE id = ?`,
+      ).run(model, conversationId);
+
+      const conversation = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT} FROM conversations WHERE id = ?`,
+        )
+        .get(conversationId) as Conversation;
+
+      const history = rows
+        .slice(0, lastUserIdx + 1)
+        .map((m) => ({ role: m.role, content: m.content })) as ChatMessage[];
+
+      const userMessage: Message = {
+        id: lastUser.id,
+        conversation_id: conversationId,
+        role: "user",
+        content: lastUser.content,
+        created_at: lastUser.created_at,
+      };
+
+      return streamAssistantReply({
+        userId: user.id,
+        username: user.username,
+        conversationId,
+        conversation,
+        model,
+        promptText: lastUser.content,
+        userMessage,
+        history,
+      });
+    }
+
+    // ——— Edit a user message and regenerate from there ———
+    if (mode === "edit") {
+      const conversationId = parsed.data.conversationId!;
+      const editMessageId = parsed.data.editMessageId!;
+      const message = parsed.data.message!;
+
+      if (message.length > maxChars) {
+        return Response.json(
+          { error: `Messages are limited to ${maxChars} characters.` },
+          { status: 400 },
+        );
+      }
+
+      const guard = checkInputGuardrails(message, "user");
+      if (guard.blocked) {
+        return Response.json(
+          {
+            error: guard.refusal,
+            blocked: true,
+            reason: guard.reason,
+          },
+          { status: 422 },
+        );
+      }
+
+      const owned = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT}
+           FROM conversations WHERE id = ? AND user_id = ?`,
+        )
+        .get(conversationId, user.id) as Conversation | undefined;
+
+      if (!owned) {
+        return Response.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
+      }
+
+      const rows = db
+        .prepare(
+          `SELECT id, role, content, created_at FROM messages
+           WHERE conversation_id = ?
+           ORDER BY created_at ASC`,
+        )
+        .all(conversationId) as DbMessage[];
+
+      const editIdx = rows.findIndex((m) => m.id === editMessageId);
+      if (editIdx < 0 || rows[editIdx].role !== "user") {
+        return Response.json(
+          { error: "User message not found" },
+          { status: 404 },
+        );
+      }
+
+      // Only allow editing the latest user turn (simplest + safest UX)
+      let lastUserIdx = -1;
+      for (let i = rows.length - 1; i >= 0; i -= 1) {
+        if (rows[i].role === "user") {
+          lastUserIdx = i;
+          break;
+        }
+      }
+      if (editIdx !== lastUserIdx) {
+        return Response.json(
+          { error: "Only the latest user message can be edited" },
+          { status: 400 },
+        );
+      }
+
+      db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run(
+        message,
+        editMessageId,
+      );
+
+      const toDelete = rows.slice(editIdx + 1);
+      if (toDelete.length) {
+        const del = db.prepare(`DELETE FROM messages WHERE id = ?`);
+        const tx = db.transaction(() => {
+          for (const row of toDelete) del.run(row.id);
+        });
+        tx();
+      }
+
+      const userCount = rows
+        .slice(0, editIdx + 1)
+        .filter((m) => m.role === "user").length;
+      if (userCount === 1) {
+        db.prepare(
+          `UPDATE conversations
+           SET title = ?, model = ?, updated_at = datetime('now')
+           WHERE id = ?`,
+        ).run(titleFromMessage(message), model, conversationId);
+      } else {
+        db.prepare(
+          `UPDATE conversations
+           SET model = ?, updated_at = datetime('now')
+           WHERE id = ?`,
+        ).run(model, conversationId);
+      }
+
+      const conversation = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT} FROM conversations WHERE id = ?`,
+        )
+        .get(conversationId) as Conversation;
+
+      const history = [
+        ...rows.slice(0, editIdx).map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        { role: "user" as const, content: message },
+      ] as ChatMessage[];
+
+      const userMessage: Message = {
+        id: editMessageId,
+        conversation_id: conversationId,
+        role: "user",
+        content: message,
+        created_at: rows[editIdx].created_at,
+      };
+
+      return streamAssistantReply({
+        userId: user.id,
+        username: user.username,
+        conversationId,
+        conversation,
+        model,
+        promptText: message,
+        userMessage,
+        history,
+      });
+    }
+
+    // ——— Normal send ———
+    const message = parsed.data.message!;
+
+    if (message.length > maxChars) {
+      return Response.json(
+        { error: `Messages are limited to ${maxChars} characters.` },
+        { status: 400 },
+      );
+    }
+
+    const guard = checkInputGuardrails(message, "user");
+    if (guard.blocked) {
+      return Response.json(
+        {
+          error: guard.refusal,
+          blocked: true,
+          reason: guard.reason,
+        },
+        { status: 422 },
+      );
+    }
+
+    let conversationId = parsed.data.conversationId;
+
+    if (conversationId) {
+      const owned = db
+        .prepare(
+          `SELECT id FROM conversations WHERE id = ? AND user_id = ?`,
+        )
+        .get(conversationId, user.id);
+
+      if (!owned) {
+        return Response.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
+      }
+
+      db.prepare(
+        `UPDATE conversations
+         SET model = ?, updated_at = datetime('now')
+         WHERE id = ?`,
+      ).run(model, conversationId);
+    } else {
+      conversationId = newId();
+      db.prepare(
+        `INSERT INTO conversations (id, user_id, title, model)
+         VALUES (?, ?, ?, ?)`,
+      ).run(conversationId, user.id, titleFromMessage(message), model);
+    }
+
+    const userMessageId = newId();
+    db.prepare(
+      `INSERT INTO messages (id, conversation_id, role, content)
+       VALUES (?, ?, 'user', ?)`,
+    ).run(userMessageId, conversationId, message);
+
+    const history = db
+      .prepare(
+        `SELECT role, content FROM messages
+         WHERE conversation_id = ?
+         ORDER BY created_at ASC`,
+      )
+      .all(conversationId) as ChatMessage[];
+
+    let conversation = db
+      .prepare(
+        `SELECT ${CONVERSATION_SELECT} FROM conversations WHERE id = ?`,
+      )
+      .get(conversationId) as Conversation;
+
+    const isFirstExchange =
+      history.filter((m) => m.role === "user").length === 1;
+
+    if (isFirstExchange && conversation.title === "New chat") {
+      const title = titleFromMessage(message);
+      db.prepare(
+        `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
+      ).run(title, conversationId);
+      conversation = {
+        ...conversation,
+        title,
+      };
+    }
+
+    const userMessage: Message = {
+      id: userMessageId,
+      conversation_id: conversationId,
+      role: "user",
+      content: message,
+      created_at: new Date().toISOString(),
+    };
+
+    return streamAssistantReply({
+      userId: user.id,
+      username: user.username,
+      conversationId,
+      conversation,
+      model,
+      promptText: message,
+      userMessage,
+      history,
     });
   } catch (error) {
     console.error("chat error", error);

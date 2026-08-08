@@ -4,7 +4,7 @@ import {
   getPagedUsage,
   getUsageAnalytics,
   listActiveUsage,
-  pingOllama,
+  pingLlm,
 } from "@/lib/usage";
 
 export async function GET(request: Request) {
@@ -17,8 +17,8 @@ export async function GET(request: Request) {
   const page = Number(searchParams.get("page") || "1");
   const limit = Number(searchParams.get("limit") || "25");
 
-  const [ollama, analytics, recentPage] = await Promise.all([
-    pingOllama(),
+  const [llm, analytics, recentPage] = await Promise.all([
+    pingLlm(),
     Promise.resolve(getUsageAnalytics()),
     Promise.resolve(getPagedUsage(page, limit)),
   ]);
@@ -33,7 +33,15 @@ export async function GET(request: Request) {
       totalPages: recentPage.totalPages,
     },
     analytics,
-    ollama,
+    /** Primary / best available backend (compat) */
+    ollama: {
+      ok: llm.ok,
+      latencyMs: llm.latencyMs,
+      error: llm.error,
+      backend: llm.backend,
+      baseUrl: llm.baseUrl,
+    },
+    backends: llm.backends,
     serverTime: new Date().toISOString(),
   });
 }

@@ -36,6 +36,7 @@ const ensureSchema = (database: Database.Database) => {
       user_id TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT 'New chat',
       model TEXT NOT NULL,
+      is_pinned INTEGER NOT NULL DEFAULT 0 CHECK (is_pinned IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -51,7 +52,7 @@ const ensureSchema = (database: Database.Database) => {
     );
 
     CREATE INDEX IF NOT EXISTS idx_conversations_user
-      ON conversations(user_id, updated_at DESC);
+      ON conversations(user_id, is_pinned DESC, updated_at DESC);
 
     CREATE INDEX IF NOT EXISTS idx_messages_conversation
       ON messages(conversation_id, created_at ASC);
@@ -65,6 +66,7 @@ const ensureSchema = (database: Database.Database) => {
       name TEXT PRIMARY KEY,
       is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
+      backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -153,6 +155,16 @@ const ensureSchema = (database: Database.Database) => {
   }
   if (!hasColumn(database, "models", "display_name")) {
     database.exec(`ALTER TABLE models ADD COLUMN display_name TEXT`);
+  }
+  if (!hasColumn(database, "conversations", "is_pinned")) {
+    database.exec(
+      `ALTER TABLE conversations ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "backend")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN backend TEXT NOT NULL DEFAULT 'ollama'`,
+    );
   }
 };
 
