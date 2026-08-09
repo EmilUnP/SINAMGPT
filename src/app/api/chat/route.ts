@@ -25,8 +25,12 @@ const schema = z
     conversationId: z.string().min(1).optional(),
     message: z.string().trim().min(1).max(32000).optional(),
     model: z.string().trim().min(1).max(120),
-    mode: z.enum(["send", "regenerate", "edit"]).default("send"),
+    projectId: z.string().trim().min(1).max(64).nullable().optional(),
+    mode: z
+      .enum(["send", "regenerate", "edit", "rewrite"])
+      .default("send"),
     editMessageId: z.string().min(1).optional(),
+    rewrite: z.enum(["shorter", "formal", "continue"]).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.mode === "send" && !data.message) {
@@ -50,8 +54,17 @@ const schema = z
         path: ["editMessageId"],
       });
     }
+    if (data.mode === "rewrite" && !data.rewrite) {
+      ctx.addIssue({
+        code: "custom",
+        message: "rewrite style is required",
+        path: ["rewrite"],
+      });
+    }
     if (
-      (data.mode === "regenerate" || data.mode === "edit") &&
+      (data.mode === "regenerate" ||
+        data.mode === "edit" ||
+        data.mode === "rewrite") &&
       !data.conversationId
     ) {
       ctx.addIssue({
@@ -62,8 +75,17 @@ const schema = z
     }
   });
 
+const REWRITE_PROMPTS = {
+  shorter:
+    "Rewrite your previous answer to be shorter and tighter. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+  formal:
+    "Rewrite your previous answer in a more formal, professional tone suitable for internal company use. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+  continue:
+    "Continue your previous answer with useful additional detail. Return the complete answer: keep what you already said, then add the continuation. Do not add a preface like “Sure” — return only the full answer.",
+} as const;
+
 const CONVERSATION_SELECT =
-  "id, user_id, title, model, is_pinned, created_at, updated_at";
+  "id, user_id, title, model, project_id, is_pinned, created_at, updated_at";
 
 const titleFromMessage = (text: string): string => {
   const cleaned = text.replace(/\s+/g, " ").trim();
@@ -110,7 +132,13 @@ const streamAssistantReply = (input: {
   const historyLimit = getUserHistoryLimitSetting();
   const contextHistory =
     historyLimit > 0 ? history.slice(-historyLimit) : history;
-  const promptedHistory = withSystemPrompt(contextHistory, "user");
+  const prepared = withSystemPrompt(
+    contextHistory,
+    "user",
+    conversation.project_id,
+  );
+  const promptedHistory = prepared.messages;
+  const knowledgeSources = prepared.sources;
   const runtime = getChatRuntimeOptions();
 
   const startStream = async () => {
@@ -155,6 +183,7 @@ const streamAssistantReply = (input: {
           conversationId,
           conversation,
           userMessage,
+          sources: knowledgeSources,
         });
 
         try {
@@ -211,10 +240,19 @@ const streamAssistantReply = (input: {
           }
 
           const assistantMessageId = newId();
+          const sourcesJson =
+            knowledgeSources.length > 0
+              ? JSON.stringify(knowledgeSources)
+              : null;
           db.prepare(
-            `INSERT INTO messages (id, conversation_id, role, content)
-             VALUES (?, ?, 'assistant', ?)`,
-          ).run(assistantMessageId, conversationId, assistantText);
+            `INSERT INTO messages (id, conversation_id, role, content, sources)
+             VALUES (?, ?, 'assistant', ?, ?)`,
+          ).run(
+            assistantMessageId,
+            conversationId,
+            assistantText,
+            sourcesJson,
+          );
 
           db.prepare(
             `UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`,
@@ -236,6 +274,7 @@ const streamAssistantReply = (input: {
               role: "assistant",
               content: assistantText,
               created_at: new Date().toISOString(),
+              sources: knowledgeSources.length ? knowledgeSources : null,
             } satisfies Message,
           });
 
@@ -308,6 +347,114 @@ export async function POST(request: Request) {
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
       );
+    }
+
+    // ——— Rewrite last assistant reply (shorter / formal / continue) ———
+    if (mode === "rewrite") {
+      const conversationId = parsed.data.conversationId!;
+      const style = parsed.data.rewrite!;
+      const owned = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT}
+           FROM conversations WHERE id = ? AND user_id = ?`,
+        )
+        .get(conversationId, user.id) as Conversation | undefined;
+
+      if (!owned) {
+        return Response.json(
+          { error: "Conversation not found" },
+          { status: 404 },
+        );
+      }
+
+      const rows = db
+        .prepare(
+          `SELECT id, role, content, created_at FROM messages
+           WHERE conversation_id = ?
+           ORDER BY created_at ASC`,
+        )
+        .all(conversationId) as DbMessage[];
+
+      let lastAssistantIdx = -1;
+      for (let i = rows.length - 1; i >= 0; i -= 1) {
+        if (rows[i].role === "assistant" && rows[i].content.trim()) {
+          lastAssistantIdx = i;
+          break;
+        }
+      }
+      if (lastAssistantIdx < 0) {
+        return Response.json(
+          { error: "Nothing to rewrite" },
+          { status: 400 },
+        );
+      }
+
+      let lastUserIdx = -1;
+      for (let i = lastAssistantIdx - 1; i >= 0; i -= 1) {
+        if (rows[i].role === "user") {
+          lastUserIdx = i;
+          break;
+        }
+      }
+      if (lastUserIdx < 0) {
+        return Response.json(
+          { error: "Nothing to rewrite" },
+          { status: 400 },
+        );
+      }
+
+      const lastUser = rows[lastUserIdx];
+      const lastAssistant = rows[lastAssistantIdx];
+
+      // Drop the assistant reply (and anything after it)
+      const toDelete = rows.slice(lastAssistantIdx);
+      if (toDelete.length) {
+        const del = db.prepare(`DELETE FROM messages WHERE id = ?`);
+        const tx = db.transaction(() => {
+          for (const row of toDelete) del.run(row.id);
+        });
+        tx();
+      }
+
+      db.prepare(
+        `UPDATE conversations
+         SET model = ?, updated_at = datetime('now')
+         WHERE id = ?`,
+      ).run(model, conversationId);
+
+      const conversation = db
+        .prepare(
+          `SELECT ${CONVERSATION_SELECT} FROM conversations WHERE id = ?`,
+        )
+        .get(conversationId) as Conversation;
+
+      const history: ChatMessage[] = [
+        ...rows.slice(0, lastAssistantIdx).map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        { role: "assistant", content: lastAssistant.content },
+        { role: "user", content: REWRITE_PROMPTS[style] },
+      ];
+
+      const userMessage: Message = {
+        id: lastUser.id,
+        conversation_id: conversationId,
+        role: "user",
+        content: lastUser.content,
+        created_at: lastUser.created_at,
+      };
+
+      return streamAssistantReply({
+        userId: user.id,
+        username: user.username,
+        conversationId,
+        conversation,
+        model,
+        promptText: `[rewrite:${style}] ${lastUser.content}`,
+        userMessage,
+        history,
+      });
     }
 
     // ——— Regenerate last assistant reply ———
@@ -589,10 +736,17 @@ export async function POST(request: Request) {
       ).run(model, conversationId);
     } else {
       conversationId = newId();
+      const projectId = parsed.data.projectId ?? null;
       db.prepare(
-        `INSERT INTO conversations (id, user_id, title, model)
-         VALUES (?, ?, ?, ?)`,
-      ).run(conversationId, user.id, titleFromMessage(message), model);
+        `INSERT INTO conversations (id, user_id, title, model, project_id)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run(
+        conversationId,
+        user.id,
+        titleFromMessage(message),
+        model,
+        projectId,
+      );
     }
 
     const userMessageId = newId();

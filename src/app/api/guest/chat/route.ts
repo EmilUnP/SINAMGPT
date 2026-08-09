@@ -116,10 +116,12 @@ export async function POST(request: Request) {
 
     const prior =
       historyLimit > 0 ? history.slice(-historyLimit) : [];
-    const messages: ChatMessage[] = withSystemPrompt(
+    const prepared = withSystemPrompt(
       [...prior, { role: "user" as const, content: message }],
       "guest",
     );
+    const messages: ChatMessage[] = prepared.messages;
+    const knowledgeSources = prepared.sources;
 
     const usageId = startUsage({
       source: "guest",
@@ -163,7 +165,11 @@ export async function POST(request: Request) {
           );
         };
 
-        send("meta", { usage: consumed, guest: true });
+        send("meta", {
+          usage: consumed,
+          guest: true,
+          sources: knowledgeSources,
+        });
 
         try {
           while (true) {
@@ -224,7 +230,10 @@ export async function POST(request: Request) {
             evalDurationNs,
           });
 
-          send("done", { usage: consumed });
+          send("done", {
+            usage: consumed,
+            sources: knowledgeSources.length ? knowledgeSources : null,
+          });
           controller.close();
         } catch (error) {
           const errMsg =

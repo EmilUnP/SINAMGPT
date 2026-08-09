@@ -9,14 +9,33 @@ export type User = {
   last_active_at: string | null;
 };
 
+export type Project = {
+  id: string;
+  name: string;
+  description: string;
+  created_by: string | null;
+  is_archived: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Conversation = {
   id: string;
   user_id: string;
   title: string;
   model: string;
+  project_id: string | null;
+  /** When set, any logged-in colleague can open /share/[token] (read-only) */
+  share_token?: string | null;
   is_pinned: number;
   created_at: string;
   updated_at: string;
+};
+
+export type KnowledgeCitation = {
+  id: string;
+  title: string;
+  category: string;
 };
 
 export type Message = {
@@ -25,6 +44,8 @@ export type Message = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+  /** Knowledge docs used for this assistant reply (JSON in DB) */
+  sources?: KnowledgeCitation[] | null;
 };
 
 export type SessionPayload = {

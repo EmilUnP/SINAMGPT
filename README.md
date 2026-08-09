@@ -2,13 +2,16 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.0.0](./CHANGELOG.md) · [Versioning guide](./docs/VERSIONING.md)
+**Current version:** [1.1.0](./CHANGELOG.md#110--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
-- **Streaming replies**, model picker, new/delete chats
-- **Admin** — users, models, live usage, knowledge base, guardrails
+- **Streaming replies**, Fast/Smart presets, model picker, rewrite shortcuts
+- **Projects** — group chats and project-scoped knowledge
+- **Share chats** internally (logged-in colleagues, read-only links)
+- **Cited answers** from the company knowledge base (admin on/off)
+- **Admin** — users, models, live usage, knowledge base, guardrails, theme-aware UI
 - **Guest try-chat** on the home page (daily limit; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -97,7 +100,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, conversations, messages, settings, models, usage events, knowledge docs
+- Tables include users, projects, conversations (incl. share tokens), messages, settings, models, usage events, knowledge docs
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
 

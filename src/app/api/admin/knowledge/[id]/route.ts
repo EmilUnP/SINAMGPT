@@ -14,6 +14,7 @@ const patchSchema = z.object({
   category: z.enum(["company", "project", "product", "faq", "other"]).optional(),
   content: z.string().trim().min(10).max(20000).optional(),
   tags: z.string().max(500).optional(),
+  project_id: z.string().trim().min(1).max(64).nullable().optional(),
   priority: z.number().int().min(0).max(100).optional(),
   always_include: z.boolean().optional(),
   is_enabled: z.boolean().optional(),

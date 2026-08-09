@@ -17,15 +17,18 @@ import {
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CopyButton } from "@/components/CopyButton";
+import { KnowledgeCitations } from "@/components/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
+import type { KnowledgeCitation } from "@/lib/types";
 
 type ChatTurn = {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  sources?: KnowledgeCitation[] | null;
 };
 
 type Usage = {
@@ -219,8 +222,20 @@ export const HomeTryChat = () => {
           if (!parsed) continue;
 
           if (parsed.event === "meta" || parsed.event === "done") {
-            const u = (parsed.data as { usage?: Usage }).usage;
-            if (u) setUsage(u);
+            const payload = parsed.data as {
+              usage?: Usage;
+              sources?: KnowledgeCitation[] | null;
+            };
+            if (payload.usage) setUsage(payload.usage);
+            if (payload.sources?.length) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, sources: payload.sources }
+                    : m,
+                ),
+              );
+            }
           }
 
           if (parsed.event === "token") {
@@ -527,12 +542,18 @@ export const HomeTryChat = () => {
                       )}
                     </div>
                     {!isUser && message.content ? (
-                      <div className="mt-1">
-                        <CopyButton
-                          text={message.content}
-                          className="text-[var(--home-faint)] hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)]"
+                      <>
+                        <KnowledgeCitations
+                          sources={message.sources}
+                          tone="home"
                         />
-                      </div>
+                        <div className="mt-1">
+                          <CopyButton
+                            text={message.content}
+                            className="text-[var(--home-faint)] hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)]"
+                          />
+                        </div>
+                      </>
                     ) : null}
                   </div>
                 </div>

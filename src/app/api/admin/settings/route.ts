@@ -4,12 +4,14 @@ import { requireAdmin } from "@/lib/auth";
 import {
   getAppSettings,
   setDefaultModelSetting,
+  setFastModelSetting,
   setGuestDailyLimitSetting,
   setGuestEnabledSetting,
   setGuestHistoryLimitSetting,
   setGuestMaxCharsSetting,
   setNumPredictSetting,
   setRegistrationEnabledSetting,
+  setSmartModelSetting,
   setTemperatureSetting,
   setTopPSetting,
   setUserHistoryLimitSetting,
@@ -32,6 +34,8 @@ const patchSchema = z.object({
   guestHistoryLimit: z.number().int().min(0).max(40).optional(),
   registrationEnabled: z.boolean().optional(),
   defaultModel: z.string().trim().max(120).optional(),
+  fastModel: z.string().trim().max(120).optional(),
+  smartModel: z.string().trim().max(120).optional(),
   userMaxMessageChars: z.number().int().min(500).max(32000).optional(),
   userHistoryLimit: z.number().int().min(0).max(200).optional(),
   temperature: z.number().min(0).max(2).optional(),
@@ -69,6 +73,8 @@ export async function PATCH(request: Request) {
     setRegistrationEnabledSetting(d.registrationEnabled);
   }
   if (d.defaultModel !== undefined) setDefaultModelSetting(d.defaultModel);
+  if (d.fastModel !== undefined) setFastModelSetting(d.fastModel);
+  if (d.smartModel !== undefined) setSmartModelSetting(d.smartModel);
   if (d.userMaxMessageChars !== undefined) {
     setUserMaxCharsSetting(d.userMaxMessageChars);
   }

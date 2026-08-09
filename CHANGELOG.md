@@ -7,17 +7,26 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-### Fixed
-- **Single-language replies** — system prompt no longer nudges the model into ugly dual-language answers with English in parentheses; ambiguous short greetings default to English
+### Planned
+- See [docs/ROADMAP.md](./docs/ROADMAP.md) for the future backlog.
+
+## [1.1.0] — 2026-08-09
+
+Company-GPT productivity release: citations, projects, internal share links, Fast/Smart presets, and rewrite shortcuts — plus theme and multi-backend LLM work.
 
 ### Added
+- **Cited company answers** — assistant replies can show `From: …` knowledge sources; toggle in Admin → Knowledge → Citations (see [docs/ROADMAP.md](./docs/ROADMAP.md))
+- **Projects / folders** — group chats by project; project-scoped knowledge boost; Admin can tag knowledge docs to a project
+- **Shareable internal link** — owner can share a chat; colleagues must be logged in; read-only `/share/[token]`; revoke anytime
+- **Fast / Smart model presets** — chat toggle + Admin → Settings model mapping; last choice remembered in localStorage and per conversation
+- **Rewrite shortcuts** — Shorter / More formal / Continue on the last assistant reply
 - **Theme** — light / dark / system preference with a clean header toggle; remembered in the browser, no flash on load. Chat sidebar, home, auth, and admin all follow the same mode (no mixed light chat + dark sidebar).
 - **Multi-backend LLM** — Ollama and vLLM can run in parallel (`LLM_BACKENDS=ollama,vllm`); models sync from both, chat routes by backend, admin health shows each server
 - **Generation controls** — temperature, max tokens, and top-p apply to both backends (Admin → Settings)
 - **Ollama keep-alive** — `OLLAMA_KEEP_ALIVE` keeps weights warm for faster follow-up turns
 
-### Planned
-- Nothing queued yet — add notes here before the next release.
+### Fixed
+- **Single-language replies** — system prompt no longer nudges the model into ugly dual-language answers with English in parentheses; ambiguous short greetings default to English
 
 ## [1.0.0] — 2026-08-08
 
@@ -44,5 +53,6 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/EmilUnP/SINAMGPT/releases/tag/v1.0.0

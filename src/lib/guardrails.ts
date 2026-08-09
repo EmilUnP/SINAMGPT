@@ -1,5 +1,8 @@
 import { getDb } from "@/lib/db";
-import { buildKnowledgeBlock } from "@/lib/knowledge";
+import {
+  resolveKnowledgeContext,
+  type KnowledgeSource,
+} from "@/lib/knowledge";
 import {
   BUILTIN_BLOCKED_KEYWORDS,
   MULTILANG_SYSTEM_RULES,
@@ -206,10 +209,17 @@ export const checkInputGuardrails = (
   };
 };
 
+export type PreparedChat<T extends { role: string; content: string }> = {
+  messages: T[];
+  /** Citations to show under the next assistant reply (empty if disabled / none) */
+  sources: KnowledgeSource[];
+};
+
 export const withSystemPrompt = <T extends { role: string; content: string }>(
   messages: T[],
   audience: "guest" | "user",
-): T[] => {
+  projectId?: string | null,
+): PreparedChat<T> => {
   const config = getGuardrails();
   const withoutSystem = messages.filter((m) => m.role !== "system");
 
@@ -221,9 +231,13 @@ export const withSystemPrompt = <T extends { role: string; content: string }>(
     .reverse()
     .find((m) => m.role === "user")?.content;
 
-  const knowledge = buildKnowledgeBlock(lastUser ?? "", audience);
-  if (knowledge) {
-    content = `${content}\n\n${knowledge}`;
+  const knowledge = resolveKnowledgeContext(
+    lastUser ?? "",
+    audience,
+    projectId,
+  );
+  if (knowledge.block) {
+    content = `${content}\n\n${knowledge.block}`;
   }
 
   const system = {
@@ -231,5 +245,11 @@ export const withSystemPrompt = <T extends { role: string; content: string }>(
     content,
   };
 
-  return [system as T, ...withoutSystem];
+  return {
+    messages: [system as T, ...withoutSystem],
+    sources:
+      knowledge.showCitations && knowledge.sources.length
+        ? knowledge.sources
+        : [],
+  };
 };

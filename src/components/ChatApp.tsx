@@ -1,7 +1,12 @@
 "use client";
 
 import {
+  Check,
+  Folder,
+  FolderPlus,
   Infinity as InfinityIcon,
+  Link2,
+  Link2Off,
   Menu,
   MessageSquarePlus,
   PanelLeftClose,
@@ -32,16 +37,55 @@ import {
 import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
+import { KnowledgeCitations } from "./KnowledgeCitations";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { ThemeToggle } from "./ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
-import type { Conversation, Message, User } from "@/lib/types";
+import type {
+  Conversation,
+  KnowledgeCitation,
+  Message,
+  Project,
+  User,
+} from "@/lib/types";
 
 type ChatAppProps = {
   user: User;
 };
 
 type UiMessage = Message & { isStreaming?: boolean };
+
+type ModelMode = "fast" | "smart" | "custom";
+
+const LS_MODEL_MODE = "sinamgpt_model_mode";
+const LS_LAST_MODEL = "sinamgpt_last_model";
+
+const readStoredModelMode = (): ModelMode => {
+  try {
+    const v = localStorage.getItem(LS_MODEL_MODE);
+    if (v === "fast" || v === "smart" || v === "custom") return v;
+  } catch {
+    /* ignore */
+  }
+  return "smart";
+};
+
+const readStoredModel = (): string => {
+  try {
+    return localStorage.getItem(LS_LAST_MODEL)?.trim() || "";
+  } catch {
+    return "";
+  }
+};
+
+const persistModelChoice = (mode: ModelMode, modelName: string) => {
+  try {
+    localStorage.setItem(LS_MODEL_MODE, mode);
+    if (modelName) localStorage.setItem(LS_LAST_MODEL, modelName);
+  } catch {
+    /* ignore */
+  }
+};
 
 const suggestions = [
   {
@@ -85,6 +129,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     Array<{ name: string; display_name?: string; backend?: string }>
   >([]);
   const [model, setModel] = useState("");
+  const [fastModel, setFastModel] = useState("");
+  const [smartModel, setSmartModel] = useState("");
+  const [modelMode, setModelMode] = useState<ModelMode>("smart");
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -97,6 +144,15 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [ready, setReady] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  /** null = all chats (Inbox) */
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -141,16 +197,30 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     autoResizeTextarea(textareaRef.current);
   }, [input]);
 
-  const loadConversations = useCallback(async (query?: string) => {
-    const q = (query ?? "").trim();
-    const url = q
-      ? `/api/conversations?q=${encodeURIComponent(q)}`
-      : "/api/conversations";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Failed to load chats");
-    const data = (await res.json()) as { conversations: Conversation[] };
-    setConversations(data.conversations);
-    return data.conversations;
+  const loadConversations = useCallback(
+    async (query?: string, projectId?: string | null) => {
+      const q = (query ?? "").trim();
+      const pid = projectId === undefined ? activeProjectId : projectId;
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (pid) params.set("projectId", pid);
+      const qs = params.toString();
+      const res = await fetch(
+        qs ? `/api/conversations?${qs}` : "/api/conversations",
+      );
+      if (!res.ok) throw new Error("Failed to load chats");
+      const data = (await res.json()) as { conversations: Conversation[] };
+      setConversations(data.conversations);
+      return data.conversations;
+    },
+    [activeProjectId],
+  );
+
+  const loadProjects = useCallback(async () => {
+    const res = await fetch("/api/projects");
+    if (!res.ok) return;
+    const data = (await res.json()) as { projects?: Project[] };
+    setProjects(data.projects ?? []);
   }, []);
 
   const loadModels = useCallback(async () => {
@@ -158,6 +228,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     const data = (await res.json()) as {
       models?: Array<{ name: string; display_name?: string; backend?: string }>;
       defaultModel?: string;
+      fastModel?: string;
+      smartModel?: string;
       error?: string;
     };
 
@@ -168,18 +240,69 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     }
 
     const list = data.models ?? [];
+    const names = new Set(list.map((m) => m.name));
+    const fallback = data.defaultModel || list[0]?.name || "";
+    const nextFast =
+      (data.fastModel && names.has(data.fastModel) ? data.fastModel : "") ||
+      fallback;
+    const nextSmart =
+      (data.smartModel && names.has(data.smartModel)
+        ? data.smartModel
+        : "") || fallback;
     setModels(list);
+    setFastModel(nextFast);
+    setSmartModel(nextSmart);
     setModelsError("");
-    setModel(
-      (current) => current || data.defaultModel || list[0]?.name || "",
-    );
+
+    setModel((current) => {
+      if (current && names.has(current)) return current;
+      const storedMode = readStoredModelMode();
+      const storedModel = readStoredModel();
+      if (storedMode === "fast" && nextFast) {
+        setModelMode("fast");
+        return nextFast;
+      }
+      if (storedMode === "smart" && nextSmart) {
+        setModelMode("smart");
+        return nextSmart;
+      }
+      if (storedModel && names.has(storedModel)) {
+        setModelMode(
+          storedModel === nextFast
+            ? "fast"
+            : storedModel === nextSmart
+              ? "smart"
+              : "custom",
+        );
+        return storedModel;
+      }
+      setModelMode("smart");
+      return nextSmart || fallback;
+    });
   }, []);
+
+  const applyModelMode = (mode: ModelMode) => {
+    const next =
+      mode === "fast" ? fastModel : mode === "smart" ? smartModel : model;
+    if (!next) return;
+    setModelMode(mode);
+    setModel(next);
+    persistModelChoice(mode, next);
+  };
+
+  const handleModelSelect = (name: string) => {
+    setModel(name);
+    const mode: ModelMode =
+      name === fastModel ? "fast" : name === smartModel ? "smart" : "custom";
+    setModelMode(mode);
+    persistModelChoice(mode, name);
+  };
 
   useEffect(() => {
     const boot = async () => {
       try {
         setIsLoadingList(true);
-        await Promise.all([loadConversations(), loadModels()]);
+        await Promise.all([loadConversations(), loadModels(), loadProjects()]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
@@ -187,27 +310,29 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       }
     };
     void boot();
-  }, [loadConversations, loadModels]);
+  }, [loadConversations, loadModels, loadProjects]);
 
   useEffect(() => {
     if (searchTimerRef.current) {
       window.clearTimeout(searchTimerRef.current);
     }
     searchTimerRef.current = window.setTimeout(() => {
-      void loadConversations(search).catch(() => undefined);
+      void loadConversations(search, activeProjectId).catch(() => undefined);
     }, 250);
     return () => {
       if (searchTimerRef.current) {
         window.clearTimeout(searchTimerRef.current);
       }
     };
-  }, [search, loadConversations]);
+  }, [search, activeProjectId, loadConversations]);
 
   const openConversation = async (id: string) => {
     setError("");
     setEditingId(null);
     setActiveId(id);
     setMobileSidebar(false);
+    setShareOpen(false);
+    setShareCopied(false);
 
     const res = await fetch(`/api/conversations/${id}`);
     if (!res.ok) {
@@ -221,7 +346,16 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     };
 
     setMessages(data.messages);
-    setModel(data.conversation.model);
+    const chatModel = data.conversation.model;
+    setModel(chatModel);
+    setModelMode(
+      chatModel === fastModel
+        ? "fast"
+        : chatModel === smartModel
+          ? "smart"
+          : "custom",
+    );
+    setShareToken(data.conversation.share_token ?? null);
   };
 
   const handleNewChat = () => {
@@ -232,7 +366,89 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     setError("");
     setEditingId(null);
     setMobileSidebar(false);
+    setShareOpen(false);
+    setShareToken(null);
+    setShareCopied(false);
+    const mode = readStoredModelMode();
+    const stored = readStoredModel();
+    if (mode === "fast" && fastModel) {
+      setModelMode("fast");
+      setModel(fastModel);
+    } else if (mode === "smart" && smartModel) {
+      setModelMode("smart");
+      setModel(smartModel);
+    } else if (stored) {
+      setModel(stored);
+      setModelMode(
+        stored === fastModel
+          ? "fast"
+          : stored === smartModel
+            ? "smart"
+            : "custom",
+      );
+    }
     textareaRef.current?.focus();
+  };
+
+  const shareUrl = shareToken
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}`
+    : "";
+
+  const handleCreateShare = async () => {
+    if (!activeId) return;
+    setShareBusy(true);
+    setShareCopied(false);
+    try {
+      const res = await fetch(`/api/conversations/${activeId}/share`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as {
+        share_token?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.share_token) {
+        setError(data.error || "Could not create share link");
+        return;
+      }
+      setShareToken(data.share_token);
+      setShareOpen(true);
+    } catch {
+      setError("Could not create share link");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    if (!activeId) return;
+    setShareBusy(true);
+    try {
+      const res = await fetch(`/api/conversations/${activeId}/share`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        setError("Could not revoke share link");
+        return;
+      }
+      setShareToken(null);
+      setShareCopied(false);
+      setShareOpen(false);
+    } catch {
+      setError("Could not revoke share link");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleCopyShare = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      setError("Could not copy link");
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -276,6 +492,62 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       void loadConversations(search);
     }
   };
+
+  const handleSelectProject = (projectId: string | null) => {
+    setActiveProjectId(projectId);
+    setShowNewProject(false);
+  };
+
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const data = (await res.json()) as { project?: Project; error?: string };
+    if (!res.ok || !data.project) {
+      setError(data.error || "Could not create project");
+      return;
+    }
+    setProjects((prev) =>
+      [...prev, data.project!].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      ),
+    );
+    setNewProjectName("");
+    setShowNewProject(false);
+    setActiveProjectId(data.project.id);
+  };
+
+  const handleMoveChat = async (projectId: string | null) => {
+    if (!activeId) return;
+    const res = await fetch(`/api/conversations/${activeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: projectId }),
+    });
+    if (!res.ok) {
+      setError("Could not move chat");
+      return;
+    }
+    const data = (await res.json()) as { conversation?: Conversation };
+    if (data.conversation) {
+      const moved = data.conversation;
+      setConversations((prev) => {
+        if (activeProjectId && moved.project_id !== activeProjectId) {
+          return prev.filter((c) => c.id !== moved.id);
+        }
+        return prev.map((c) => (c.id === moved.id ? moved : c));
+      });
+    }
+  };
+
+  const activeProjectName = useMemo(() => {
+    if (!activeProjectId) return null;
+    return projects.find((p) => p.id === activeProjectId)?.name ?? null;
+  }, [activeProjectId, projects]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -345,6 +617,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               conversationId: string;
               conversation: Conversation;
               userMessage: Message;
+              sources?: KnowledgeCitation[] | null;
             };
             conversationId = meta.conversationId;
             setActiveId(meta.conversationId);
@@ -362,7 +635,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   return { ...meta.userMessage };
                 }
                 if (m.id === tempAssistantId) {
-                  return { ...m, conversation_id: meta.conversationId };
+                  return {
+                    ...m,
+                    conversation_id: meta.conversationId,
+                    sources: meta.sources?.length ? meta.sources : null,
+                  };
                 }
                 if (m.id === meta.userMessage.id) {
                   return { ...meta.userMessage };
@@ -450,6 +727,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         conversationId: activeId ?? undefined,
         message: text,
         model,
+        projectId: activeId ? undefined : activeProjectId,
         mode: "send",
       },
       restoreOnError: text,
@@ -485,6 +763,40 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         conversationId: activeId,
         model,
         mode: "regenerate",
+      },
+      prepareMessages: () => {
+        const tempAssistantId = `temp-assistant-${Date.now()}`;
+        const tempAssistant: UiMessage = {
+          id: tempAssistantId,
+          conversation_id: activeId,
+          role: "assistant",
+          content: "",
+          created_at: new Date().toISOString(),
+          isStreaming: true,
+        };
+        setMessages((prev) => {
+          const withoutTrailingAssistant =
+            prev.length && prev[prev.length - 1].role === "assistant"
+              ? prev.slice(0, -1)
+              : prev;
+          return [...withoutTrailingAssistant, tempAssistant];
+        });
+        return { tempAssistantId };
+      },
+    });
+  };
+
+  const handleRewrite = async (
+    style: "shorter" | "formal" | "continue",
+  ) => {
+    if (!activeId || !lastAssistantMessage || isSending) return;
+
+    await runChatRequest({
+      body: {
+        conversationId: activeId,
+        model,
+        mode: "rewrite",
+        rewrite: style,
       },
       prepareMessages: () => {
         const tempAssistantId = `temp-assistant-${Date.now()}`;
@@ -616,6 +928,75 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         </label>
       </div>
 
+      <div className="border-b border-[var(--sidebar-border)] px-3 pb-3">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--sidebar-muted)]">
+            Projects
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowNewProject((v) => !v)}
+            className="rounded-md p-1 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
+            aria-label="New project"
+            title="New project"
+          >
+            <FolderPlus size={14} />
+          </button>
+        </div>
+        {showNewProject ? (
+          <div className="mb-2 flex gap-1.5">
+            <input
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleCreateProject();
+                }
+              }}
+              placeholder="Project name"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
+            />
+            <button
+              type="button"
+              onClick={() => void handleCreateProject()}
+              className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
+            >
+              Add
+            </button>
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => handleSelectProject(null)}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
+              activeProjectId === null
+                ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-fg)] ring-1 ring-[var(--sidebar-active-ring)]"
+                : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)]"
+            }`}
+          >
+            All chats
+          </button>
+          {projects.map((project) => (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => handleSelectProject(project.id)}
+              className={`inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
+                activeProjectId === project.id
+                  ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-fg)] ring-1 ring-[var(--sidebar-active-ring)]"
+                  : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)]"
+              }`}
+              title={project.description || project.name}
+            >
+              <Folder size={12} className="shrink-0" />
+              <span className="truncate">{project.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {isLoadingList ? (
           <p className="px-2 py-3 text-sm text-[var(--sidebar-muted)]">
@@ -624,7 +1005,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         ) : conversations.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-sm text-[var(--sidebar-muted)]">
-              {search ? "No chats match your search." : "No chats yet."}
+              {search
+                ? "No chats match your search."
+                : activeProjectId
+                  ? "No chats in this project yet."
+                  : "No chats yet."}
             </p>
             {!search ? (
               <button
@@ -774,6 +1159,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-semibold text-[var(--text)] md:text-base">
               {activeConversation?.title ?? "New chat"}
+              {!activeConversation && activeProjectName ? (
+                <span className="ml-1.5 font-normal text-[var(--text-muted)]">
+                  · {activeProjectName}
+                </span>
+              ) : null}
             </h1>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span className="chip chip-ok">
@@ -782,14 +1172,69 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               <span className="chip chip-info">
                 <Sparkles size={11} /> History saved
               </span>
+              {activeConversation ? (
+                <label className="chip chip-info inline-flex items-center gap-1">
+                  <Folder size={11} />
+                  <select
+                    value={activeConversation.project_id ?? ""}
+                    onChange={(e) =>
+                      void handleMoveChat(e.target.value || null)
+                    }
+                    disabled={isSending}
+                    className="max-w-[8rem] bg-transparent text-[11px] outline-none"
+                    aria-label="Move chat to project"
+                    title="Move to project"
+                  >
+                    <option value="">No project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </div>
+          </div>
+
+          <div
+            className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
+            role="group"
+            aria-label="Reply speed"
+          >
+            <button
+              type="button"
+              disabled={ready && (!fastModel || isSending)}
+              onClick={() => applyModelMode("fast")}
+              className={`rounded-full px-2.5 py-1 transition ${
+                modelMode === "fast"
+                  ? "bg-[var(--accent)] text-white"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+              title={fastModel ? `Fast · ${fastModel}` : "Fast"}
+            >
+              Fast
+            </button>
+            <button
+              type="button"
+              disabled={ready && (!smartModel || isSending)}
+              onClick={() => applyModelMode("smart")}
+              className={`rounded-full px-2.5 py-1 transition ${
+                modelMode === "smart"
+                  ? "bg-[var(--accent)] text-white"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+              title={smartModel ? `Smart · ${smartModel}` : "Smart"}
+            >
+              Smart
+            </button>
           </div>
 
           <label className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <span className="hidden sm:inline">Model</span>
             <select
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => handleModelSelect(e.target.value)}
               disabled={ready && (isSending || models.length === 0)}
               className="max-w-[10rem] rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[14rem]"
             >
@@ -809,6 +1254,75 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               )}
             </select>
           </label>
+          {activeId ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  if (shareToken) {
+                    setShareOpen((v) => !v);
+                  } else {
+                    void handleCreateShare();
+                  }
+                }}
+                disabled={shareBusy}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition ${
+                  shareToken
+                    ? "border-[var(--accent)]/40 bg-[var(--chip-info-bg)] text-[var(--chip-info-text)]"
+                    : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                }`}
+                title="Share with colleagues"
+              >
+                <Link2 size={14} />
+                <span className="hidden sm:inline">
+                  {shareToken ? "Shared" : "Share"}
+                </span>
+              </button>
+              {shareOpen && shareToken ? (
+                <div className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-lg">
+                  <p className="text-xs font-medium text-[var(--text)]">
+                    Share with a colleague
+                  </p>
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                    Logged-in users on this server can open the link (read-only).
+                  </p>
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    className="mt-2 w-full truncate rounded-lg border border-[var(--border)] bg-[var(--select-bg)] px-2 py-1.5 text-[11px] text-[var(--text)]"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyShare()}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[11px] font-medium text-white"
+                    >
+                      {shareCopied ? <Check size={12} /> : <Link2 size={12} />}
+                      {shareCopied ? "Copied" : "Copy link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateShare()}
+                      disabled={shareBusy}
+                      className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)]"
+                    >
+                      New link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRevokeShare()}
+                      disabled={shareBusy}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--danger)] hover:bg-[var(--hover)]"
+                    >
+                      <Link2Off size={12} />
+                      Revoke
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <ThemeToggle size="sm" />
         </header>
 
@@ -958,6 +1472,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           </div>
                         )}
                       </div>
+                      {!isUser && !message.isStreaming ? (
+                        <KnowledgeCitations sources={message.sources} />
+                      ) : null}
                       {!isSending && !isEditing ? (
                         <div
                           className={`mt-1 flex items-center gap-1 ${
@@ -981,14 +1498,37 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             </button>
                           ) : null}
                           {!isUser && isLastAssistant && message.content ? (
-                            <button
-                              type="button"
-                              onClick={() => void handleRegenerate()}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                            >
-                              <RefreshCw size={12} />
-                              Regenerate
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void handleRewrite("shorter")}
+                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              >
+                                Shorter
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleRewrite("formal")}
+                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              >
+                                More formal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleRewrite("continue")}
+                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              >
+                                Continue
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleRegenerate()}
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              >
+                                <RefreshCw size={12} />
+                                Regenerate
+                              </button>
+                            </>
                           ) : null}
                         </div>
                       ) : null}

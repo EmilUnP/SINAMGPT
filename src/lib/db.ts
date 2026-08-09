@@ -31,15 +31,28 @@ const ensureSchema = (database: Database.Database) => {
       last_active_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_by TEXT,
+      is_archived INTEGER NOT NULL DEFAULT 0 CHECK (is_archived IN (0, 1)),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT 'New chat',
       model TEXT NOT NULL,
+      project_id TEXT,
+      share_token TEXT UNIQUE,
       is_pinned INTEGER NOT NULL DEFAULT 0 CHECK (is_pinned IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS messages (
@@ -47,6 +60,7 @@ const ensureSchema = (database: Database.Database) => {
       conversation_id TEXT NOT NULL,
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
       content TEXT NOT NULL,
+      sources TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -104,15 +118,20 @@ const ensureSchema = (database: Database.Database) => {
       ),
       content TEXT NOT NULL,
       tags TEXT NOT NULL DEFAULT '',
+      project_id TEXT,
       is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
       priority INTEGER NOT NULL DEFAULT 50,
       always_include INTEGER NOT NULL DEFAULT 0 CHECK (always_include IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_knowledge_enabled
       ON knowledge_docs(is_enabled, priority DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_conversations_project
+      ON conversations(project_id, updated_at DESC);
   `);
 
   // Seed guest defaults once (admin can change later)
@@ -166,6 +185,23 @@ const ensureSchema = (database: Database.Database) => {
       `ALTER TABLE models ADD COLUMN backend TEXT NOT NULL DEFAULT 'ollama'`,
     );
   }
+  if (!hasColumn(database, "messages", "sources")) {
+    database.exec(`ALTER TABLE messages ADD COLUMN sources TEXT`);
+  }
+  if (!hasColumn(database, "conversations", "project_id")) {
+    database.exec(`ALTER TABLE conversations ADD COLUMN project_id TEXT`);
+  }
+  if (!hasColumn(database, "knowledge_docs", "project_id")) {
+    database.exec(`ALTER TABLE knowledge_docs ADD COLUMN project_id TEXT`);
+  }
+  if (!hasColumn(database, "conversations", "share_token")) {
+    database.exec(`ALTER TABLE conversations ADD COLUMN share_token TEXT`);
+  }
+  database.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_share_token
+     ON conversations(share_token)
+     WHERE share_token IS NOT NULL`,
+  );
 };
 
 const ensureAdminUser = (database: Database.Database) => {

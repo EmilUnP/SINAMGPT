@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { History, Infinity as InfinityIcon, ShieldCheck } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
@@ -15,8 +15,16 @@ type AuthFormProps = {
   mode: Mode;
 };
 
+const safeNextPath = (raw: string | null): string | null => {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  if (raw.includes("://")) return null;
+  return raw;
+};
+
 export const AuthForm = ({ mode }: AuthFormProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,6 +33,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   const [guestEnabled, setGuestEnabled] = useState(true);
 
   const isLogin = mode === "login";
+  const nextPath = safeNextPath(searchParams.get("next"));
 
   useEffect(() => {
     const load = async () => {
@@ -72,7 +81,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         return;
       }
 
-      router.push("/chat");
+      router.push(nextPath || "/chat");
       router.refresh();
     } catch {
       setError("Network error. Please try again.");

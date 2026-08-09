@@ -21,6 +21,7 @@ export type KnowledgeDoc = {
   category: KnowledgeCategory;
   content: string;
   tags: string;
+  project_id: string | null;
   is_enabled: number;
   priority: number;
   always_include: number;
@@ -32,14 +33,24 @@ export type KnowledgeSettings = {
   enabled: boolean;
   applyToGuests: boolean;
   applyToUsers: boolean;
+  /** Show “From: …” under replies that used knowledge */
+  showCitations: boolean;
   maxDocs: number;
   maxChars: number;
+};
+
+/** Lightweight citation shown under assistant replies */
+export type KnowledgeSource = {
+  id: string;
+  title: string;
+  category: KnowledgeCategory;
 };
 
 export const DEFAULT_KNOWLEDGE_SETTINGS: KnowledgeSettings = {
   enabled: true,
   applyToGuests: true,
   applyToUsers: true,
+  showCitations: true,
   maxDocs: 4,
   maxChars: 4500,
 };
@@ -112,6 +123,7 @@ export const createKnowledgeDoc = (input: {
   category: KnowledgeCategory;
   content: string;
   tags?: string;
+  project_id?: string | null;
   priority?: number;
   always_include?: boolean;
   is_enabled?: boolean;
@@ -120,8 +132,8 @@ export const createKnowledgeDoc = (input: {
   getDb()
     .prepare(
       `INSERT INTO knowledge_docs
-       (id, title, category, content, tags, is_enabled, priority, always_include)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, title, category, content, tags, project_id, is_enabled, priority, always_include)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -129,6 +141,7 @@ export const createKnowledgeDoc = (input: {
       input.category,
       input.content.trim().slice(0, 20000),
       (input.tags ?? "").trim().slice(0, 500),
+      input.project_id?.trim() || null,
       input.is_enabled === false ? 0 : 1,
       Math.max(0, Math.min(100, input.priority ?? 50)),
       input.always_include ? 1 : 0,
@@ -143,6 +156,7 @@ export const updateKnowledgeDoc = (
     category: KnowledgeCategory;
     content: string;
     tags: string;
+    project_id: string | null;
     priority: number;
     always_include: boolean;
     is_enabled: boolean;
@@ -151,6 +165,11 @@ export const updateKnowledgeDoc = (
   const current = getKnowledgeDoc(id);
   if (!current) return null;
 
+  const nextProjectId =
+    input.project_id === undefined
+      ? current.project_id
+      : input.project_id?.trim() || null;
+
   getDb()
     .prepare(
       `UPDATE knowledge_docs SET
@@ -158,6 +177,7 @@ export const updateKnowledgeDoc = (
         category = ?,
         content = ?,
         tags = ?,
+        project_id = ?,
         priority = ?,
         always_include = ?,
         is_enabled = ?,
@@ -169,6 +189,7 @@ export const updateKnowledgeDoc = (
       input.category ?? current.category,
       (input.content ?? current.content).trim().slice(0, 20000),
       (input.tags ?? current.tags).trim().slice(0, 500),
+      nextProjectId,
       Math.max(0, Math.min(100, input.priority ?? current.priority)),
       input.always_include === undefined
         ? current.always_include
@@ -194,6 +215,7 @@ export const deleteKnowledgeDoc = (id: string) => {
 export const retrieveKnowledge = (
   query: string,
   settings = getKnowledgeSettings(),
+  projectId?: string | null,
 ): KnowledgeDoc[] => {
   if (!settings.enabled) return [];
 
@@ -202,6 +224,7 @@ export const retrieveKnowledge = (
 
   const queryTokens = new Set(expandQueryTokens(query));
   const companyIntent = looksLikeCompanyQuestion(query);
+  const activeProject = projectId?.trim() || null;
 
   const scored = docs.map((doc) => {
     const hay = normalizeMultilangText(
@@ -225,6 +248,12 @@ export const retrieveKnowledge = (
       (doc.category === "company" || doc.category === "product")
     ) {
       score += 5;
+    }
+
+    // Prefer project-scoped docs when chatting inside a project
+    if (activeProject) {
+      if (doc.project_id === activeProject) score += 12;
+      else if (doc.project_id && doc.project_id !== activeProject) score -= 4;
     }
 
     return { doc, score };
@@ -259,37 +288,64 @@ export const retrieveKnowledge = (
   return picked;
 };
 
-export const buildKnowledgeBlock = (
+export const resolveKnowledgeContext = (
   query: string,
   audience: "guest" | "user",
-): string => {
+  projectId?: string | null,
+): { block: string; sources: KnowledgeSource[]; showCitations: boolean } => {
   const settings = getKnowledgeSettings();
-  if (!settings.enabled) return "";
-  if (audience === "guest" && !settings.applyToGuests) return "";
-  if (audience === "user" && !settings.applyToUsers) return "";
+  if (!settings.enabled) {
+    return { block: "", sources: [], showCitations: false };
+  }
+  if (audience === "guest" && !settings.applyToGuests) {
+    return { block: "", sources: [], showCitations: false };
+  }
+  if (audience === "user" && !settings.applyToUsers) {
+    return { block: "", sources: [], showCitations: false };
+  }
 
-  const docs = retrieveKnowledge(query, settings);
-  if (!docs.length) return "";
+  const docs = retrieveKnowledge(query, settings, projectId);
+  if (!docs.length) {
+    return { block: "", sources: [], showCitations: settings.showCitations };
+  }
 
   const chunks: string[] = [
     "COMPANY KNOWLEDGE (trusted local facts — use when answering about SINAM / company / projects; do not invent facts beyond this):",
     "Answer in the user's language only (one language for the whole reply — no parenthetical translations). Adapt these facts into that language; keep names, phones, emails, and URLs exact.",
   ];
 
+  const usedDocs: KnowledgeDoc[] = [];
   let used = chunks.join("\n").length;
   for (const doc of docs) {
-    const block = `\n### ${doc.title} [${doc.category}]\n${doc.content.trim()}`;
-    if (used + block.length > settings.maxChars) break;
-    chunks.push(block);
-    used += block.length;
+    const piece = `\n### ${doc.title} [${doc.category}]\n${doc.content.trim()}`;
+    if (used + piece.length > settings.maxChars) break;
+    chunks.push(piece);
+    usedDocs.push(doc);
+    used += piece.length;
   }
 
   chunks.push(
     "\nIf the user asks something not covered above, say (in their language) that you don't have that internal detail yet and suggest contacting office@sinam.net or checking https://sinam.net.",
   );
 
-  return chunks.join("\n");
+  const sources: KnowledgeSource[] = usedDocs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    category: d.category,
+  }));
+
+  return {
+    block: chunks.join("\n"),
+    sources,
+    showCitations: settings.showCitations,
+  };
 };
+
+/** @deprecated Prefer resolveKnowledgeContext — kept for simple string callers */
+export const buildKnowledgeBlock = (
+  query: string,
+  audience: "guest" | "user",
+): string => resolveKnowledgeContext(query, audience).block;
 
 export const SINAM_SEED_DOCS: Array<{
   title: string;

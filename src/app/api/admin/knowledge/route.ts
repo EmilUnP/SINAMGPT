@@ -27,6 +27,7 @@ const createSchema = z.object({
   category: z.enum(["company", "project", "product", "faq", "other"]),
   content: z.string().trim().min(10).max(20000),
   tags: z.string().max(500).optional(),
+  project_id: z.string().trim().min(1).max(64).nullable().optional(),
   priority: z.number().int().min(0).max(100).optional(),
   always_include: z.boolean().optional(),
   is_enabled: z.boolean().optional(),
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       enabled: z.boolean().optional(),
       applyToGuests: z.boolean().optional(),
       applyToUsers: z.boolean().optional(),
+      showCitations: z.boolean().optional(),
       maxDocs: z.number().int().min(1).max(10).optional(),
       maxChars: z.number().int().min(500).max(12000).optional(),
     });

@@ -16,15 +16,18 @@ SINAMGPT uses **semantic versioning**: `MAJOR.MINOR.PATCH`.
 | `CHANGELOG.md` | Human-readable release notes |
 | Git tag `vX.Y.Z` | Immutable release marker on GitHub |
 
-Keep `package.json` and the latest changelog section in sync.
+Keep `package.json`, `package-lock.json` (root `version`), README **Current version**, and the latest changelog section in sync.
+
+**Current release:** `1.1.0` (see [CHANGELOG.md](../CHANGELOG.md)).
 
 ## Release checklist
 
 1. Move items from **Unreleased** into a new `## [X.Y.Z] — YYYY-MM-DD` section in `CHANGELOG.md`.
-2. Set `"version": "X.Y.Z"` in `package.json`.
-3. Commit: `chore(release): vX.Y.Z`
-4. Tag: `git tag -a vX.Y.Z -m "SINAMGPT vX.Y.Z"`
-5. Push: `git push origin main --tags`
+2. Set `"version": "X.Y.Z"` in `package.json` (and root entry in `package-lock.json`).
+3. Update README **Current version** and any roadmap “shipped in” notes if needed.
+4. Commit: `chore(release): vX.Y.Z`
+5. Tag: `git tag -a vX.Y.Z -m "SINAMGPT vX.Y.Z"`
+6. Push: `git push origin main --tags`
 
 ## Changelog style
 

@@ -12,6 +12,8 @@ const KEY_GUEST_ENABLED = "guest_enabled";
 const KEY_GUEST_HISTORY_LIMIT = "guest_history_limit";
 const KEY_REGISTRATION_ENABLED = "registration_enabled";
 const KEY_DEFAULT_MODEL = "default_model";
+const KEY_FAST_MODEL = "fast_model";
+const KEY_SMART_MODEL = "smart_model";
 const KEY_USER_MAX_CHARS = "user_max_message_chars";
 const KEY_USER_HISTORY_LIMIT = "user_history_limit";
 const KEY_TEMPERATURE = "chat_temperature";
@@ -34,6 +36,10 @@ export type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
+  /** Preset for chat “Fast” toggle (empty = fall back to default) */
+  fastModel: string;
+  /** Preset for chat “Smart” toggle (empty = fall back to default) */
+  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
@@ -152,6 +158,24 @@ export const setDefaultModelSetting = (model: string) => {
   return safe;
 };
 
+export const getFastModelSetting = (): string =>
+  (getSetting(KEY_FAST_MODEL) ?? "").trim();
+
+export const setFastModelSetting = (model: string) => {
+  const safe = model.trim().slice(0, 120);
+  setSetting(KEY_FAST_MODEL, safe);
+  return safe;
+};
+
+export const getSmartModelSetting = (): string =>
+  (getSetting(KEY_SMART_MODEL) ?? "").trim();
+
+export const setSmartModelSetting = (model: string) => {
+  const safe = model.trim().slice(0, 120);
+  setSetting(KEY_SMART_MODEL, safe);
+  return safe;
+};
+
 export const getUserMaxCharsSetting = (): number =>
   parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 12000, 500, 32000);
 
@@ -215,6 +239,8 @@ export const getAppSettings = (): AppSettings => ({
   guestHistoryLimit: getGuestHistoryLimitSetting(),
   registrationEnabled: getRegistrationEnabledSetting(),
   defaultModel: getDefaultModelSetting(),
+  fastModel: getFastModelSetting(),
+  smartModel: getSmartModelSetting(),
   userMaxMessageChars: getUserMaxCharsSetting(),
   userHistoryLimit: getUserHistoryLimitSetting(),
   temperature: getTemperatureSetting(),
@@ -360,6 +386,8 @@ export const isModelEnabled = (name: string): boolean => {
 export const getEnabledModels = async (): Promise<{
   models: PublicModel[];
   defaultModel: string;
+  fastModel: string;
+  smartModel: string;
 }> => {
   const all = await syncModelsFromOllama();
   const enabled = all.filter((m) => m.is_enabled);
@@ -369,8 +397,15 @@ export const getEnabledModels = async (): Promise<{
     preferred && names.includes(preferred)
       ? preferred
       : getDefaultModel(names);
+  const pickPreset = (configured: string) => {
+    const c = configured.trim();
+    if (c && names.includes(c)) return c;
+    return defaultModel;
+  };
   return {
     models: enabled.map(({ is_enabled: _ignored, ...rest }) => rest),
     defaultModel,
+    fastModel: pickPreset(getFastModelSetting()),
+    smartModel: pickPreset(getSmartModelSetting()),
   };
 };

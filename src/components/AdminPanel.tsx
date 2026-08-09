@@ -103,6 +103,8 @@ type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
+  fastModel: string;
+  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
@@ -190,6 +192,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     guestHistoryLimit: "10",
     registrationEnabled: true,
     defaultModel: "",
+    fastModel: "",
+    smartModel: "",
     userMaxMessageChars: "12000",
     userHistoryLimit: "40",
     temperature: "0.7",
@@ -299,6 +303,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit ?? 10),
           registrationEnabled: s.registrationEnabled ?? true,
           defaultModel: s.defaultModel ?? "",
+          fastModel: s.fastModel ?? "",
+          smartModel: s.smartModel ?? "",
           userMaxMessageChars: String(s.userMaxMessageChars ?? 12000),
           userHistoryLimit: String(s.userHistoryLimit ?? 40),
           temperature: String(s.temperature ?? 0.7),
@@ -631,6 +637,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: Math.floor(guestHistoryLimit),
           registrationEnabled: settingsDraft.registrationEnabled,
           defaultModel: settingsDraft.defaultModel.trim(),
+          fastModel: settingsDraft.fastModel.trim(),
+          smartModel: settingsDraft.smartModel.trim(),
           userMaxMessageChars: Math.floor(userMaxMessageChars),
           userHistoryLimit: Math.floor(userHistoryLimit),
           temperature,
@@ -656,6 +664,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit),
           registrationEnabled: s.registrationEnabled,
           defaultModel: s.defaultModel,
+          fastModel: s.fastModel,
+          smartModel: s.smartModel,
           userMaxMessageChars: String(s.userMaxMessageChars),
           userHistoryLimit: String(s.userHistoryLimit),
           temperature: String(s.temperature),
@@ -1631,6 +1641,54 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       </select>
                       <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
                         Used when guest/user opens a new chat
+                      </span>
+                    </label>
+                    <label className="block text-sm text-[var(--admin-fg)]">
+                      Fast model
+                      <select
+                        value={settingsDraft.fastModel}
+                        onChange={(e) =>
+                          setSettingsDraft((d) => ({
+                            ...d,
+                            fastModel: e.target.value,
+                          }))
+                        }
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
+                      >
+                        <option value="">Same as default</option>
+                        {models.map((m) => (
+                          <option key={m.name} value={m.name}>
+                            {m.display_name || m.name}
+                            {!m.is_enabled ? " (disabled)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
+                        Chat “Fast” preset
+                      </span>
+                    </label>
+                    <label className="block text-sm text-[var(--admin-fg)]">
+                      Smart model
+                      <select
+                        value={settingsDraft.smartModel}
+                        onChange={(e) =>
+                          setSettingsDraft((d) => ({
+                            ...d,
+                            smartModel: e.target.value,
+                          }))
+                        }
+                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
+                      >
+                        <option value="">Same as default</option>
+                        {models.map((m) => (
+                          <option key={m.name} value={m.name}>
+                            {m.display_name || m.name}
+                            {!m.is_enabled ? " (disabled)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
+                        Chat “Smart” preset
                       </span>
                     </label>
                     <label className="block text-sm text-[var(--admin-fg)]">

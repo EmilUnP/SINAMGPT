@@ -16,6 +16,7 @@ import type {
   KnowledgeDoc,
   KnowledgeSettings,
 } from "@/lib/knowledge";
+import type { Project } from "@/lib/types";
 
 type Props = {
   onNotice: (message: string) => void;
@@ -37,6 +38,7 @@ const emptyForm = {
   category: "company" as KnowledgeCategory,
   content: "",
   tags: "",
+  project_id: "" as string,
   priority: 50,
   always_include: false,
   is_enabled: true,
@@ -44,6 +46,7 @@ const emptyForm = {
 
 export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<KnowledgeSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,18 +63,25 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/knowledge");
-      const data = (await res.json()) as {
+      const [knowledgeRes, projectsRes] = await Promise.all([
+        fetch("/api/admin/knowledge"),
+        fetch("/api/projects"),
+      ]);
+      const data = (await knowledgeRes.json()) as {
         docs?: KnowledgeDoc[];
         settings?: KnowledgeSettings;
         error?: string;
       };
-      if (!res.ok) {
+      if (!knowledgeRes.ok) {
         onError(data.error || "Failed to load knowledge");
         return;
       }
       setDocs(data.docs ?? []);
       setSettings(data.settings ?? null);
+      if (projectsRes.ok) {
+        const pdata = (await projectsRes.json()) as { projects?: Project[] };
+        setProjects(pdata.projects ?? []);
+      }
     } catch {
       onError("Network error loading knowledge");
     } finally {
@@ -149,12 +159,16 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
       category: doc.category,
       content: doc.content,
       tags: doc.tags,
+      project_id: doc.project_id ?? "",
       priority: doc.priority,
       always_include: doc.always_include === 1,
       is_enabled: doc.is_enabled === 1,
     });
     setModalOpen(true);
   };
+
+  const projectName = (id: string | null) =>
+    id ? projects.find((p) => p.id === id)?.name ?? "Project" : null;
 
   const handleSaveDoc = async () => {
     if (!form.title.trim() || form.content.trim().length < 10) {
@@ -163,12 +177,16 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
     }
     setIsSaving(true);
     try {
+      const payload = {
+        ...form,
+        project_id: form.project_id.trim() || null,
+      };
       const res = await fetch(
         editingId ? `/api/admin/knowledge/${editingId}` : "/api/admin/knowledge",
         {
           method: editingId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         },
       );
       const data = (await res.json()) as { error?: string };
@@ -335,6 +353,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 ["enabled", "On"],
                 ["applyToGuests", "Guests"],
                 ["applyToUsers", "Users"],
+                ["showCitations", "Citations"],
               ] as const
             ).map(([key, label]) => (
               <label
@@ -504,6 +523,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                       {doc.tags ? (
                         <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-[var(--admin-muted)]">
                           {doc.tags}
+                        </p>
+                      ) : null}
+                      {doc.project_id ? (
+                        <p className="mt-0.5 max-w-[200px] truncate text-[11px] text-[var(--accent)]">
+                          {projectName(doc.project_id)}
                         </p>
                       ) : null}
                     </td>
@@ -680,7 +704,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 />
               </label>
 
-              <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_120px]">
                 <label className="block text-sm text-[var(--admin-fg)]">
                   Tags
                   <input
@@ -691,6 +715,23 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none"
                     placeholder="sinam, hr, leave"
                   />
+                </label>
+                <label className="block text-sm text-[var(--admin-fg)]">
+                  Project
+                  <select
+                    value={form.project_id}
+                    onChange={(e) =>
+                      setForm({ ...form, project_id: e.target.value })
+                    }
+                    className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none"
+                  >
+                    <option value="">All chats (global)</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="block text-sm text-[var(--admin-fg)]">
                   Priority
