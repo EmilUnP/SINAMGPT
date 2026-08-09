@@ -37,24 +37,25 @@ const formatDate = (value: string) => {
 const categoryTone = (category: string) => {
   switch (category) {
     case "auth":
-      return "bg-sky-500/15 text-sky-700 dark:text-sky-200";
+      return "admin-tag admin-tag-auth";
     case "admin":
-      return "bg-violet-500/15 text-violet-700 dark:text-violet-200";
+      return "admin-tag admin-tag-admin";
     case "share":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200";
+      return "admin-tag admin-tag-share";
     case "project":
-      return "bg-teal-500/15 text-teal-700 dark:text-teal-200";
+      return "admin-tag admin-tag-project";
     case "knowledge":
-      return "bg-amber-500/15 text-amber-800 dark:text-amber-100";
+      return "admin-tag admin-tag-knowledge";
     case "settings":
+      return "admin-tag admin-tag-settings";
     case "models":
-      return "bg-orange-500/15 text-orange-800 dark:text-orange-100";
+      return "admin-tag admin-tag-models";
     case "guardrails":
-      return "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-200";
+      return "admin-tag admin-tag-guardrails";
     case "guardrail":
-      return "bg-rose-500/15 text-rose-700 dark:text-rose-200";
+      return "admin-tag admin-tag-guardrail";
     default:
-      return "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]";
+      return "admin-tag admin-tag-neutral";
   }
 };
 
@@ -150,9 +151,7 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
               return (
                 <li key={ev.id} className="px-4 py-3 text-xs">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-md px-2 py-0.5 font-semibold uppercase ${categoryTone(ev.category)}`}
-                    >
+                    <span className={categoryTone(ev.category)}>
                       {ev.category}
                     </span>
                     <span className="font-mono text-[var(--admin-fg)]">

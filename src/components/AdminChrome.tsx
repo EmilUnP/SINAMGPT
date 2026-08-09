@@ -189,7 +189,7 @@ export const AdminToggleCard = ({
 );
 
 export const adminFieldClass =
-  "mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)] px-3 py-2 text-sm text-[var(--admin-fg)] outline-none transition placeholder:text-[var(--admin-muted)]/40 focus:border-[var(--accent)]/50 focus:ring-2 focus:ring-[var(--accent)]/15";
+  "mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)] px-3 py-2.5 text-sm text-[var(--admin-fg)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition placeholder:text-[var(--admin-muted)]/45 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20";
 
 export const adminBtnPrimary =
   "inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60";

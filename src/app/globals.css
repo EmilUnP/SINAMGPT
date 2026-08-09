@@ -65,8 +65,8 @@ html {
   --particle-glow: rgba(37, 99, 235, 0.2);
   --admin-surface: #ffffff;
   --admin-surface-soft: #f1f5f9;
-  --admin-border: rgba(15, 23, 42, 0.12);
-  --admin-muted: #475569;
+  --admin-border: rgba(15, 23, 42, 0.16);
+  --admin-muted: #334155;
   --admin-fg: #0f172a;
   --admin-input: #ffffff;
   --status-ok-bg: #d1fae5;
@@ -375,6 +375,157 @@ html[data-theme="dark"] ::selection {
 html[data-theme="dark"] .admin-card {
   box-shadow: none;
   background: color-mix(in srgb, var(--admin-surface) 90%, transparent);
+}
+
+/* Admin tables — clean thead in light + dark (no sky wash) */
+.admin-table {
+  min-width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.admin-table thead {
+  background: var(--admin-surface-soft);
+  color: var(--admin-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table th {
+  padding: 0.7rem 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--admin-border);
+  vertical-align: top;
+}
+
+.admin-table tbody tr:hover {
+  background: color-mix(in srgb, var(--hover) 80%, transparent);
+}
+
+.admin-table tbody tr:first-child td {
+  border-top: none;
+}
+
+.admin-bar {
+  background: color-mix(in srgb, var(--accent) 75%, #38bdf8);
+}
+
+html[data-theme="dark"] .admin-bar {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--accent) 85%, transparent),
+    color-mix(in srgb, #38bdf8 70%, transparent)
+  );
+}
+
+/* Admin category / severity tags — readable in light + data-theme dark
+   (do not use Tailwind dark: — app theme is html[data-theme], not .dark) */
+.admin-tag {
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+
+.admin-tag-auth {
+  background: #e0f2fe;
+  color: #075985;
+}
+.admin-tag-admin {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.admin-tag-share {
+  background: #d1fae5;
+  color: #065f46;
+}
+.admin-tag-project {
+  background: #ccfbf1;
+  color: #115e59;
+}
+.admin-tag-knowledge {
+  background: #fef3c7;
+  color: #92400e;
+}
+.admin-tag-settings,
+.admin-tag-models {
+  background: #ffedd5;
+  color: #9a3412;
+}
+.admin-tag-guardrails {
+  background: #fae8ff;
+  color: #86198f;
+}
+.admin-tag-guardrail,
+.admin-tag-block {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.admin-tag-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+.admin-tag-allow {
+  background: #d1fae5;
+  color: #065f46;
+}
+.admin-tag-neutral {
+  background: var(--chip-info-bg);
+  color: var(--admin-muted);
+}
+
+html[data-theme="dark"] .admin-tag-auth {
+  background: rgba(14, 165, 233, 0.18);
+  color: #7dd3fc;
+}
+html[data-theme="dark"] .admin-tag-admin {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+html[data-theme="dark"] .admin-tag-share {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+html[data-theme="dark"] .admin-tag-project {
+  background: rgba(20, 184, 166, 0.18);
+  color: #5eead4;
+}
+html[data-theme="dark"] .admin-tag-knowledge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+html[data-theme="dark"] .admin-tag-settings,
+html[data-theme="dark"] .admin-tag-models {
+  background: rgba(249, 115, 22, 0.18);
+  color: #fdba74;
+}
+html[data-theme="dark"] .admin-tag-guardrails {
+  background: rgba(217, 70, 239, 0.18);
+  color: #f0abfc;
+}
+html[data-theme="dark"] .admin-tag-guardrail,
+html[data-theme="dark"] .admin-tag-block {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+html[data-theme="dark"] .admin-tag-warn {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+html[data-theme="dark"] .admin-tag-allow {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
 }
 
 .home-markdown .markdown-body,

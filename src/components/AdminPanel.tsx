@@ -31,6 +31,7 @@ import sinamLogo from "@/assets/sinam_logo.png";
 import { AdminAuditPanel } from "@/components/AdminAuditPanel";
 import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
+import { AdminSettingsPanel } from "@/components/AdminSettingsPanel";
 import { AdminUsagePanel } from "@/components/AdminUsagePanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { AdminUserRow, User } from "@/lib/types";
@@ -1220,18 +1221,18 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3 font-medium">User</th>
-                    <th className="px-4 py-3 font-medium">Role</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Registered</th>
-                    <th className="px-4 py-3 font-medium">Last active</th>
-                    <th className="px-4 py-3 font-medium">Chats</th>
-                    <th className="px-4 py-3 font-medium">Msgs</th>
-                    <th className="px-4 py-3 font-medium">Prompts</th>
-                    <th className="px-4 py-3 font-medium">Actions</th>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Last active</th>
+                    <th>Chats</th>
+                    <th>Msgs</th>
+                    <th>Prompts</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1393,17 +1394,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+                <table className="admin-table">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2.5 font-medium">Model id</th>
-                      <th className="px-4 py-2.5 font-medium">Backend</th>
-                      <th className="px-4 py-2.5 font-medium">Size</th>
-                      <th className="min-w-[220px] px-4 py-2.5 font-medium">
-                        Display name
-                      </th>
-                      <th className="px-4 py-2.5 font-medium">Status</th>
-                      <th className="px-4 py-2.5 font-medium">Actions</th>
+                      <th>Model id</th>
+                      <th>Backend</th>
+                      <th>Size</th>
+                      <th className="min-w-[220px]">Display name</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1507,332 +1506,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         ) : null}
 
         {tab === "settings" ? (
-          <div className="animate-fade-up space-y-4">
-            <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
-              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
-                <div>
-                  <h2 className="text-sm font-semibold">App settings</h2>
-                  <p className="text-xs text-[var(--admin-muted)]">
-                    Access, defaults, context limits, and generation behavior
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={savingSettings}
-                  onClick={() => void handleSaveSettings()}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400 disabled:opacity-60"
-                >
-                  {savingSettings ? "Saving…" : "Save settings"}
-                </button>
-              </div>
-
-              <div className="space-y-5 px-4 py-5">
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
-                    Guest try-chat
-                  </h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-3 text-sm sm:col-span-2 lg:col-span-1">
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.guestEnabled}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            guestEnabled: e.target.checked,
-                          }))
-                        }
-                      />
-                      Guest chat enabled
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Daily messages
-                      <input
-                        type="number"
-                        min={0}
-                        max={1000}
-                        value={settingsDraft.guestDailyLimit}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            guestDailyLimit: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        0 = guests blocked by quota
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Max message chars
-                      <input
-                        type="number"
-                        min={100}
-                        max={20000}
-                        value={settingsDraft.guestMaxMessageChars}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            guestMaxMessageChars: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      History turns
-                      <input
-                        type="number"
-                        min={0}
-                        max={40}
-                        value={settingsDraft.guestHistoryLimit}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            guestHistoryLimit: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        Past messages sent to the model
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="border-t border-[var(--admin-border)] pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
-                    Accounts
-                  </h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.registrationEnabled}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            registrationEnabled: e.target.checked,
-                          }))
-                        }
-                      />
-                      Allow new user registration
-                    </label>
-                    <p className="rounded-xl border border-[var(--admin-border)] px-3 py-3 text-xs text-[var(--admin-muted)]">
-                      Logged-in chat stays{" "}
-                      <span className="font-medium text-[var(--status-ok-fg)]">
-                        unlimited
-                      </span>{" "}
-                      by message count. Use max chars / history below to control
-                      load.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-[var(--admin-border)] pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
-                    Chat & model defaults
-                  </h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <label className="block text-sm text-[var(--admin-fg)] sm:col-span-2 lg:col-span-1">
-                      Default model
-                      <select
-                        value={settingsDraft.defaultModel}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            defaultModel: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      >
-                        <option value="">First enabled / env default</option>
-                        {models.map((m) => (
-                          <option key={m.name} value={m.name}>
-                            {m.display_name || m.name}
-                            {!m.is_enabled ? " (disabled)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        Used when guest/user opens a new chat
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Fast model
-                      <select
-                        value={settingsDraft.fastModel}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            fastModel: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      >
-                        <option value="">Same as default</option>
-                        {models.map((m) => (
-                          <option key={m.name} value={m.name}>
-                            {m.display_name || m.name}
-                            {!m.is_enabled ? " (disabled)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        Chat “Fast” preset
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Smart model
-                      <select
-                        value={settingsDraft.smartModel}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            smartModel: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      >
-                        <option value="">Same as default</option>
-                        {models.map((m) => (
-                          <option key={m.name} value={m.name}>
-                            {m.display_name || m.name}
-                            {!m.is_enabled ? " (disabled)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        Chat “Smart” preset
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      User max message chars
-                      <input
-                        type="number"
-                        min={500}
-                        max={32000}
-                        value={settingsDraft.userMaxMessageChars}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            userMaxMessageChars: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      User history messages
-                      <input
-                        type="number"
-                        min={0}
-                        max={200}
-                        value={settingsDraft.userHistoryLimit}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            userHistoryLimit: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        0 = send full conversation to the model
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="border-t border-[var(--admin-border)] pt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
-                    Generation
-                  </h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Temperature
-                      <input
-                        type="number"
-                        min={0}
-                        max={2}
-                        step={0.05}
-                        value={settingsDraft.temperature}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            temperature: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        0 = focused · 0.7 default · 1.2+ more creative
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Max reply tokens
-                      <input
-                        type="number"
-                        min={-1}
-                        max={8192}
-                        value={settingsDraft.numPredict}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            numPredict: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        -1 = backend default · lower = shorter/faster replies
-                      </span>
-                    </label>
-                    <label className="block text-sm text-[var(--admin-fg)]">
-                      Top-p (nucleus)
-                      <input
-                        type="number"
-                        min={0.05}
-                        max={1}
-                        step={0.05}
-                        value={settingsDraft.topP}
-                        onChange={(e) =>
-                          setSettingsDraft((d) => ({
-                            ...d,
-                            topP: e.target.value,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 outline-none focus:border-[var(--accent)]/50"
-                      />
-                      <span className="mt-1 block text-[11px] text-[var(--admin-muted)]">
-                        0.9 default · lower = tighter/safer · works on Ollama +
-                        vLLM
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
-                <p className="text-xs text-[var(--admin-muted)]">
-                  Current saved default model:{" "}
-                  <span className="text-[var(--admin-muted)]">
-                    {settings?.defaultModel || "env / first enabled"}
-                  </span>
-                </p>
-                <button
-                  type="button"
-                  disabled={savingSettings}
-                  onClick={() => void handleSaveSettings()}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {savingSettings ? "Saving…" : "Save settings"}
-                </button>
-              </div>
-            </section>
-          </div>
+          <AdminSettingsPanel
+            draft={settingsDraft}
+            onChange={setSettingsDraft}
+            models={models}
+            savedDefaultModel={settings?.defaultModel}
+            isSaving={savingSettings}
+            onSave={() => void handleSaveSettings()}
+          />
         ) : null}
       </main>
     </div>

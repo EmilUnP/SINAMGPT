@@ -326,24 +326,38 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
     }
   };
 
-  const handleSeed = async (replaceAll: boolean) => {
-    if (
-      replaceAll &&
-      !window.confirm(
-        "Replace ALL knowledge docs with the official SINAM starter pack from sinam.net?",
-      )
-    ) {
-      return;
+  const handleSeed = async (mode: "add" | "refresh" | "replace") => {
+    if (mode === "replace") {
+      if (
+        !window.confirm(
+          "Delete ALL knowledge docs and load the official SINAM starter pack? Your custom entries will be removed.",
+        )
+      ) {
+        return;
+      }
+    } else if (mode === "refresh") {
+      if (
+        !window.confirm(
+          "Overwrite matching pack titles with the template text? Admin edits on those titles will be lost. Custom titles are kept.",
+        )
+      ) {
+        return;
+      }
     }
     setIsSaving(true);
     try {
       const res = await fetch("/api/admin/knowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "seed_sinam", replaceAll }),
+        body: JSON.stringify({
+          action: "seed_sinam",
+          replaceAll: mode === "replace",
+          overwriteExisting: mode === "refresh",
+        }),
       });
       const data = (await res.json()) as {
         count?: number;
+        updated?: number;
         mode?: string;
         docs?: KnowledgeDoc[];
         error?: string;
@@ -353,11 +367,17 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         return;
       }
       setDocs(data.docs ?? []);
-      onNotice(
-        replaceAll
-          ? `Replaced with ${data.count ?? 0} SINAM knowledge entries`
-          : `Added ${data.count ?? 0} missing SINAM entries`,
-      );
+      if (mode === "replace") {
+        onNotice(`Replaced library with ${data.count ?? 0} SINAM entries`);
+      } else if (mode === "refresh") {
+        onNotice(
+          `Pack refreshed — ${data.count ?? 0} added, ${data.updated ?? 0} overwritten`,
+        );
+      } else {
+        onNotice(
+          `Missing pack titles added — ${data.count ?? 0} new (existing left untouched)`,
+        );
+      }
       setTab("library");
     } catch {
       onError("Network error");
@@ -381,7 +401,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
           <AdminPageHeader
             icon={BookOpen}
             title="Company knowledge"
-            description="Local facts injected into chat when a question looks company-related (keyword RAG, EN / AZ / RU / TR). Citations can show which docs were used."
+            description="Living library — edit every entry here. Chat pulls matching docs (keyword RAG, EN / AZ / RU / TR). The SINAM pack is only a starter template; day-to-day updates belong in Admin, not a code deploy."
             actions={
               <button type="button" onClick={openCreate} className={adminBtnPrimary}>
                 <Plus size={14} />
@@ -516,38 +536,12 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             </div>
 
             <AdminHint>
-              <strong className="text-[var(--admin-fg)]">How it works:</strong>{" "}
-              On each message we score docs by keywords/tags (not embeddings).
-              Greetings and chit-chat skip injection so language stays stable.
-              Project-tagged docs get a boost when the chat sits in that
-              project. Turn on citations in Settings so answers show{" "}
-              <em>From: …</em> sources.
+              <strong className="text-[var(--admin-fg)]">Editable here:</strong>{" "}
+              every document title, body, tags, priority, and enable flag.
+              Retrieval scores by keywords/tags (not embeddings). Greetings skip
+              injection. Project-tagged docs boost in that folder. Citations in
+              Settings show <em>From: …</em> sources.
             </AdminHint>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setTab("library")}
-                className={adminBtnGhost}
-              >
-                Open library
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("settings")}
-                className={adminBtnGhost}
-              >
-                Retrieval settings
-              </button>
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={() => void handleSeed(false)}
-                className={adminBtnGhost}
-              >
-                Add SINAM pack
-              </button>
-            </div>
           </div>
         ) : null}
 
@@ -625,17 +619,15 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="border-y border-[var(--admin-border)] bg-[var(--admin-surface-soft)] text-[11px] uppercase tracking-wide text-[var(--admin-muted)]">
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2.5 font-medium">Title</th>
-                    <th className="px-4 py-2.5 font-medium">Category</th>
-                    <th className="px-4 py-2.5 font-medium">Priority</th>
-                    <th className="min-w-[220px] px-4 py-2.5 font-medium">
-                      Preview
-                    </th>
-                    <th className="px-4 py-2.5 font-medium">Status</th>
-                    <th className="px-4 py-2.5 font-medium">Actions</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th className="min-w-[220px]">Preview</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -827,7 +819,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             </div>
 
             <AdminHint>
-              Starter content is based on{" "}
+              <strong className="text-[var(--admin-fg)]">Starter pack</strong>{" "}
+              (from{" "}
               <a
                 href="https://sinam.net"
                 target="_blank"
@@ -836,8 +829,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               >
                 sinam.net
               </a>
-              . “Add pack” fills missing titles only; “Replace pack” wipes the
-              library first.
+              ) is a template only. After first load, keep the library current
+              by editing entries — you should not need a code deploy for product
+              facts. “Add missing” never overwrites admin edits.
             </AdminHint>
 
             <div className="flex flex-wrap gap-2">
@@ -852,18 +846,26 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => void handleSeed(false)}
+                onClick={() => void handleSeed("add")}
                 className={adminBtnGhost}
               >
-                Add SINAM pack
+                Add missing titles
               </button>
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => void handleSeed(true)}
+                onClick={() => void handleSeed("refresh")}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 px-3.5 py-2 text-sm text-[var(--status-warn-fg)] transition hover:bg-amber-500/10 disabled:opacity-60"
               >
-                Replace pack
+                Refresh pack titles
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => void handleSeed("replace")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--status-bad-border)] px-3.5 py-2 text-sm text-[var(--status-bad-fg)] transition hover:bg-[var(--status-bad-bg)] disabled:opacity-60"
+              >
+                Replace entire library
               </button>
             </div>
           </div>

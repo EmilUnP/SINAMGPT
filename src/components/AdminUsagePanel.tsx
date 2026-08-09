@@ -5,12 +5,17 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
-  Gauge,
   Radio,
   Server,
-  Timer,
-  Zap,
 } from "lucide-react";
+import {
+  AdminPageHeader,
+  AdminPanelCard,
+  AdminStatCard,
+  AdminStatGrid,
+  adminBtnGhost,
+  adminFieldClass,
+} from "@/components/AdminChrome";
 
 type LiveRow = {
   id: string;
@@ -178,151 +183,142 @@ export const AdminUsagePanel = () => {
   };
 
   return (
-    <div className="space-y-5 animate-fade-up">
+    <div className="space-y-4 animate-fade-up">
       {error ? (
         <p className="rounded-2xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]">
           {error}
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold">Live AI usage & performance</h2>
-          <p className="text-xs text-[var(--admin-muted)]">
-            Auto-refreshes every 3s · real speed, load, and history
-          </p>
+      <AdminPanelCard>
+        <div className="space-y-4 px-4 py-4">
+          <AdminPageHeader
+            icon={Activity}
+            title="Live usage"
+            description="Auto-refreshes every 3s — speed, load, and request history across backends."
+            actions={
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(data?.backends?.length
+                  ? data.backends
+                  : data?.ollama
+                    ? [
+                        {
+                          backend: "ollama" as const,
+                          ok: data.ollama.ok,
+                          latencyMs: data.ollama.latencyMs,
+                          error: data.ollama.error,
+                        },
+                      ]
+                    : []
+                ).map((b) => (
+                  <span
+                    key={b.backend}
+                    className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
+                  >
+                    <Server size={12} />
+                    {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
+                    {b.ok ? "online" : "down"} · {fmtMs(b.latencyMs)}
+                  </span>
+                ))}
+                <span className="status-pill status-info">
+                  <Radio
+                    size={12}
+                    className={data?.live.length ? "animate-pulse" : ""}
+                  />
+                  {data?.live.length ?? 0} live
+                </span>
+              </div>
+            }
+          />
+
+          <AdminStatGrid>
+            <AdminStatCard
+              label="Requests today"
+              value={isLoading && !data ? "…" : fmtNum(summary?.requests_today)}
+              hint={`${fmtNum(summary?.requests_24h)} last 24h`}
+              tone="info"
+            />
+            <AdminStatCard
+              label="Avg response"
+              value={
+                isLoading && !data
+                  ? "…"
+                  : fmtMs(summary?.avg_duration_ms ?? null)
+              }
+              hint={`First token ${fmtMs(summary?.avg_ttft_ms ?? null)}`}
+            />
+            <AdminStatCard
+              label="Avg speed"
+              value={
+                isLoading && !data
+                  ? "…"
+                  : summary?.avg_tokens_per_sec != null
+                    ? `${summary.avg_tokens_per_sec} t/s`
+                    : "—"
+              }
+              hint={`${fmtNum(summary?.total_requests)} all-time`}
+            />
+            <AdminStatCard
+              label="Errors"
+              value={isLoading && !data ? "…" : fmtNum(summary?.error_requests)}
+              hint={`Guest ${fmtNum(summary?.guest_requests)} · User ${fmtNum(summary?.user_requests)}`}
+              tone={
+                (summary?.error_requests ?? 0) > 0 ? "bad" : "default"
+              }
+            />
+          </AdminStatGrid>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          {(data?.backends?.length
-            ? data.backends
-            : data?.ollama
-              ? [
-                  {
-                    backend: "ollama" as const,
-                    ok: data.ollama.ok,
-                    latencyMs: data.ollama.latencyMs,
-                    error: data.ollama.error,
-                  },
-                ]
-              : []
-          ).map((b) => (
-            <span
-              key={b.backend}
-              className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
-            >
-              <Server size={12} />
-              {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
-              {b.ok ? "online" : "down"} · {fmtMs(b.latencyMs)}
-            </span>
-          ))}
-          <span className="status-pill status-info">
-            <Radio size={12} className={data?.live.length ? "animate-pulse" : ""} />
-            {data?.live.length ?? 0} live
-          </span>
-        </div>
-      </div>
+      </AdminPanelCard>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          {
-            label: "Requests today",
-            value: fmtNum(summary?.requests_today),
-            icon: Activity,
-          },
-          {
-            label: "Avg response",
-            value: fmtMs(summary?.avg_duration_ms ?? null),
-            icon: Timer,
-          },
-          {
-            label: "Avg first token",
-            value: fmtMs(summary?.avg_ttft_ms ?? null),
-            icon: Zap,
-          },
-          {
-            label: "Avg speed",
-            value:
-              summary?.avg_tokens_per_sec != null
-                ? `${summary.avg_tokens_per_sec} t/s`
-                : "—",
-            icon: Gauge,
-          },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 px-4 py-4"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-[var(--admin-muted)]">{card.label}</p>
-              <card.icon size={14} className="text-[var(--accent)]" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">
-              {isLoading && !data ? "…" : card.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "All-time requests", value: fmtNum(summary?.total_requests) },
-          { label: "Last 24h", value: fmtNum(summary?.requests_24h) },
-          { label: "Guest / User", value: `${fmtNum(summary?.guest_requests)} / ${fmtNum(summary?.user_requests)}` },
-          { label: "Errors", value: fmtNum(summary?.error_requests) },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-4 py-3"
-          >
-            <p className="text-xs text-[var(--admin-muted)]">{card.label}</p>
-            <p className="mt-1 text-lg font-semibold">{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90">
+      <AdminPanelCard>
         <div className="border-b border-[var(--admin-border)] px-4 py-3">
-          <h3 className="text-sm font-semibold">Live process</h3>
+          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+            Live process
+          </h3>
           <p className="text-xs text-[var(--admin-muted)]">
-            Requests currently streaming from Ollama right now
+            Generations streaming right now
           </p>
         </div>
         {data?.live.length ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-medium">Who</th>
-                  <th className="px-4 py-3 font-medium">Model</th>
-                  <th className="px-4 py-3 font-medium">Prompt</th>
-                  <th className="px-4 py-3 font-medium">Elapsed</th>
-                  <th className="px-4 py-3 font-medium">TTFT</th>
-                  <th className="px-4 py-3 font-medium">Out chars</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th>Who</th>
+                  <th>Model</th>
+                  <th>Prompt</th>
+                  <th>Elapsed</th>
+                  <th>TTFT</th>
+                  <th>Out chars</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {data.live.map((row) => (
-                  <tr key={row.id} className="border-t border-[var(--admin-border)]">
-                    <td className="px-4 py-3">
-                      <span className="font-medium">{row.username}</span>
+                  <tr key={row.id}>
+                    <td>
+                      <span className="font-medium text-[var(--admin-fg)]">
+                        {row.username}
+                      </span>
                       <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                         {row.source}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--admin-fg)]">{row.model}</td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-[var(--admin-muted)]">
+                    <td className="text-[var(--admin-fg)]">{row.model}</td>
+                    <td className="max-w-[220px] truncate text-[var(--admin-muted)]">
                       {row.promptPreview}
                     </td>
-                    <td className="px-4 py-3">{fmtMs(row.elapsedMs)}</td>
-                    <td className="px-4 py-3">{fmtMs(row.ttftMs)}</td>
-                    <td className="px-4 py-3">{row.responseChars}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${statusTone(row.status)}`}
-                      >
-                        streaming
-                      </span>
+                    <td className="tabular-nums text-[var(--admin-fg)]">
+                      {fmtMs(row.elapsedMs)}
+                    </td>
+                    <td className="tabular-nums text-[var(--admin-fg)]">
+                      {fmtMs(row.ttftMs)}
+                    </td>
+                    <td className="tabular-nums text-[var(--admin-fg)]">
+                      {row.responseChars}
+                    </td>
+                    <td>
+                      <span className={statusTone(row.status)}>streaming</span>
                     </td>
                   </tr>
                 ))}
@@ -334,18 +330,22 @@ export const AdminUsagePanel = () => {
             No active generations right now. Send a chat to see live process.
           </p>
         )}
-      </section>
+      </AdminPanelCard>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-          <h3 className="text-sm font-semibold">Last 24 hours</h3>
-          <p className="mb-4 text-xs text-[var(--admin-muted)]">Requests per hour</p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminPanelCard className="p-4">
+          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+            Last 24 hours
+          </h3>
+          <p className="mb-4 text-xs text-[var(--admin-muted)]">
+            Requests per hour
+          </p>
           {data?.analytics.byHour.length ? (
             <div className="flex h-36 items-end gap-1">
               {data.analytics.byHour.map((bucket) => (
                 <div
                   key={bucket.hour}
-                  className="group relative flex-1 rounded-t bg-gradient-to-t from-blue-600/80 to-sky-400/80"
+                  className="admin-bar group relative flex-1 rounded-t"
                   style={{
                     height: `${Math.max(8, (bucket.requests / maxHour) * 100)}%`,
                   }}
@@ -358,10 +358,12 @@ export const AdminUsagePanel = () => {
               No usage in the last 24 hours yet.
             </p>
           )}
-        </section>
+        </AdminPanelCard>
 
-        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-          <h3 className="text-sm font-semibold">By model</h3>
+        <AdminPanelCard className="p-4">
+          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+            By model
+          </h3>
           <p className="mb-3 text-xs text-[var(--admin-muted)]">
             Volume and average speed
           </p>
@@ -370,15 +372,17 @@ export const AdminUsagePanel = () => {
               data?.analytics.byModel.map((row) => (
                 <div
                   key={row.model}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--admin-border)] bg-sky-500/[0.04] px-3 py-2.5"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{row.model}</p>
+                    <p className="truncate text-sm font-medium text-[var(--admin-fg)]">
+                      {row.model}
+                    </p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
                       {row.requests} req · avg {fmtMs(row.avg_duration_ms)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm text-[var(--admin-fg)]">
+                  <p className="shrink-0 text-sm tabular-nums text-[var(--admin-fg)]">
                     {row.avg_tokens_per_sec != null
                       ? `${row.avg_tokens_per_sec} t/s`
                       : "—"}
@@ -391,25 +395,31 @@ export const AdminUsagePanel = () => {
               </p>
             )}
           </div>
-        </section>
+        </AdminPanelCard>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-          <h3 className="text-sm font-semibold">Top users</h3>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminPanelCard className="p-4">
+          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+            Top users
+          </h3>
           <div className="mt-3 space-y-2">
             {(data?.analytics.topUsers ?? []).length ? (
               data?.analytics.topUsers.map((row) => (
                 <div
                   key={`${row.source}-${row.username}`}
-                  className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium">{row.username}</p>
-                    <p className="text-[11px] text-[var(--admin-muted)]">{row.source}</p>
+                    <p className="text-sm font-medium text-[var(--admin-fg)]">
+                      {row.username}
+                    </p>
+                    <p className="text-[11px] text-[var(--admin-muted)]">
+                      {row.source}
+                    </p>
                   </div>
-                  <div className="text-right text-sm">
-                    <p>{row.requests} req</p>
+                  <div className="text-right text-sm text-[var(--admin-fg)]">
+                    <p className="tabular-nums">{row.requests} req</p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
                       avg {fmtMs(row.avg_duration_ms)}
                     </p>
@@ -422,47 +432,55 @@ export const AdminUsagePanel = () => {
               </p>
             )}
           </div>
-        </section>
+        </AdminPanelCard>
 
-        <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-          <h3 className="text-sm font-semibold">Throughput totals</h3>
+        <AdminPanelCard className="p-4">
+          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+            Throughput totals
+          </h3>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
-              <p className="text-xs text-[var(--admin-muted)]">Prompt chars</p>
-              <p className="mt-1 text-lg font-semibold">
-                {fmtNum(summary?.total_prompt_chars)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
-              <p className="text-xs text-[var(--admin-muted)]">Response chars</p>
-              <p className="mt-1 text-lg font-semibold">
-                {fmtNum(summary?.total_response_chars)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
-              <p className="text-xs text-[var(--admin-muted)]">Success rate</p>
-              <p className="mt-1 text-lg font-semibold">
-                {summary?.total_requests
+            {[
+              {
+                label: "Prompt chars",
+                value: fmtNum(summary?.total_prompt_chars),
+              },
+              {
+                label: "Response chars",
+                value: fmtNum(summary?.total_response_chars),
+              },
+              {
+                label: "Success rate",
+                value: summary?.total_requests
                   ? `${Math.round(((summary.ok_requests ?? 0) / summary.total_requests) * 100)}%`
-                  : "—"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--admin-border)] px-3 py-3">
-              <p className="text-xs text-[var(--admin-muted)]">7-day volume</p>
-              <p className="mt-1 text-lg font-semibold">
-                {fmtNum(summary?.requests_7d)}
-              </p>
-            </div>
+                  : "—",
+              },
+              {
+                label: "7-day volume",
+                value: fmtNum(summary?.requests_7d),
+              },
+            ].map((cell) => (
+              <div
+                key={cell.label}
+                className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-3"
+              >
+                <p className="text-xs text-[var(--admin-muted)]">{cell.label}</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--admin-fg)]">
+                  {cell.value}
+                </p>
+              </div>
+            ))}
           </div>
-        </section>
+        </AdminPanelCard>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90">
+      <AdminPanelCard>
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
           <div>
-            <h3 className="text-sm font-semibold">Past usage</h3>
+            <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
+              Past usage
+            </h3>
             <p className="text-xs text-[var(--admin-muted)]">
-              AI calls with real duration and speed
+              AI calls with duration and speed
               {totalRows
                 ? ` · showing ${rangeStart}–${rangeEnd} of ${totalRows}`
                 : ""}
@@ -477,7 +495,7 @@ export const AdminUsagePanel = () => {
                   Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
                 )
               }
-              className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2 py-1.5 text-[var(--admin-fg)] outline-none focus:border-[var(--accent)]/50"
+              className={`${adminFieldClass} mt-0 w-auto py-1.5`}
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>
@@ -488,53 +506,57 @@ export const AdminUsagePanel = () => {
           </label>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-sky-500/[0.04] text-xs uppercase tracking-wide text-[var(--admin-muted)]">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">When</th>
-                <th className="px-4 py-3 font-medium">Who</th>
-                <th className="px-4 py-3 font-medium">Model</th>
-                <th className="px-4 py-3 font-medium">Prompt</th>
-                <th className="px-4 py-3 font-medium">TTFT</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Speed</th>
-                <th className="px-4 py-3 font-medium">Tokens</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th>When</th>
+                <th>Who</th>
+                <th>Model</th>
+                <th>Prompt</th>
+                <th>TTFT</th>
+                <th>Total</th>
+                <th>Speed</th>
+                <th>Tokens</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {(data?.recent ?? []).length ? (
                 data?.recent.map((row) => (
-                  <tr key={row.id} className="border-t border-[var(--admin-border)]">
-                    <td className="whitespace-nowrap px-4 py-3 text-[var(--admin-muted)]">
+                  <tr key={row.id}>
+                    <td className="whitespace-nowrap text-[var(--admin-muted)]">
                       {fmtTime(row.created_at)}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="font-medium">{row.username}</span>
+                    <td>
+                      <span className="font-medium text-[var(--admin-fg)]">
+                        {row.username}
+                      </span>
                       <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                         {row.source}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--admin-fg)]">{row.model}</td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-[var(--admin-muted)]">
+                    <td className="text-[var(--admin-fg)]">{row.model}</td>
+                    <td className="max-w-[200px] truncate text-[var(--admin-muted)]">
                       {row.prompt_preview}
                     </td>
-                    <td className="px-4 py-3">{fmtMs(row.ttft_ms)}</td>
-                    <td className="px-4 py-3">{fmtMs(row.duration_ms)}</td>
-                    <td className="px-4 py-3">
+                    <td className="tabular-nums text-[var(--admin-fg)]">
+                      {fmtMs(row.ttft_ms)}
+                    </td>
+                    <td className="tabular-nums text-[var(--admin-fg)]">
+                      {fmtMs(row.duration_ms)}
+                    </td>
+                    <td className="tabular-nums text-[var(--admin-fg)]">
                       {row.tokens_per_sec != null
                         ? `${row.tokens_per_sec} t/s`
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-[var(--admin-muted)]">
+                    <td className="text-[var(--admin-muted)]">
                       {row.tokens_eval != null
                         ? `${row.tokens_prompt ?? "—"}→${row.tokens_eval}`
                         : `${row.prompt_chars}/${row.response_chars}c`}
                     </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${statusTone(row.status)}`}
-                      >
+                    <td>
+                      <span className={statusTone(row.status)}>
                         {row.status}
                       </span>
                     </td>
@@ -544,7 +566,7 @@ export const AdminUsagePanel = () => {
                 <tr>
                   <td
                     colSpan={9}
-                    className="px-4 py-10 text-center text-[var(--admin-muted)]"
+                    className="!border-0 px-4 py-10 text-center text-[var(--admin-muted)]"
                   >
                     {isLoading
                       ? "Loading usage…"
@@ -564,7 +586,7 @@ export const AdminUsagePanel = () => {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
+              className={adminBtnGhost}
             >
               <ChevronLeft size={14} />
               Prev
@@ -573,14 +595,14 @@ export const AdminUsagePanel = () => {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
+              className={adminBtnGhost}
             >
               Next
               <ChevronRight size={14} />
             </button>
           </div>
         </div>
-      </section>
+      </AdminPanelCard>
     </div>
   );
 };

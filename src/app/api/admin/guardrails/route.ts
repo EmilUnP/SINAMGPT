@@ -5,10 +5,15 @@ import { clientIp, recordAuditEvent } from "@/lib/audit";
 import { listGuardrailEvents } from "@/lib/guardrail-engine";
 import {
   DEFAULT_GUARDRAILS,
+  DEFAULT_POLICY_SUGGESTIONS,
   checkInputGuardrails,
   getGuardrails,
+  getPolicySuggestions,
   setGuardrails,
+  setPolicySuggestions,
+  type PolicySuggestions,
 } from "@/lib/guardrails";
+import { BUILTIN_BLOCKED_KEYWORDS } from "@/lib/multilang";
 
 export async function GET(request: Request) {
   const admin = await requireAdmin();
@@ -22,6 +27,9 @@ export async function GET(request: Request) {
   return NextResponse.json({
     guardrails: getGuardrails(),
     defaults: DEFAULT_GUARDRAILS,
+    suggestions: getPolicySuggestions(),
+    suggestionDefaults: DEFAULT_POLICY_SUGGESTIONS,
+    builtinKeywordCount: BUILTIN_BLOCKED_KEYWORDS.length,
     events:
       eventsLimit > 0
         ? listGuardrailEvents(eventsLimit)
@@ -98,6 +106,49 @@ export async function POST(request: Request) {
       ip: clientIp(request),
     });
     return NextResponse.json({ guardrails });
+  }
+
+  if (body?.action === "reset_suggestions") {
+    const suggestions = setPolicySuggestions({
+      ...DEFAULT_POLICY_SUGGESTIONS,
+    });
+    recordAuditEvent({
+      category: "guardrails",
+      action: "guardrails.suggestions_reset",
+      actor: { id: admin.id, username: admin.username },
+      summary: `${admin.username} reset policy quick-add chips`,
+      ip: clientIp(request),
+    });
+    return NextResponse.json({ suggestions });
+  }
+
+  if (body?.action === "suggestions") {
+    const suggestionsSchema = z.object({
+      allowedTopics: z.array(z.string().max(200)).max(40).optional(),
+      blockedTopics: z.array(z.string().max(200)).max(40).optional(),
+      keywords: z.array(z.string().max(200)).max(40).optional(),
+      personaSnippets: z.array(z.string().max(200)).max(40).optional(),
+      extraRuleSnippets: z.array(z.string().max(200)).max(40).optional(),
+    });
+    const parsed = suggestionsSchema.safeParse(body.suggestions ?? body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid suggestions" },
+        { status: 400 },
+      );
+    }
+    const suggestions = setPolicySuggestions(
+      parsed.data as Partial<PolicySuggestions>,
+    );
+    recordAuditEvent({
+      category: "guardrails",
+      action: "guardrails.suggestions_save",
+      actor: { id: admin.id, username: admin.username },
+      summary: `${admin.username} saved policy quick-add chips`,
+      meta: { keys: Object.keys(parsed.data) },
+      ip: clientIp(request),
+    });
+    return NextResponse.json({ suggestions });
   }
 
   if (body?.action === "inspect") {

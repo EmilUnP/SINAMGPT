@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.4.0](../CHANGELOG.md#140--2026-08-09) (see [README](../README.md)).
+**Current release:** [v1.4.1](../CHANGELOG.md#141--2026-08-09) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.4.0)
+## Product today (v1.4.1)
 
 What operators and users can rely on right now:
 
@@ -19,8 +19,8 @@ What operators and users can rely on right now:
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
-| **Knowledge** | Lightweight keyword RAG (EN / AZ / RU / TR); citations; Admin Overview / Library / Settings with corpus stats |
-| **Guardrails** | Layered detectors + soft persona; Admin Overview / Policy / Detectors / Inspector with coverage stats |
+| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); pack seed add-missing / refresh / replace; citations; corpus stats |
+| **Guardrails** | Living policy + layered detectors; DB-backed quick-add chips; built-in harm phrases stay in code; Admin Overview / Policy / Detectors / Inspector |
 | **Audit** | Admin → **Audit** trail for admin mutations, auth outcomes, share/project ops; merges recent guardrail hits |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
@@ -102,6 +102,14 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Admin chrome / subtabs | `done` | Cleaner nav; shared headers, stats, subtabs |
 | Richer Knowledge admin | `done` | Overview stats, Library, Settings |
 | Richer Guardrails admin | `done` | Overview, Policy, Detectors, Inspector |
+
+### v1.4.1 — Living Admin config (2026-08-09)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
+| Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
+| Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
 
 Details and compare links: [CHANGELOG.md](../CHANGELOG.md).
 

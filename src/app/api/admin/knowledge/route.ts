@@ -45,13 +45,15 @@ export async function POST(request: Request) {
   const ip = clientIp(request);
 
   if (body?.action === "seed_sinam") {
-    const result = reseedSinamKnowledge(Boolean(body.replaceAll));
+    const replaceAll = Boolean(body.replaceAll);
+    const overwriteExisting = Boolean(body.overwriteExisting);
+    const result = reseedSinamKnowledge(replaceAll, overwriteExisting);
     recordAuditEvent({
       category: "knowledge",
       action: "knowledge.seed",
       actor: { id: admin.id, username: admin.username },
       summary: `${admin.username} reseeded SINAM knowledge`,
-      meta: { replaceAll: Boolean(body.replaceAll), ...result },
+      meta: { replaceAll, overwriteExisting, ...result },
       ip,
     });
     return NextResponse.json({

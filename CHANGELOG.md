@@ -10,6 +10,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.4.1] — 2026-08-09
+
+Patch: treat Knowledge and Guardrails as living Admin config so company content can change without a code deploy.
+
+### Changed
+- **Living Admin config** — Knowledge pack seed defaults to add-missing only (optional refresh/replace); Guardrails Policy quick-add chips persist in DB and are editable from Admin; clearer editable-vs-built-in labels so company content does not require a code deploy
+
 ## [1.4.0] — 2026-08-09
 
 Ops & admin UX release: wider audit trail plus a cleaner, more informative Admin panel (especially Knowledge and Guardrails).
@@ -18,9 +25,12 @@ Ops & admin UX release: wider audit trail plus a cleaner, more informative Admin
 - **Wider audit trail** — `audit_events` for admin mutations, auth outcomes, share/project ops; Admin → **Audit** tab merges recent guardrail hits (not every chat message)
 
 ### Changed
-- **Admin UI** — quieter top nav; shared page chrome (headers, subtabs, stat cards)
+- **Admin UI** — quieter top nav; shared page chrome (headers, subtabs, stat cards); clearer light-mode contrast
 - **Knowledge admin** — Overview / Library / Settings subtabs with corpus stats, category coverage, and clearer retrieval settings
 - **Guardrails admin** — Overview / Policy / Detectors / Inspector subtabs with coverage stats, top matched rules, and side-by-side inspector + events
+- **Richer Policy editor** — topic/keyword chips, company-relevant suggestions, soft-vs-hard guidance, live “what the model sees” prompt preview
+- **Richer SINAM knowledge pack** — Farabi (SGRP), Biletim.az, GoMap/GoNav, SESDA, Yurdum, solutions catalog (seed template; Admin owns day-to-day edits)
+- **Settings admin** — Access / Chat & models / Generation subtabs with grouped section cards (replaces the long flat form)
 
 ## [1.3.0] — 2026-08-09
 
@@ -97,7 +107,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...v1.2.0

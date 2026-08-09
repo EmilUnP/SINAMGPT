@@ -254,7 +254,12 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ["hours", "iş saatı", "is saati", "iş saatları", "working hours", "часы работы", "график"],
   ["project", "layihə", "layihe", "проект", "проекты", "projects"],
   ["product", "məhsul", "mehsul", "продукт", "həll", "hell", "solution", "solutions", "həllər"],
-  ["sesda", "сесда"],
+  ["sesda", "сесда", "sənəd", "sened", "document workflow", "edms"],
+  ["farabi", "farabı", "фараби", "sgrp"],
+  ["biletim", "biletim.az", "билетим", "bilet", "bus ticket"],
+  ["gomap", "gomap.az", "gomap.ge", "гомап", "xəritə", "xerite"],
+  ["gonav", "gonav.az", "гонав", "navigator", "naviqator"],
+  ["yurdum", "yurd", "юрдум", "smart village"],
   ["price", "qiymət", "qiymet", "цена", "тариф", "pricing", "paket", "package"],
   ["employee", "işçi", "isci", "сотрудник", "staff", "workers"],
 ];
@@ -290,7 +295,9 @@ export const looksLikeCompanyQuestion = (query: string): boolean => {
   const q = normalizeMultilangText(query);
   if (!q) return false;
   return (
-    /\b(sinam|синам|sesda|сесда|sinamgpt)\b/i.test(q) ||
+    /\b(sinam|синам|sesda|сесда|sinamgpt|farabi|farabı|фараби|biletim|билетим|gomap|gonav|yurdum|юрдум)\b/i.test(
+      q,
+    ) ||
     /\b(company|şirkət|sirket|компания|firma|about us|haqqında|haqqinda)\b/i.test(
       q,
     ) ||

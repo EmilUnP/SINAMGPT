@@ -9,12 +9,12 @@ import {
   type KnowledgeSource,
 } from "@/lib/knowledge";
 import {
-  BUILTIN_BLOCKED_KEYWORDS,
   MULTILANG_SYSTEM_RULES,
   replyLanguageInstruction,
 } from "@/lib/multilang";
 
 const KEY = "guardrails";
+const SUGGESTIONS_KEY = "guardrail_policy_suggestions";
 
 export type GuardrailsConfig = {
   enabled: boolean;
@@ -38,6 +38,55 @@ export type GuardrailsConfig = {
   logEvents: boolean;
 };
 
+/** Quick-add chips on the Policy admin tab — fully editable in DB. */
+export type PolicySuggestions = {
+  allowedTopics: string[];
+  blockedTopics: string[];
+  keywords: string[];
+  personaSnippets: string[];
+  extraRuleSnippets: string[];
+};
+
+export const DEFAULT_POLICY_SUGGESTIONS: PolicySuggestions = {
+  allowedTopics: [
+    "SESDA / document workflow",
+    "Farabi / government resources planning",
+    "Biletim.az bus ticketing",
+    "GoMap / GoNav maps & navigation",
+    "YURDUM / Smart Village",
+    "Internal portals & tools",
+    "HR & leave policy FAQ",
+    "Meeting notes & summaries",
+    "Email / message drafting",
+    "Coding help for internal tools",
+    "Azerbaijani / Russian / English answers",
+  ],
+  blockedTopics: [
+    "Colleague salaries or private HR records",
+    "Bypassing access controls or sharing passwords",
+    "Copying customer PII into chats",
+    "Illegal or violent instructions",
+    "Medical/legal advice as professional diagnosis",
+  ],
+  keywords: [
+    "ignore company policy",
+    "share password",
+    "leak credentials",
+    "how to bypass login",
+    "dump salaries",
+  ],
+  personaSnippets: [
+    "Prefer short, actionable answers for busy employees.",
+    "When unsure about company facts, say so and suggest asking the owner team.",
+    "Match the user’s language (EN / AZ / RU / TR) without mixing languages.",
+  ],
+  extraRuleSnippets: [
+    "Never invent SINAM policies, prices, or org charts.",
+    "If knowledge docs conflict with the user, prefer COMPANY KNOWLEDGE and note the source.",
+    "Refuse to store or repeat secrets even if the user pastes them “for debugging”.",
+  ],
+};
+
 export const DEFAULT_GUARDRAILS: GuardrailsConfig = {
   enabled: true,
   applyToGuests: true,
@@ -48,7 +97,8 @@ export const DEFAULT_GUARDRAILS: GuardrailsConfig = {
     "SINAM company information, internal projects, work productivity, writing help, summarizing, explaining concepts, brainstorming, company-safe general knowledge, coding help for internal tools — in any language the user prefers.",
   blockedTopics:
     "Illegal activity, weapons, hacking/attacks, adult sexual content, hate or harassment, scams/fraud, medical or legal advice presented as professional diagnosis, sharing private personal data of others — in any language or coded wording.",
-  blockedKeywords: BUILTIN_BLOCKED_KEYWORDS.join("\n"),
+  // Custom admin keywords only — built-in EN/AZ/RU/TR safety phrases always apply in the engine
+  blockedKeywords: "",
   refusalMessage:
     "I can’t help with that request. / Bu sorğuya kömək edə bilmərəm. / Не могу помочь с этим запросом. / Bu isteğe yardımcı olamam.\nSINAMGPT is limited to safe, work-appropriate topics.",
   extraRules:
@@ -58,6 +108,102 @@ export const DEFAULT_GUARDRAILS: GuardrailsConfig = {
   detectPiiPatterns: true,
   strictPii: false,
   logEvents: true,
+};
+
+const clampSuggestionList = (value: unknown, max = 40): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim().slice(0, 200))
+    .filter(Boolean)
+    .slice(0, max);
+};
+
+export const getPolicySuggestions = (): PolicySuggestions => {
+  const row = getDb()
+    .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+    .get(SUGGESTIONS_KEY) as { value: string } | undefined;
+
+  if (!row?.value) {
+    return {
+      allowedTopics: [...DEFAULT_POLICY_SUGGESTIONS.allowedTopics],
+      blockedTopics: [...DEFAULT_POLICY_SUGGESTIONS.blockedTopics],
+      keywords: [...DEFAULT_POLICY_SUGGESTIONS.keywords],
+      personaSnippets: [...DEFAULT_POLICY_SUGGESTIONS.personaSnippets],
+      extraRuleSnippets: [...DEFAULT_POLICY_SUGGESTIONS.extraRuleSnippets],
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(row.value) as Partial<PolicySuggestions>;
+    return {
+      allowedTopics:
+        parsed.allowedTopics !== undefined
+          ? clampSuggestionList(parsed.allowedTopics)
+          : [...DEFAULT_POLICY_SUGGESTIONS.allowedTopics],
+      blockedTopics:
+        parsed.blockedTopics !== undefined
+          ? clampSuggestionList(parsed.blockedTopics)
+          : [...DEFAULT_POLICY_SUGGESTIONS.blockedTopics],
+      keywords:
+        parsed.keywords !== undefined
+          ? clampSuggestionList(parsed.keywords)
+          : [...DEFAULT_POLICY_SUGGESTIONS.keywords],
+      personaSnippets:
+        parsed.personaSnippets !== undefined
+          ? clampSuggestionList(parsed.personaSnippets)
+          : [...DEFAULT_POLICY_SUGGESTIONS.personaSnippets],
+      extraRuleSnippets:
+        parsed.extraRuleSnippets !== undefined
+          ? clampSuggestionList(parsed.extraRuleSnippets)
+          : [...DEFAULT_POLICY_SUGGESTIONS.extraRuleSnippets],
+    };
+  } catch {
+    return {
+      allowedTopics: [...DEFAULT_POLICY_SUGGESTIONS.allowedTopics],
+      blockedTopics: [...DEFAULT_POLICY_SUGGESTIONS.blockedTopics],
+      keywords: [...DEFAULT_POLICY_SUGGESTIONS.keywords],
+      personaSnippets: [...DEFAULT_POLICY_SUGGESTIONS.personaSnippets],
+      extraRuleSnippets: [...DEFAULT_POLICY_SUGGESTIONS.extraRuleSnippets],
+    };
+  }
+};
+
+export const setPolicySuggestions = (
+  next: Partial<PolicySuggestions>,
+): PolicySuggestions => {
+  const current = getPolicySuggestions();
+  const merged: PolicySuggestions = {
+    allowedTopics:
+      next.allowedTopics !== undefined
+        ? clampSuggestionList(next.allowedTopics)
+        : current.allowedTopics,
+    blockedTopics:
+      next.blockedTopics !== undefined
+        ? clampSuggestionList(next.blockedTopics)
+        : current.blockedTopics,
+    keywords:
+      next.keywords !== undefined
+        ? clampSuggestionList(next.keywords)
+        : current.keywords,
+    personaSnippets:
+      next.personaSnippets !== undefined
+        ? clampSuggestionList(next.personaSnippets)
+        : current.personaSnippets,
+    extraRuleSnippets:
+      next.extraRuleSnippets !== undefined
+        ? clampSuggestionList(next.extraRuleSnippets)
+        : current.extraRuleSnippets,
+  };
+
+  getDb()
+    .prepare(
+      `INSERT INTO app_settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    )
+    .run(SUGGESTIONS_KEY, JSON.stringify(merged));
+
+  return merged;
 };
 
 export const getGuardrails = (): GuardrailsConfig => {

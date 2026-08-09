@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.4.0](./CHANGELOG.md#140--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.4.1](./CHANGELOG.md#141--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -73,8 +73,8 @@ There you can:
 
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
-- **Knowledge** — company/project facts via lightweight keyword RAG (EN / AZ / RU / TR); citations toggle
-- **Guardrails** — keywords (+ de-obfuscation), prompt-injection, secrets, PII; live inspector; event log
+- **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
+- **Guardrails** — living policy (persona/topics/custom keywords + DB quick-add chips); built-in harm phrases; live inspector; event log
 - **Audit** — admin changes, logins, share/project actions, plus guardrail hits in one view
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts and which models users can use
