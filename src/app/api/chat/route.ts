@@ -6,6 +6,7 @@ import {
   withSystemPrompt,
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
+import { assertAssignableProject } from "@/lib/projects";
 import {
   getChatRuntimeOptions,
   getUserHistoryLimitSetting,
@@ -736,7 +737,14 @@ export async function POST(request: Request) {
       ).run(model, conversationId);
     } else {
       conversationId = newId();
-      const projectId = parsed.data.projectId ?? null;
+      const projectCheck = assertAssignableProject(
+        parsed.data.projectId,
+        user.id,
+        user.role,
+      );
+      if (!projectCheck.ok) {
+        return Response.json({ error: projectCheck.error }, { status: 403 });
+      }
       db.prepare(
         `INSERT INTO conversations (id, user_id, title, model, project_id)
          VALUES (?, ?, ?, ?, ?)`,
@@ -745,7 +753,7 @@ export async function POST(request: Request) {
         user.id,
         titleFromMessage(message),
         model,
-        projectId,
+        projectCheck.projectId,
       );
     }
 

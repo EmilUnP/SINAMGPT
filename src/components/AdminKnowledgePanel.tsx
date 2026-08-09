@@ -65,7 +65,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
     try {
       const [knowledgeRes, projectsRes] = await Promise.all([
         fetch("/api/admin/knowledge"),
-        fetch("/api/projects"),
+        fetch("/api/projects?all=1"),
       ]);
       const data = (await knowledgeRes.json()) as {
         docs?: KnowledgeDoc[];

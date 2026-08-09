@@ -29,11 +29,13 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
@@ -145,23 +147,74 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectLimit, setProjectLimit] = useState(5);
   /** null = all chats (Inbox) */
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState("");
   const [showNewProject, setShowNewProject] = useState(false);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(
+    null,
+  );
+  const [renameDraft, setRenameDraft] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
+  const [sharePortalReady, setSharePortalReady] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const searchTimerRef = useRef<number | null>(null);
+  const shareBtnRef = useRef<HTMLButtonElement | null>(null);
+  const shareMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setReady(true);
+    setSharePortalReady(true);
   }, []);
+
+  const updateShareMenuPos = useCallback(() => {
+    const el = shareBtnRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setShareMenuPos({
+      top: rect.bottom + 8,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!shareOpen || !shareToken) return;
+    updateShareMenuPos();
+    const onResize = () => updateShareMenuPos();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onResize, true);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onResize, true);
+    };
+  }, [shareOpen, shareToken, updateShareMenuPos]);
+
+  useEffect(() => {
+    if (!shareOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (shareBtnRef.current?.contains(target)) return;
+      if (shareMenuRef.current?.contains(target)) return;
+      setShareOpen(false);
+    };
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setShareOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [shareOpen]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
@@ -219,8 +272,12 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const loadProjects = useCallback(async () => {
     const res = await fetch("/api/projects");
     if (!res.ok) return;
-    const data = (await res.json()) as { projects?: Project[] };
+    const data = (await res.json()) as {
+      projects?: Project[];
+      limit?: number;
+    };
     setProjects(data.projects ?? []);
+    if (typeof data.limit === "number") setProjectLimit(data.limit);
   }, []);
 
   const loadModels = useCallback(async () => {
@@ -394,8 +451,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}`
     : "";
 
-  const handleCreateShare = async () => {
+  const handleCreateShare = async (rotate = false) => {
     if (!activeId) return;
+    if (rotate && shareToken) {
+      const ok = window.confirm(
+        "Create a new link? The old share link will stop working for anyone who already has it.",
+      );
+      if (!ok) return;
+    }
     setShareBusy(true);
     setShareCopied(false);
     try {
@@ -496,11 +559,18 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const handleSelectProject = (projectId: string | null) => {
     setActiveProjectId(projectId);
     setShowNewProject(false);
+    setRenamingProjectId(null);
   };
+
+  const atProjectLimit = projects.length >= projectLimit;
 
   const handleCreateProject = async () => {
     const name = newProjectName.trim();
     if (!name) return;
+    if (atProjectLimit) {
+      setError(`You can create up to ${projectLimit} projects.`);
+      return;
+    }
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -519,6 +589,67 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     setNewProjectName("");
     setShowNewProject(false);
     setActiveProjectId(data.project.id);
+  };
+
+  const handleStartRenameProject = (project: Project) => {
+    setShowNewProject(false);
+    setRenamingProjectId(project.id);
+    setRenameDraft(project.name);
+    setActiveProjectId(project.id);
+  };
+
+  const handleSaveRenameProject = async () => {
+    if (!renamingProjectId) return;
+    const name = renameDraft.trim();
+    if (!name) {
+      setError("Project name is required");
+      return;
+    }
+    const res = await fetch(`/api/projects/${renamingProjectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const data = (await res.json()) as { project?: Project; error?: string };
+    if (!res.ok || !data.project) {
+      setError(data.error || "Could not rename project");
+      return;
+    }
+    setProjects((prev) =>
+      prev
+        .map((p) => (p.id === data.project!.id ? data.project! : p))
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        ),
+    );
+    setRenamingProjectId(null);
+    setRenameDraft("");
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    if (
+      !window.confirm(
+        `Delete project “${project.name}”? Chats stay saved but leave this project.`,
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(`/api/projects/${project.id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const data = (await res.json()) as { error?: string };
+      setError(data.error || "Could not delete project");
+      return;
+    }
+    setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    if (renamingProjectId === project.id) {
+      setRenamingProjectId(null);
+      setRenameDraft("");
+    }
+    if (activeProjectId === project.id) {
+      setActiveProjectId(null);
+    }
   };
 
   const handleMoveChat = async (projectId: string | null) => {
@@ -566,6 +697,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       tempAssistantId: string;
     };
     restoreOnError?: string;
+    /** After rewrite/regenerate/edit failures, reload from DB (server may have deleted the old answer). */
+    reloadConversationOnError?: boolean;
   }) => {
     if (isSending) return;
     if (!model) {
@@ -698,11 +831,15 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         const message =
           err instanceof Error ? err.message : "Failed to send message";
         setError(message);
-        setMessages((prev) =>
-          prev.filter(
-            (m) => m.id !== tempUserId && m.id !== tempAssistantId,
-          ),
-        );
+        if (opts.reloadConversationOnError && activeId) {
+          await openConversation(activeId);
+        } else {
+          setMessages((prev) =>
+            prev.filter(
+              (m) => m.id !== tempUserId && m.id !== tempAssistantId,
+            ),
+          );
+        }
         if (opts.restoreOnError != null) {
           setInput(opts.restoreOnError);
         }
@@ -764,6 +901,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         model,
         mode: "regenerate",
       },
+      reloadConversationOnError: true,
       prepareMessages: () => {
         const tempAssistantId = `temp-assistant-${Date.now()}`;
         const tempAssistant: UiMessage = {
@@ -798,6 +936,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         mode: "rewrite",
         rewrite: style,
       },
+      reloadConversationOnError: true,
       prepareMessages: () => {
         const tempAssistantId = `temp-assistant-${Date.now()}`;
         const tempAssistant: UiMessage = {
@@ -845,6 +984,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         mode: "edit",
         editMessageId,
       },
+      reloadConversationOnError: true,
       prepareMessages: () => {
         const tempAssistantId = `temp-assistant-${Date.now()}`;
         const tempAssistant: UiMessage = {
@@ -932,13 +1072,30 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--sidebar-muted)]">
             Projects
+            <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">
+              {projects.length}/{projectLimit}
+            </span>
           </p>
           <button
             type="button"
-            onClick={() => setShowNewProject((v) => !v)}
-            className="rounded-md p-1 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
+            onClick={() => {
+              if (atProjectLimit) {
+                setError(
+                  `You can create up to ${projectLimit} projects. Delete one to add another.`,
+                );
+                return;
+              }
+              setRenamingProjectId(null);
+              setShowNewProject((v) => !v);
+            }}
+            disabled={atProjectLimit && !showNewProject}
+            className="rounded-md p-1 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="New project"
-            title="New project"
+            title={
+              atProjectLimit
+                ? `Limit reached (${projectLimit})`
+                : "New project"
+            }
           >
             <FolderPlus size={14} />
           </button>
@@ -953,9 +1110,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   e.preventDefault();
                   void handleCreateProject();
                 }
+                if (e.key === "Escape") {
+                  setShowNewProject(false);
+                  setNewProjectName("");
+                }
               }}
               placeholder="Project name"
               className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
+              autoFocus
             />
             <button
               type="button"
@@ -963,6 +1125,34 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
             >
               Add
+            </button>
+          </div>
+        ) : null}
+        {renamingProjectId ? (
+          <div className="mb-2 flex gap-1.5">
+            <input
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleSaveRenameProject();
+                }
+                if (e.key === "Escape") {
+                  setRenamingProjectId(null);
+                  setRenameDraft("");
+                }
+              }}
+              placeholder="Rename project"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => void handleSaveRenameProject()}
+              className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
+            >
+              Save
             </button>
           </div>
         ) : null}
@@ -978,22 +1168,55 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           >
             All chats
           </button>
-          {projects.map((project) => (
-            <button
-              key={project.id}
-              type="button"
-              onClick={() => handleSelectProject(project.id)}
-              className={`inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-xs transition ${
-                activeProjectId === project.id
-                  ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-fg)] ring-1 ring-[var(--sidebar-active-ring)]"
-                  : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)]"
-              }`}
-              title={project.description || project.name}
-            >
-              <Folder size={12} className="shrink-0" />
-              <span className="truncate">{project.name}</span>
-            </button>
-          ))}
+          {projects.map((project) => {
+            const isActive = activeProjectId === project.id;
+            return (
+              <div
+                key={project.id}
+                className={`group inline-flex max-w-full items-center gap-0.5 rounded-lg text-xs transition ${
+                  isActive
+                    ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-fg)] ring-1 ring-[var(--sidebar-active-ring)]"
+                    : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)]"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSelectProject(project.id)}
+                  className="inline-flex min-w-0 items-center gap-1 px-2 py-1"
+                  title={project.description || project.name}
+                >
+                  <Folder size={12} className="shrink-0" />
+                  <span className="truncate">{project.name}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStartRenameProject(project)}
+                  className={`rounded-md p-1 ${
+                    isActive
+                      ? "text-[var(--sidebar-muted)] hover:text-[var(--sidebar-fg)]"
+                      : "opacity-0 group-hover:opacity-100"
+                  } hover:bg-[var(--sidebar-hover)]`}
+                  aria-label={`Rename ${project.name}`}
+                  title="Rename"
+                >
+                  <Pencil size={11} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteProject(project)}
+                  className={`mr-0.5 rounded-md p-1 ${
+                    isActive
+                      ? "text-[var(--sidebar-muted)] hover:text-[var(--danger)]"
+                      : "opacity-0 group-hover:opacity-100"
+                  } hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]`}
+                  aria-label={`Delete ${project.name}`}
+                  title="Delete"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1135,134 +1358,78 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/90 px-3 py-3 backdrop-blur md:px-5">
-          <button
-            type="button"
-            className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
-            onClick={() => setMobileSidebar(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu size={18} />
-          </button>
-
-          {!sidebarOpen ? (
+        <header className="relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className="hidden rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:inline-flex"
-              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
+              onClick={() => setMobileSidebar(true)}
               aria-label="Open sidebar"
             >
-              <PanelLeftOpen size={18} />
+              <Menu size={18} />
             </button>
-          ) : null}
 
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold text-[var(--text)] md:text-base">
-              {activeConversation?.title ?? "New chat"}
-              {!activeConversation && activeProjectName ? (
-                <span className="ml-1.5 font-normal text-[var(--text-muted)]">
-                  · {activeProjectName}
-                </span>
-              ) : null}
-            </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="chip chip-ok">
-                <InfinityIcon size={11} /> Unlimited
-              </span>
-              <span className="chip chip-info">
-                <Sparkles size={11} /> History saved
-              </span>
-              {activeConversation ? (
-                <label className="chip chip-info inline-flex items-center gap-1">
-                  <Folder size={11} />
-                  <select
-                    value={activeConversation.project_id ?? ""}
-                    onChange={(e) =>
-                      void handleMoveChat(e.target.value || null)
-                    }
-                    disabled={isSending}
-                    className="max-w-[8rem] bg-transparent text-[11px] outline-none"
-                    aria-label="Move chat to project"
-                    title="Move to project"
-                  >
-                    <option value="">No project</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-            </div>
-          </div>
-
-          <div
-            className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
-            role="group"
-            aria-label="Reply speed"
-          >
-            <button
-              type="button"
-              disabled={ready && (!fastModel || isSending)}
-              onClick={() => applyModelMode("fast")}
-              className={`rounded-full px-2.5 py-1 transition ${
-                modelMode === "fast"
-                  ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-              title={fastModel ? `Fast · ${fastModel}` : "Fast"}
-            >
-              Fast
-            </button>
-            <button
-              type="button"
-              disabled={ready && (!smartModel || isSending)}
-              onClick={() => applyModelMode("smart")}
-              className={`rounded-full px-2.5 py-1 transition ${
-                modelMode === "smart"
-                  ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-              title={smartModel ? `Smart · ${smartModel}` : "Smart"}
-            >
-              Smart
-            </button>
-          </div>
-
-          <label className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="hidden sm:inline">Model</span>
-            <select
-              value={model}
-              onChange={(e) => handleModelSelect(e.target.value)}
-              disabled={ready && (isSending || models.length === 0)}
-              className="max-w-[10rem] rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[14rem]"
-            >
-              {models.length === 0 ? (
-                <option value="">No models</option>
-              ) : (
-                models.map((item) => (
-                  <option key={item.name} value={item.name}>
-                    {item.display_name || item.name}
-                    {item.backend === "vllm"
-                      ? " · vLLM"
-                      : item.backend === "ollama"
-                        ? " · Ollama"
-                        : ""}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-          {activeId ? (
-            <div className="relative">
+            {!sidebarOpen ? (
               <button
+                type="button"
+                className="hidden rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:inline-flex"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open sidebar"
+              >
+                <PanelLeftOpen size={18} />
+              </button>
+            ) : null}
+
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold text-[var(--text)] md:text-base">
+                {activeConversation?.title ?? "New chat"}
+                {!activeConversation && activeProjectName ? (
+                  <span className="ml-1.5 font-normal text-[var(--text-muted)]">
+                    · {activeProjectName}
+                  </span>
+                ) : null}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="chip chip-ok">
+                  <InfinityIcon size={11} /> Unlimited
+                </span>
+                <span className="chip chip-info hidden sm:inline-flex">
+                  <Sparkles size={11} /> History saved
+                </span>
+                {activeConversation ? (
+                  <label className="chip chip-info inline-flex items-center gap-1">
+                    <Folder size={11} />
+                    <select
+                      value={activeConversation.project_id ?? ""}
+                      onChange={(e) =>
+                        void handleMoveChat(e.target.value || null)
+                      }
+                      disabled={isSending}
+                      className="max-w-[8rem] bg-transparent text-[11px] outline-none"
+                      aria-label="Move chat to project"
+                      title="Move to project"
+                    >
+                      <option value="">No project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+            </div>
+
+            {activeId ? (
+              <button
+                ref={shareBtnRef}
                 type="button"
                 onClick={() => {
                   if (shareToken) {
                     setShareOpen((v) => !v);
                   } else {
-                    void handleCreateShare();
+                    void handleCreateShare(false);
                   }
                 }}
                 disabled={shareBusy}
@@ -1272,58 +1439,147 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                 }`}
                 title="Share with colleagues"
+                aria-label={
+                  shareToken ? "Manage share link" : "Share this chat"
+                }
+                aria-expanded={shareOpen}
+                aria-haspopup="dialog"
               >
                 <Link2 size={14} />
                 <span className="hidden sm:inline">
                   {shareToken ? "Shared" : "Share"}
                 </span>
               </button>
-              {shareOpen && shareToken ? (
-                <div className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-lg">
-                  <p className="text-xs font-medium text-[var(--text)]">
-                    Share with a colleague
-                  </p>
-                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                    Logged-in users on this server can open the link (read-only).
-                  </p>
-                  <input
-                    readOnly
-                    value={shareUrl}
-                    className="mt-2 w-full truncate rounded-lg border border-[var(--border)] bg-[var(--select-bg)] px-2 py-1.5 text-[11px] text-[var(--text)]"
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => void handleCopyShare()}
-                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[11px] font-medium text-white"
-                    >
-                      {shareCopied ? <Check size={12} /> : <Link2 size={12} />}
-                      {shareCopied ? "Copied" : "Copy link"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateShare()}
-                      disabled={shareBusy}
-                      className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)]"
-                    >
-                      New link
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleRevokeShare()}
-                      disabled={shareBusy}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--danger)] hover:bg-[var(--hover)]"
-                    >
-                      <Link2Off size={12} />
-                      Revoke
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+            ) : null}
+            <ThemeToggle size="sm" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-0">
+            <div
+              className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
+              role="group"
+              aria-label="Reply speed"
+            >
+              <button
+                type="button"
+                disabled={ready && (!fastModel || isSending)}
+                onClick={() => applyModelMode("fast")}
+                className={`rounded-full px-2.5 py-1 transition ${
+                  modelMode === "fast"
+                    ? "bg-[var(--accent)] text-white"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                }`}
+                title={fastModel ? `Fast · ${fastModel}` : "Fast"}
+              >
+                Fast
+              </button>
+              <button
+                type="button"
+                disabled={ready && (!smartModel || isSending)}
+                onClick={() => applyModelMode("smart")}
+                className={`rounded-full px-2.5 py-1 transition ${
+                  modelMode === "smart"
+                    ? "bg-[var(--accent)] text-white"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                }`}
+                title={smartModel ? `Smart · ${smartModel}` : "Smart"}
+              >
+                Smart
+              </button>
             </div>
+
+            <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
+              <span className="hidden sm:inline">Model</span>
+              <select
+                value={model}
+                onChange={(e) => handleModelSelect(e.target.value)}
+                disabled={ready && (isSending || models.length === 0)}
+                className="w-full max-w-full rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[16rem]"
+              >
+                {models.length === 0 ? (
+                  <option value="">No models</option>
+                ) : (
+                  models.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.display_name || item.name}
+                      {item.backend === "vllm"
+                        ? " · vLLM"
+                        : item.backend === "ollama"
+                          ? " · Ollama"
+                          : ""}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          </div>
+
+          {activeId ? (
+            <>
+              {sharePortalReady && shareOpen && shareToken
+                ? createPortal(
+                    <div
+                      ref={shareMenuRef}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Share chat"
+                      className="fixed z-[200] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-xl"
+                      style={{
+                        top: shareMenuPos.top,
+                        right: shareMenuPos.right,
+                      }}
+                    >
+                      <p className="text-xs font-medium text-[var(--text)]">
+                        Share with a colleague
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                        Logged-in users on this server can open the link
+                        (read-only).
+                      </p>
+                      <input
+                        readOnly
+                        value={shareUrl}
+                        autoFocus
+                        className="mt-2 w-full truncate rounded-lg border border-[var(--border)] bg-[var(--select-bg)] px-2 py-1.5 text-[11px] text-[var(--text)]"
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyShare()}
+                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[11px] font-medium text-white"
+                        >
+                          {shareCopied ? (
+                            <Check size={12} />
+                          ) : (
+                            <Link2 size={12} />
+                          )}
+                          {shareCopied ? "Copied" : "Copy link"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateShare(true)}
+                          disabled={shareBusy}
+                          className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)]"
+                        >
+                          New link
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleRevokeShare()}
+                          disabled={shareBusy}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--danger)] hover:bg-[var(--hover)]"
+                        >
+                          <Link2Off size={12} />
+                          Revoke
+                        </button>
+                      </div>
+                    </div>,
+                    document.body,
+                  )
+                : null}
+            </>
           ) : null}
-          <ThemeToggle size="sm" />
         </header>
 
         {(modelsError || error) && (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { assertAssignableProject } from "@/lib/projects";
 import type { Conversation, Message } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
@@ -102,10 +103,18 @@ export async function PATCH(request: Request, { params }: Params) {
       : parsed.data.is_pinned
         ? 1
         : 0;
-  const projectId =
-    parsed.data.project_id === undefined
-      ? conversation.project_id
-      : parsed.data.project_id;
+  let projectId = conversation.project_id;
+  if (parsed.data.project_id !== undefined) {
+    const projectCheck = assertAssignableProject(
+      parsed.data.project_id,
+      user.id,
+      user.role,
+    );
+    if (!projectCheck.ok) {
+      return NextResponse.json({ error: projectCheck.error }, { status: 403 });
+    }
+    projectId = projectCheck.projectId;
+  }
 
   getDb()
     .prepare(

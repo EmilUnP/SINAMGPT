@@ -232,39 +232,48 @@ export const retrieveKnowledge = (
     );
     const titleNorm = normalizeMultilangText(doc.title);
     const tagsNorm = normalizeMultilangText(doc.tags);
-    let score = doc.priority / 100;
-
-    if (doc.always_include === 1) score += 1000;
+    let matchScore = 0;
 
     for (const token of queryTokens) {
       if (token.length < 2) continue;
-      if (titleNorm.includes(token)) score += 4;
-      if (tagsNorm.includes(token)) score += 3;
-      if (hay.includes(token)) score += 1;
+      if (titleNorm.includes(token)) matchScore += 4;
+      if (tagsNorm.includes(token)) matchScore += 3;
+      if (hay.includes(token)) matchScore += 1;
     }
 
     if (
       companyIntent &&
       (doc.category === "company" || doc.category === "product")
     ) {
-      score += 5;
+      matchScore += 5;
     }
 
     // Prefer project-scoped docs when chatting inside a project
     if (activeProject) {
-      if (doc.project_id === activeProject) score += 12;
-      else if (doc.project_id && doc.project_id !== activeProject) score -= 4;
+      if (doc.project_id === activeProject) matchScore += 12;
+      else if (doc.project_id && doc.project_id !== activeProject) {
+        matchScore -= 4;
+      }
     }
 
-    return { doc, score };
+    const hasMatch = matchScore > 0;
+    // always_include = pin when company context is relevant — NOT on every chat
+    const alwaysEligible =
+      doc.always_include === 1 && (companyIntent || hasMatch);
+
+    // Priority is a tiny tiebreaker only (never enough to pass the threshold alone)
+    let score = matchScore + doc.priority / 1000;
+    if (alwaysEligible) score += 1000;
+
+    return { doc, score, hasMatch, alwaysEligible };
   });
 
   const always = scored
-    .filter((s) => s.doc.always_include === 1)
+    .filter((s) => s.alwaysEligible)
     .sort((a, b) => b.score - a.score);
 
   const rest = scored
-    .filter((s) => s.doc.always_include !== 1 && s.score > 0.5)
+    .filter((s) => !s.alwaysEligible && s.hasMatch && s.score >= 3)
     .sort((a, b) => b.score - a.score);
 
   const picked: KnowledgeDoc[] = [];
@@ -277,8 +286,8 @@ export const retrieveKnowledge = (
     if (picked.length >= settings.maxDocs) break;
   }
 
-  // If nothing matched but we have company docs, include top priority one
-  if (!picked.length) {
+  // Fallback company doc only for real company questions
+  if (!picked.length && companyIntent) {
     const fallback = docs
       .filter((d) => d.category === "company")
       .sort((a, b) => b.priority - a.priority)[0];
@@ -311,7 +320,8 @@ export const resolveKnowledgeContext = (
 
   const chunks: string[] = [
     "COMPANY KNOWLEDGE (trusted local facts — use when answering about SINAM / company / projects; do not invent facts beyond this):",
-    "Answer in the user's language only (one language for the whole reply — no parenthetical translations). Adapt these facts into that language; keep names, phones, emails, and URLs exact.",
+    "These notes are in English for storage only. Rewrite them into the REPLY LANGUAGE. Do not switch language because tags list Russian/Azerbaijani keywords. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "If the user is not asking about the company, ignore this block and answer normally.",
   ];
 
   const usedDocs: KnowledgeDoc[] = [];

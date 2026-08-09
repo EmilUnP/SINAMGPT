@@ -10,6 +10,27 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) for the future backlog.
 
+## [1.2.0] — 2026-08-09
+
+Hardening and polish release: language/knowledge fixes, project management, share UI stacking, auth/guest security, and mobile chat header UX.
+
+### Fixed
+- **English chats answering in Russian** — knowledge no longer injects on every greeting (priority alone no longer matches); reply language is pinned from the latest user message
+- **Share menu under chat bubbles** — share dialog is portaled above the message stack
+- **Rewrite/regenerate error recovery** — failed rewrite reloads the conversation so the previous answer is not lost in the UI
+- **DB schema migration** — older SQLite DBs pick up `project_id` / `share_token` / related columns reliably (including after HMR)
+
+### Security
+- **Project IDOR** — chats can only be assigned to projects the user owns (or admin)
+- **Auth throttling** — login/register rate limits; disabled accounts no longer distinguishable from bad passwords
+- **Guest hardening** — Zod max on message size, per-IP burst limit, refund quota when the LLM fails to start
+- **Markdown links** — only `http(s)` / `mailto` / relative URLs; external links open safely
+- **Admin middleware** — non-admin sessions with a role claim are redirected away from `/admin`
+
+### Changed
+- **Projects** — rename + delete in the sidebar; max **5 projects per user**; each user only sees their own folders
+- **Chat header** — Fast/Smart + model on a second row for mobile; share “New link” asks before rotating
+
 ## [1.1.0] — 2026-08-09
 
 Company-GPT productivity release: citations, projects, internal share links, Fast/Smart presets, and rewrite shortcuts — plus theme and multi-backend LLM work.
@@ -53,6 +74,7 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/EmilUnP/SINAMGPT/releases/tag/v1.0.0

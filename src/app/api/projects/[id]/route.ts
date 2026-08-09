@@ -5,6 +5,7 @@ import {
   deleteProject,
   getProject,
   updateProject,
+  userCanManageProject,
 } from "@/lib/projects";
 
 type Params = { params: Promise<{ id: string }> };
@@ -17,8 +18,11 @@ export async function GET(_request: Request, { params }: Params) {
 
   const { id } = await params;
   const project = getProject(id);
-  if (!project || (project.is_archived === 1 && user.role !== "admin")) {
+  if (!project || project.is_archived === 1) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!userCanManageProject(project, user.id, user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return NextResponse.json({ project });
@@ -27,7 +31,6 @@ export async function GET(_request: Request, { params }: Params) {
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().trim().max(400).optional(),
-  is_archived: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request, { params }: Params) {
@@ -37,8 +40,12 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { id } = await params;
-  if (!getProject(id)) {
+  const existing = getProject(id);
+  if (!existing || existing.is_archived === 1) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!userCanManageProject(existing, user.id, user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -54,6 +61,7 @@ export async function PATCH(request: Request, { params }: Params) {
   return NextResponse.json({ project });
 }
 
+/** Hard-delete: chats move back to “no project”. Owner or admin. */
 export async function DELETE(_request: Request, { params }: Params) {
   const user = await getCurrentUser();
   if (!user) {
@@ -61,16 +69,14 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const { id } = await params;
-  if (!getProject(id)) {
+  const existing = getProject(id);
+  if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-
-  // Soft-archive for everyone; hard delete only admin
-  if (user.role === "admin") {
-    deleteProject(id);
-    return NextResponse.json({ ok: true, deleted: true });
+  if (!userCanManageProject(existing, user.id, user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  updateProject(id, { is_archived: true });
-  return NextResponse.json({ ok: true, archived: true });
+  deleteProject(id);
+  return NextResponse.json({ ok: true, deleted: true });
 }

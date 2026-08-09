@@ -7,6 +7,7 @@ import {
   BUILTIN_BLOCKED_KEYWORDS,
   MULTILANG_SYSTEM_RULES,
   normalizeMultilangText,
+  replyLanguageInstruction,
   significantMultilangTokens,
   stemMultilangToken,
   tokenizeMultilang,
@@ -230,6 +231,9 @@ export const withSystemPrompt = <T extends { role: string; content: string }>(
   const lastUser = [...withoutSystem]
     .reverse()
     .find((m) => m.role === "user")?.content;
+
+  // Pin language before knowledge so company docs cannot override it
+  content = `${content}\n\n${replyLanguageInstruction(lastUser ?? "")}`;
 
   const knowledge = resolveKnowledgeContext(
     lastUser ?? "",

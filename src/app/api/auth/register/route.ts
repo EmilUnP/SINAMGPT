@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { hashPassword, markActive, newId, setSessionCookie } from "@/lib/auth";
+import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import { getRegistrationEnabledSetting } from "@/lib/settings";
 
 const schema = z.object({
@@ -16,6 +17,18 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIp(request);
+    const ipLimit = takeRateLimit(`register:ip:${ip}`, 8, 60 * 60 * 1000);
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipLimit.retryAfterSec) },
+        },
+      );
+    }
+
     if (!getRegistrationEnabledSetting()) {
       return NextResponse.json(
         {
@@ -68,7 +81,7 @@ export async function POST(request: Request) {
     ).run(id, username, passwordHash);
 
     markActive(id);
-    await setSessionCookie(id, username);
+    await setSessionCookie(id, username, "user");
 
     return NextResponse.json({
       user: { id, username, role: "user" },

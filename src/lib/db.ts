@@ -249,15 +249,19 @@ const ensureAdminUser = (database: Database.Database) => {
 };
 
 export const getDb = (): Database.Database => {
-  if (db) return db;
-
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!db) {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    db = new Database(DB_PATH);
+    ensureSchema(db);
+    ensureAdminUser(db);
+    return db;
   }
 
-  db = new Database(DB_PATH);
+  // Re-run on cached connections too (idempotent). Next.js HMR can keep an
+  // older connection after new columns were added to ensureSchema.
   ensureSchema(db);
-  ensureAdminUser(db);
   return db;
 };
 

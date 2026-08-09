@@ -50,7 +50,7 @@ const parseSession = async (token: string, secret: string) => {
 
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlToBytes(body)),
-    ) as { exp?: number };
+    ) as { exp?: number; role?: string };
 
     if (!payload.exp || Date.now() > payload.exp) return null;
     return payload;
@@ -70,6 +70,17 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    // Defense-in-depth: block non-admins early when role is in the session.
+    // Older cookies without role still reach the page-level requireAdmin check.
+    if (
+      pathname.startsWith("/admin") &&
+      session.role &&
+      session.role !== "admin"
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/chat";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();

@@ -51,6 +51,8 @@ export type Message = {
 export type SessionPayload = {
   userId: string;
   username: string;
+  /** Present on sessions created after v1.1; missing → re-login for admin routes */
+  role?: UserRole;
   exp: number;
 };
 

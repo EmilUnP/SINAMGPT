@@ -3,7 +3,9 @@ import {
   consumeGuestMessage,
   getGuestMaxChars,
   getGuestUsage,
+  refundGuestMessage,
 } from "@/lib/guest";
+import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import {
   checkInputGuardrails,
   withSystemPrompt,
@@ -23,7 +25,7 @@ import {
 } from "@/lib/usage";
 
 const schema = z.object({
-  message: z.string().trim().min(1),
+  message: z.string().trim().min(1).max(20000),
   model: z.string().trim().min(1).max(120),
   history: z
     .array(
@@ -46,6 +48,18 @@ export async function POST(request: Request) {
             "Guest try-chat is currently disabled. Sign in to use SINAMGPT.",
         },
         { status: 403 },
+      );
+    }
+
+    const ip = clientIp(request);
+    const burst = takeRateLimit(`guest:chat:${ip}`, 20, 60 * 1000);
+    if (!burst.ok) {
+      return Response.json(
+        { error: "Too many guest requests. Slow down or sign in." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(burst.retryAfterSec) },
+        },
       );
     }
 
@@ -140,6 +154,7 @@ export async function POST(request: Request) {
         topP: runtime.topP,
       });
     } catch (error) {
+      await refundGuestMessage();
       finishUsage(usageId, {
         responseChars: 0,
         status: "error",

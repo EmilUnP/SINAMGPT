@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser, newId } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { assertAssignableProject } from "@/lib/projects";
 import type { Conversation } from "@/lib/types";
 
 const CONVERSATION_SELECT = `id, user_id, title, model, project_id, is_pinned, created_at, updated_at`;
@@ -89,14 +90,21 @@ export async function POST(request: Request) {
     const id = newId();
     const title = parsed.data.title || "New chat";
     const model = parsed.data.model;
-    const projectId = parsed.data.projectId ?? null;
+    const projectCheck = assertAssignableProject(
+      parsed.data.projectId,
+      user.id,
+      user.role,
+    );
+    if (!projectCheck.ok) {
+      return NextResponse.json({ error: projectCheck.error }, { status: 403 });
+    }
 
     getDb()
       .prepare(
         `INSERT INTO conversations (id, user_id, title, model, project_id)
          VALUES (?, ?, ?, ?, ?)`,
       )
-      .run(id, user.id, title, model, projectId);
+      .run(id, user.id, title, model, projectCheck.projectId);
 
     const conversation = getDb()
       .prepare(

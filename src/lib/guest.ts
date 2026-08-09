@@ -101,3 +101,31 @@ export const consumeGuestMessage = async (): Promise<{
 
   return { ok: true, used, limit, remaining: Math.max(0, limit - used) };
 };
+
+/** Undo a failed guest turn so LLM outages don't burn the daily quota. */
+export const refundGuestMessage = async (): Promise<{
+  used: number;
+  limit: number;
+  remaining: number;
+}> => {
+  const limit = getGuestDailyLimit();
+  const jar = await cookies();
+  const day = todayKey();
+  const raw = jar.get(COOKIE_NAME)?.value;
+  const payload = raw ? decode(raw) : null;
+  if (!payload || payload.day !== day || payload.count <= 0) {
+    return { used: 0, limit, remaining: limit };
+  }
+
+  const used = Math.max(0, payload.count - 1);
+  const token = encode({ count: used, day });
+  jar.set(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24,
+  });
+
+  return { used, limit, remaining: Math.max(0, limit - used) };
+};

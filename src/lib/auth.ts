@@ -32,10 +32,15 @@ export const verifyPassword = async (
   return bcrypt.compare(password, hash);
 };
 
-export const createSessionToken = (userId: string, username: string): string => {
+export const createSessionToken = (
+  userId: string,
+  username: string,
+  role: User["role"] = "user",
+): string => {
   const payload: SessionPayload = {
     userId,
     username,
+    role,
     exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
   };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -69,8 +74,9 @@ export const parseSessionToken = (token: string): SessionPayload | null => {
 export const setSessionCookie = async (
   userId: string,
   username: string,
+  role: User["role"] = "user",
 ): Promise<void> => {
-  const token = createSessionToken(userId, username);
+  const token = createSessionToken(userId, username, role);
   const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,

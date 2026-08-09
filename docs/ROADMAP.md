@@ -5,7 +5,8 @@ Update status here as work lands. Pair with [CHANGELOG.md](../CHANGELOG.md) when
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Shipped in [v1.1.0](../CHANGELOG.md#110--2026-08-09)** (2026-08-09): citations, projects, share links, Fast/Smart, rewrite shortcuts.
+**Shipped in [v1.1.0](../CHANGELOG.md#110--2026-08-09)** (2026-08-09): citations, projects, share links, Fast/Smart, rewrite shortcuts.  
+**Hardening in [v1.2.0](../CHANGELOG.md#120--2026-08-09)** (2026-08-09): language/knowledge fix, project rename/delete + 5/user cap, share/UI polish, auth & guest security.
 
 ---
 

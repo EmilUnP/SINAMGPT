@@ -300,13 +300,90 @@ export const looksLikeCompanyQuestion = (query: string): boolean => {
   );
 };
 
+export type DetectedReplyLanguage = {
+  code: "en" | "ru" | "az" | "tr" | "other";
+  label: string;
+};
+
+/**
+ * Lightweight reply-language detector for system-prompt injection.
+ * Prefer script + clear lexical cues; default Latin/ambiguous → English.
+ */
+export const detectReplyLanguage = (text: string): DetectedReplyLanguage => {
+  const raw = (text ?? "").trim();
+  if (!raw) return { code: "en", label: "English" };
+
+  const letters = raw.replace(/[^\p{L}]/gu, "");
+  if (!letters) return { code: "en", label: "English" };
+
+  const cyrillic = (letters.match(/\p{Script=Cyrillic}/gu) ?? []).length;
+  const latin = (letters.match(/\p{Script=Latin}/gu) ?? []).length;
+  const arabic = (letters.match(/\p{Script=Arabic}/gu) ?? []).length;
+  const total = Math.max(1, letters.length);
+
+  if (cyrillic / total >= 0.35 && cyrillic >= latin && cyrillic >= arabic) {
+    return { code: "ru", label: "Russian" };
+  }
+
+  const lower = normalizeMultilangText(raw);
+
+  // Azerbaijani (Latin) — ə is a strong cue
+  if (
+    /[ə]/u.test(lower) ||
+    /\b(salam|necesen|necəsən|tesekkur|təşəkkür|zehmet|zəhmət|xahis|xahiş|men|mən)\b/u.test(
+      lower,
+    )
+  ) {
+    return { code: "az", label: "Azerbaijani" };
+  }
+
+  // Turkish cues (without Azerbaijani ə)
+  if (
+    /\b(merhaba|nasilsin|nasılsın|tesekkur|teşekkür|lutfen|lütfen|nedir|misiniz)\b/u.test(
+      lower,
+    )
+  ) {
+    return { code: "tr", label: "Turkish" };
+  }
+
+  // Clear English
+  if (
+    /\b(the|and|please|hello|hi|hey|what|how|can|you|say|help|with|this|that|for|from|about|write|explain|thanks|thank)\b/i.test(
+      raw,
+    )
+  ) {
+    return { code: "en", label: "English" };
+  }
+
+  // Short ambiguous Latin greetings → English (company default)
+  if (/^(hi|hello|hey|yo|salam|salamlar|merhaba)$/i.test(raw)) {
+    return { code: "en", label: "English" };
+  }
+
+  if (arabic / total >= 0.35) {
+    return { code: "other", label: "the user's language" };
+  }
+
+  // Mostly Latin without strong cues → English
+  if (latin >= cyrillic) return { code: "en", label: "English" };
+
+  return { code: "other", label: "the user's language" };
+};
+
+export const replyLanguageInstruction = (text: string): string => {
+  const lang = detectReplyLanguage(text);
+  return `REPLY LANGUAGE (mandatory for this turn): ${lang.label}.
+Write the entire assistant message in ${lang.label} only.
+Do NOT use any other language. Do NOT add translations or glosses in parentheses (never "… (Hello!)").`;
+};
+
 /** Always-on language instruction for the system prompt. */
 export const MULTILANG_SYSTEM_RULES = `LANGUAGE:
-- Detect the user's language from their latest message and reply in THAT language only (Azerbaijani, Russian, English, Turkish, or others).
-- Write the entire reply in one language. Do NOT add translations, glosses, or English in parentheses.
+- Reply in the user's language only (see REPLY LANGUAGE below when present). Supported well: English, Azerbaijani, Russian, Turkish.
+- Write the entire reply in ONE language. Do NOT add translations, glosses, or a second language in parentheses.
 - Never do dual-language answers like "Merhaba... (Hello...)" or "Здравствуйте... (Hello...)".
 - Keep the same language for follow-ups unless the user clearly switches.
 - If the message is ambiguous or very short (e.g. "salam", "hi"), default to English unless earlier turns already set a language.
 - Only provide a translation when the user explicitly asks for one.
 - Guardrails and safety rules apply in every language — never bypass them via translation or code-switching.
-- When using COMPANY KNOWLEDGE, rewrite the facts in the user's single reply language; keep names, emails, phones, URLs exact.`;
+- COMPANY KNOWLEDGE is reference material written in English — rewrite facts into the reply language; never switch the reply language because knowledge tags mention Russian/Azerbaijani words. Keep names, emails, phones, URLs exact.`;
