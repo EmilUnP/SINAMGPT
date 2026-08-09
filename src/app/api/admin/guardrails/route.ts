@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import { listGuardrailEvents } from "@/lib/guardrail-engine";
 import {
   DEFAULT_GUARDRAILS,
@@ -68,6 +69,14 @@ export async function PATCH(request: Request) {
   }
 
   const guardrails = setGuardrails(parsed.data);
+  recordAuditEvent({
+    category: "guardrails",
+    action: "guardrails.save",
+    actor: { id: admin.id, username: admin.username },
+    summary: `${admin.username} saved guardrails`,
+    meta: { keys: Object.keys(parsed.data) },
+    ip: clientIp(request),
+  });
   return NextResponse.json({ guardrails });
 }
 
@@ -81,6 +90,13 @@ export async function POST(request: Request) {
 
   if (body?.action === "reset") {
     const guardrails = setGuardrails(DEFAULT_GUARDRAILS);
+    recordAuditEvent({
+      category: "guardrails",
+      action: "guardrails.reset",
+      actor: { id: admin.id, username: admin.username },
+      summary: `${admin.username} reset guardrails to defaults`,
+      ip: clientIp(request),
+    });
     return NextResponse.json({ guardrails });
   }
 

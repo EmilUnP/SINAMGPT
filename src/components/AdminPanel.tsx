@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Radio,
   RefreshCw,
+  ScrollText,
   Search,
   Server,
   Settings2,
@@ -27,6 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
+import { AdminAuditPanel } from "@/components/AdminAuditPanel";
 import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
 import { AdminUsagePanel } from "@/components/AdminUsagePanel";
@@ -120,6 +122,7 @@ type TabId =
   | "models"
   | "knowledge"
   | "guardrails"
+  | "audit"
   | "settings";
 
 type AdminPanelProps = {
@@ -133,6 +136,7 @@ const tabs: Array<{ id: TabId; label: string; icon: typeof LayoutDashboard }> = 
   { id: "models", label: "Models", icon: Bot },
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "guardrails", label: "Guardrails", icon: ShieldAlert },
+  { id: "audit", label: "Audit", icon: ScrollText },
   { id: "settings", label: "Settings", icon: Settings2 },
 ];
 
@@ -740,7 +744,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       </header>
 
       <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <nav className="flex flex-wrap gap-1 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-1.5 backdrop-blur-md">
+        <nav className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1">
           {tabs.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
             return (
@@ -748,18 +752,20 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 key={id}
                 type="button"
                 onClick={() => setTab(id)}
-                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition sm:flex-none ${
+                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition sm:flex-none ${
                   active
-                    ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-[0_8px_24px_rgba(37,99,235,0.3)]"
-                    : "text-[var(--admin-fg)]/70 hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
+                    ? "bg-[var(--accent)] text-white"
+                    : "text-[var(--admin-muted)] hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
                 }`}
               >
-                <Icon size={16} />
-                {label}
+                <Icon size={15} />
+                <span className="hidden sm:inline">{label}</span>
                 {id === "users" ? (
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                      active ? "bg-white/20" : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
+                      active
+                        ? "bg-white/20"
+                        : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
                     }`}
                   >
                     {users.length}
@@ -767,8 +773,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 ) : null}
                 {id === "models" ? (
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                      active ? "bg-white/20" : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
+                      active
+                        ? "bg-white/20"
+                        : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
                     }`}
                   >
                     {enabledModels}/{models.length}
@@ -1135,6 +1143,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               setError("");
               setNotice(message);
             }}
+            onError={(message) => {
+              setNotice("");
+              setError(message);
+            }}
+          />
+        ) : null}
+
+        {tab === "audit" ? (
+          <AdminAuditPanel
             onError={(message) => {
               setNotice("");
               setError(message);

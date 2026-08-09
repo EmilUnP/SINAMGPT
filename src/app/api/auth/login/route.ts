@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { markActive, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { recordAuditEvent } from "@/lib/audit";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
@@ -68,16 +69,41 @@ export async function POST(request: Request) {
 
     // Same response for missing / disabled / wrong password (no account probing)
     if (!user || user.is_active !== 1) {
+      recordAuditEvent({
+        category: "auth",
+        action: "login.fail",
+        actor: { username: username.slice(0, 64) },
+        summary: `Login failed for "${username.slice(0, 64)}"`,
+        meta: { reason: !user ? "bad_credentials" : "disabled" },
+        ip,
+      });
       return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status: 401 });
     }
 
     const ok = await verifyPassword(password, user.password_hash);
     if (!ok) {
+      recordAuditEvent({
+        category: "auth",
+        action: "login.fail",
+        actor: { id: user.id, username: user.username },
+        summary: `Login failed for "${user.username}"`,
+        meta: { reason: "bad_credentials" },
+        ip,
+      });
       return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status: 401 });
     }
 
     markActive(user.id);
     await setSessionCookie(user.id, user.username, user.role);
+
+    recordAuditEvent({
+      category: "auth",
+      action: "login.ok",
+      actor: { id: user.id, username: user.username },
+      summary: `${user.username} signed in`,
+      meta: { role: user.role },
+      ip,
+    });
 
     return NextResponse.json({
       user: {

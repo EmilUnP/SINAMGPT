@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   deleteKnowledgeDoc,
   getKnowledgeDoc,
@@ -41,20 +42,40 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const doc = updateKnowledgeDoc(id, parsed.data);
+  if (doc) {
+    recordAuditEvent({
+      category: "knowledge",
+      action: "knowledge.update",
+      actor: { id: admin.id, username: admin.username },
+      target: { type: "knowledge_doc", id: doc.id },
+      summary: `${admin.username} updated knowledge "${doc.title}"`,
+      meta: { keys: Object.keys(parsed.data) },
+      ip: clientIp(request),
+    });
+  }
   return NextResponse.json({ doc });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await params;
-  if (!getKnowledgeDoc(id)) {
+  const existing = getKnowledgeDoc(id);
+  if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   deleteKnowledgeDoc(id);
+  recordAuditEvent({
+    category: "knowledge",
+    action: "knowledge.delete",
+    actor: { id: admin.id, username: admin.username },
+    target: { type: "knowledge_doc", id },
+    summary: `${admin.username} deleted knowledge "${existing.title}"`,
+    ip: clientIp(request),
+  });
   return NextResponse.json({ ok: true });
 }

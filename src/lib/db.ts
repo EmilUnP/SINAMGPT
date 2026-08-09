@@ -147,6 +147,26 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_guardrail_events_created
       ON guardrail_events(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actor_user_id TEXT,
+      actor_username TEXT NOT NULL DEFAULT '',
+      target_type TEXT NOT NULL DEFAULT '',
+      target_id TEXT NOT NULL DEFAULT '',
+      summary TEXT NOT NULL DEFAULT '',
+      meta_json TEXT NOT NULL DEFAULT '{}',
+      ip TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_events_created
+      ON audit_events(created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_audit_events_category
+      ON audit_events(category, created_at DESC);
   `);
 
   // Seed guest defaults once (admin can change later)

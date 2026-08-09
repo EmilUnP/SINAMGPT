@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   MAX_PROJECTS_PER_USER,
   countUserProjects,
@@ -70,6 +71,15 @@ export async function POST(request: Request) {
     name: parsed.data.name,
     description: parsed.data.description,
     createdBy: user.id,
+  });
+
+  recordAuditEvent({
+    category: "project",
+    action: "project.create",
+    actor: { id: user.id, username: user.username },
+    target: { type: "project", id: project.id },
+    summary: `${user.username} created project "${project.name}"`,
+    ip: clientIp(request),
   });
 
   return NextResponse.json(

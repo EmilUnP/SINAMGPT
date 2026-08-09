@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.3.0](./CHANGELOG.md#130--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.4.0](./CHANGELOG.md#140--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -11,7 +11,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
-- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), theme-aware UI
+- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), **Audit** trail, theme-aware UI
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -75,6 +75,7 @@ There you can:
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
 - **Knowledge** — company/project facts via lightweight keyword RAG (EN / AZ / RU / TR); citations toggle
 - **Guardrails** — keywords (+ de-obfuscation), prompt-injection, secrets, PII; live inspector; event log
+- **Audit** — admin changes, logins, share/project actions, plus guardrail hits in one view
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
@@ -100,7 +101,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events
+- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events, audit events
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)

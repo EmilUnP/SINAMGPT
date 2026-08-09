@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   getAppSettings,
   setDefaultModelSetting,
@@ -84,6 +85,15 @@ export async function PATCH(request: Request) {
   if (d.temperature !== undefined) setTemperatureSetting(d.temperature);
   if (d.numPredict !== undefined) setNumPredictSetting(d.numPredict);
   if (d.topP !== undefined) setTopPSetting(d.topP);
+
+  recordAuditEvent({
+    category: "settings",
+    action: "settings.update",
+    actor: { id: admin.id, username: admin.username },
+    summary: `${admin.username} updated app settings`,
+    meta: { keys: Object.keys(d) },
+    ip: clientIp(request),
+  });
 
   return NextResponse.json({ settings: getAppSettings() });
 }

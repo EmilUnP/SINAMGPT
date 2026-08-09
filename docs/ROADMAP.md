@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.3.0](../CHANGELOG.md#130--2026-08-09) (see [README](../README.md)).
+**Current release:** [v1.4.0](../CHANGELOG.md#140--2026-08-09) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.3.0)
+## Product today (v1.4.0)
 
 What operators and users can rely on right now:
 
@@ -19,8 +19,9 @@ What operators and users can rely on right now:
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
-| **Knowledge** | Lightweight keyword RAG (EN / AZ / RU / TR); citations under answers when Admin → Knowledge → Citations is on (incl. guests when knowledge applies) |
-| **Guardrails** | Layered hard checks (keywords + de-obfuscation, prompt-injection, secrets, PII) + soft persona/topics; Admin **Live inspector** + **event history** |
+| **Knowledge** | Lightweight keyword RAG (EN / AZ / RU / TR); citations; Admin Overview / Library / Settings with corpus stats |
+| **Guardrails** | Layered detectors + soft persona; Admin Overview / Policy / Detectors / Inspector with coverage stats |
+| **Audit** | Admin → **Audit** trail for admin mutations, auth outcomes, share/project ops; merges recent guardrail hits |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
 | **Quality check** | `npm run test:chat` smoke suite against a running server |
@@ -28,8 +29,6 @@ What operators and users can rely on right now:
 ---
 
 ## Next active track
-
-No sprint is committed yet. Pick items from **Candidates** below, move them into this table, and set status to `in progress`.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
@@ -43,7 +42,6 @@ No sprint is committed yet. Pick items from **Candidates** below, move them into
 | 2 | **Better RAG** (chunk + local embeddings) | Sharper hits than keyword scoring |
 | 3 | **Share → continue as copy** | Colleagues can fork a shared thread into their own chat |
 | 4 | **Ops: backup `owngpt.db`** | One-click safety for the company machine |
-| 5 | **Wider audit trail** | Extend beyond `guardrail_events` to admin/chat actions |
 
 ---
 
@@ -95,6 +93,15 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Live inspector + events | `done` | Admin sees what ran / matched / decision; `guardrail_events` |
 | Deep chat test | `done` | `npm run test:chat` (+ `--quick`) |
 | Synonym matching fix | `done` | Whole-token expansion (no `hell` inside `hello`) |
+
+### v1.4.0 — Ops & admin UX (2026-08-09)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Wider audit trail | `done` | `audit_events` + Admin → Audit (merges guardrail hits) |
+| Admin chrome / subtabs | `done` | Cleaner nav; shared headers, stats, subtabs |
+| Richer Knowledge admin | `done` | Overview stats, Library, Settings |
+| Richer Guardrails admin | `done` | Overview, Policy, Detectors, Inspector |
 
 Details and compare links: [CHANGELOG.md](../CHANGELOG.md).
 

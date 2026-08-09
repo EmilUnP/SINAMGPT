@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import type { User } from "@/lib/types";
 
@@ -64,6 +65,17 @@ export async function PATCH(request: Request, { params }: Params) {
     getDb()
       .prepare(`UPDATE users SET is_active = ? WHERE id = ?`)
       .run(parsed.data.is_active ? 1 : 0, id);
+
+    const action = parsed.data.is_active ? "user.enable" : "user.disable";
+    recordAuditEvent({
+      category: "admin",
+      action,
+      actor: { id: admin.id, username: admin.username },
+      target: { type: "user", id: target.id },
+      summary: `${admin.username} ${parsed.data.is_active ? "enabled" : "disabled"} ${target.username}`,
+      meta: { target_username: target.username },
+      ip: clientIp(request),
+    });
   }
 
   const updated = getDb()
@@ -76,7 +88,7 @@ export async function PATCH(request: Request, { params }: Params) {
   return NextResponse.json({ user: updated });
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -92,8 +104,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   const target = getDb()
-    .prepare(`SELECT id, role FROM users WHERE id = ?`)
-    .get(id) as { id: string; role: string } | undefined;
+    .prepare(`SELECT id, username, role FROM users WHERE id = ?`)
+    .get(id) as { id: string; username: string; role: string } | undefined;
 
   if (!target) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -113,5 +125,16 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   getDb().prepare(`DELETE FROM users WHERE id = ?`).run(id);
+
+  recordAuditEvent({
+    category: "admin",
+    action: "user.delete",
+    actor: { id: admin.id, username: admin.username },
+    target: { type: "user", id: target.id },
+    summary: `${admin.username} deleted user ${target.username}`,
+    meta: { target_username: target.username, role: target.role },
+    ip: clientIp(request),
+  });
+
   return NextResponse.json({ ok: true });
 }

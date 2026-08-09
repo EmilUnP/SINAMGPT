@@ -10,6 +10,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.4.0] — 2026-08-09
+
+Ops & admin UX release: wider audit trail plus a cleaner, more informative Admin panel (especially Knowledge and Guardrails).
+
+### Added
+- **Wider audit trail** — `audit_events` for admin mutations, auth outcomes, share/project ops; Admin → **Audit** tab merges recent guardrail hits (not every chat message)
+
+### Changed
+- **Admin UI** — quieter top nav; shared page chrome (headers, subtabs, stat cards)
+- **Knowledge admin** — Overview / Library / Settings subtabs with corpus stats, category coverage, and clearer retrieval settings
+- **Guardrails admin** — Overview / Policy / Detectors / Inspector subtabs with coverage stats, top matched rules, and side-by-side inspector + events
+
 ## [1.3.0] — 2026-08-09
 
 Safety & quality tooling release: multi-layer guardrails with a live inspection report, plus a runnable deep chat smoke suite.
@@ -85,7 +97,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.0.0...v1.1.0

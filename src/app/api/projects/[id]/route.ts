@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   deleteProject,
   getProject,
@@ -58,11 +59,22 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const project = updateProject(id, parsed.data);
+  if (project) {
+    recordAuditEvent({
+      category: "project",
+      action: "project.rename",
+      actor: { id: user.id, username: user.username },
+      target: { type: "project", id: project.id },
+      summary: `${user.username} updated project "${project.name}"`,
+      meta: { keys: Object.keys(parsed.data) },
+      ip: clientIp(request),
+    });
+  }
   return NextResponse.json({ project });
 }
 
 /** Hard-delete: chats move back to “no project”. Owner or admin. */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -78,5 +90,13 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 
   deleteProject(id);
+  recordAuditEvent({
+    category: "project",
+    action: "project.delete",
+    actor: { id: user.id, username: user.username },
+    target: { type: "project", id },
+    summary: `${user.username} deleted project "${existing.name}"`,
+    ip: clientIp(request),
+  });
   return NextResponse.json({ ok: true, deleted: true });
 }
