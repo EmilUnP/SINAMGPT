@@ -499,13 +499,18 @@ export async function POST(request: Request) {
       }
 
       const lastUser = rows[lastUserIdx];
-      const guard = checkInputGuardrails(lastUser.content, "user");
+      const guard = checkInputGuardrails(lastUser.content, "user", {
+        username: user.username,
+        userId: user.id,
+        projectId: owned.project_id,
+      });
       if (guard.blocked) {
         return Response.json(
           {
             error: guard.refusal,
             blocked: true,
             reason: guard.reason,
+            inspection: guard.inspection,
           },
           { status: 422 },
         );
@@ -570,24 +575,29 @@ export async function POST(request: Request) {
         );
       }
 
-      const guard = checkInputGuardrails(message, "user");
-      if (guard.blocked) {
-        return Response.json(
-          {
-            error: guard.refusal,
-            blocked: true,
-            reason: guard.reason,
-          },
-          { status: 422 },
-        );
-      }
-
       const owned = db
         .prepare(
           `SELECT ${CONVERSATION_SELECT}
            FROM conversations WHERE id = ? AND user_id = ?`,
         )
         .get(conversationId, user.id) as Conversation | undefined;
+
+      const guard = checkInputGuardrails(message, "user", {
+        username: user.username,
+        userId: user.id,
+        projectId: owned?.project_id,
+      });
+      if (guard.blocked) {
+        return Response.json(
+          {
+            error: guard.refusal,
+            blocked: true,
+            reason: guard.reason,
+            inspection: guard.inspection,
+          },
+          { status: 422 },
+        );
+      }
 
       if (!owned) {
         return Response.json(
@@ -702,26 +712,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const guard = checkInputGuardrails(message, "user");
-    if (guard.blocked) {
-      return Response.json(
-        {
-          error: guard.refusal,
-          blocked: true,
-          reason: guard.reason,
-        },
-        { status: 422 },
-      );
-    }
-
     let conversationId = parsed.data.conversationId;
+    let projectIdForGuard: string | null = parsed.data.projectId ?? null;
 
     if (conversationId) {
       const owned = db
         .prepare(
-          `SELECT id FROM conversations WHERE id = ? AND user_id = ?`,
+          `SELECT id, project_id FROM conversations WHERE id = ? AND user_id = ?`,
         )
-        .get(conversationId, user.id);
+        .get(conversationId, user.id) as
+        | { id: string; project_id: string | null }
+        | undefined;
 
       if (!owned) {
         return Response.json(
@@ -729,13 +730,33 @@ export async function POST(request: Request) {
           { status: 404 },
         );
       }
+      projectIdForGuard = owned.project_id;
 
       db.prepare(
         `UPDATE conversations
          SET model = ?, updated_at = datetime('now')
          WHERE id = ?`,
       ).run(model, conversationId);
-    } else {
+    }
+
+    const guard = checkInputGuardrails(message, "user", {
+      username: user.username,
+      userId: user.id,
+      projectId: projectIdForGuard,
+    });
+    if (guard.blocked) {
+      return Response.json(
+        {
+          error: guard.refusal,
+          blocked: true,
+          reason: guard.reason,
+          inspection: guard.inspection,
+        },
+        { status: 422 },
+      );
+    }
+
+    if (!conversationId) {
       conversationId = newId();
       const projectCheck = assertAssignableProject(
         parsed.data.projectId,

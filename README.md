@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.2.0](./CHANGELOG.md#120--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.3.0](./CHANGELOG.md#130--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -11,7 +11,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — group chats and project-scoped knowledge
 - **Share chats** internally (logged-in colleagues, read-only links)
 - **Cited answers** from the company knowledge base (admin on/off)
-- **Admin** — users, models, live usage, knowledge base, guardrails, theme-aware UI
+- **Admin** — users, models, live usage, knowledge base, multi-layer guardrails (inspector + events), theme-aware UI
 - **Guest try-chat** on the home page (daily limit; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -74,7 +74,7 @@ There you can:
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
 - **Knowledge** — company/project facts injected like lightweight RAG (EN / AZ / RU / TR aware)
-- **Guardrails** — what the AI can/can’t say, blocked keywords, refusal text
+- **Guardrails** — layered detectors (keywords, injection, secrets, PII), live inspector, event log
 - Enable / disable accounts
 - Enable / disable which Ollama models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
@@ -103,6 +103,19 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 - Tables include users, projects, conversations (incl. share tokens), messages, settings, models, usage events, knowledge docs
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
+
+## Deep chat test
+
+With the app running (`npm run dev`) and at least one model available:
+
+```bash
+npm run test:chat
+npm run test:chat -- --quick
+```
+
+Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` / `TEST_PASSWORD`). Optional: `BASE_URL=http://127.0.0.1:3000`.
+
+Checks login, models, streaming chat, English language drift, citations on company questions, projects, share links, and rewrite.
 
 ## Releases & changelog
 

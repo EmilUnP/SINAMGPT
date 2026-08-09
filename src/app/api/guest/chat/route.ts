@@ -94,13 +94,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const guard = checkInputGuardrails(message, "guest");
+    const guard = checkInputGuardrails(message, "guest", {
+      username: "guest",
+    });
     if (guard.blocked) {
       return Response.json(
         {
           error: guard.refusal,
           blocked: true,
           reason: guard.reason,
+          inspection: guard.inspection,
         },
         { status: 422 },
       );

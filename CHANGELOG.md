@@ -10,6 +10,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) for the future backlog.
 
+## [1.3.0] — 2026-08-09
+
+Safety & quality tooling release: multi-layer guardrails with a live inspection report, plus a runnable deep chat smoke suite.
+
+### Added
+- **Deep chat test** — `npm run test:chat` smoke suite against a running server (stream, language, projects, share, rewrite)
+- **Powerful guardrails engine** — layered detectors (keywords + de-obfuscation, prompt-injection/jailbreak, secrets, PII patterns) with Admin **Live inspector** (what ran / what matched / decision) and **event history**
+
+### Fixed
+- **Knowledge synonym false positives** — whole-token synonym expansion (e.g. `hell` no longer matches inside `hello`)
+
 ## [1.2.0] — 2026-08-09
 
 Hardening and polish release: language/knowledge fixes, project management, share UI stacking, auth/guest security, and mobile chat header UX.
@@ -74,7 +85,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/EmilUnP/SINAMGPT/releases/tag/v1.0.0

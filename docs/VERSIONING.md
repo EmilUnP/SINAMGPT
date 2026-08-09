@@ -18,7 +18,7 @@ SINAMGPT uses **semantic versioning**: `MAJOR.MINOR.PATCH`.
 
 Keep `package.json`, `package-lock.json` (root `version`), README **Current version**, and the latest changelog section in sync.
 
-**Current release:** `1.2.0` (see [CHANGELOG.md](../CHANGELOG.md)).
+**Current release:** `1.3.0` (see [CHANGELOG.md](../CHANGELOG.md)).
 
 ## Release checklist
 

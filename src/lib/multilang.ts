@@ -261,15 +261,19 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
 
 export const expandQueryTokens = (query: string): string[] => {
   const base = tokenizeMultilang(query, 2);
+  const baseSet = new Set(base);
   const expanded = new Set(base);
 
-  const normalized = normalizeMultilangText(query);
+  const normalized = ` ${normalizeMultilangText(query)} `;
   for (const group of QUERY_SYNONYM_GROUPS) {
-    const hit = group.some(
-      (term) =>
-        normalized.includes(normalizeMultilangText(term)) ||
-        base.includes(normalizeMultilangText(term)),
-    );
+    const hit = group.some((term) => {
+      const t = normalizeMultilangText(term);
+      if (t.length < 2) return false;
+      // Exact token match — never substring ("hell" must not match "hello")
+      if (!t.includes(" ")) return baseSet.has(t);
+      // Multi-word phrases: whole-phrase only
+      return normalized.includes(` ${t} `);
+    });
     if (hit) {
       for (const term of group) {
         const t = normalizeMultilangText(term);

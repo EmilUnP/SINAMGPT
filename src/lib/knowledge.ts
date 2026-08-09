@@ -4,6 +4,7 @@ import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
   normalizeMultilangText,
+  tokenizeMultilang,
 } from "@/lib/multilang";
 
 const SETTINGS_KEY = "knowledge_settings";
@@ -227,18 +228,24 @@ export const retrieveKnowledge = (
   const activeProject = projectId?.trim() || null;
 
   const scored = docs.map((doc) => {
-    const hay = normalizeMultilangText(
-      `${doc.title}\n${doc.tags}\n${doc.content}`,
-    );
-    const titleNorm = normalizeMultilangText(doc.title);
-    const tagsNorm = normalizeMultilangText(doc.tags);
+    // Whole-token match only (avoid "help" matching "helped")
+    const titleTokens = new Set(tokenizeMultilang(doc.title));
+    const tagTokens = new Set(tokenizeMultilang(doc.tags));
+    const contentTokens = new Set(tokenizeMultilang(doc.content));
     let matchScore = 0;
+    let strongHits = 0;
 
     for (const token of queryTokens) {
-      if (token.length < 2) continue;
-      if (titleNorm.includes(token)) matchScore += 4;
-      if (tagsNorm.includes(token)) matchScore += 3;
-      if (hay.includes(token)) matchScore += 1;
+      if (token.length < 3) continue;
+      if (titleTokens.has(token)) {
+        matchScore += 4;
+        strongHits += 1;
+      }
+      if (tagTokens.has(token)) {
+        matchScore += 3;
+        strongHits += 1;
+      }
+      if (contentTokens.has(token)) matchScore += 1;
     }
 
     if (
@@ -256,10 +263,9 @@ export const retrieveKnowledge = (
       }
     }
 
-    const hasMatch = matchScore > 0;
-    // always_include = pin when company context is relevant — NOT on every chat
-    const alwaysEligible =
-      doc.always_include === 1 && (companyIntent || hasMatch);
+    // Pin always_include docs only for real company questions
+    const alwaysEligible = doc.always_include === 1 && companyIntent;
+    const hasMatch = strongHits > 0 || matchScore >= 4;
 
     // Priority is a tiny tiebreaker only (never enough to pass the threshold alone)
     let score = matchScore + doc.priority / 1000;
@@ -273,7 +279,7 @@ export const retrieveKnowledge = (
     .sort((a, b) => b.score - a.score);
 
   const rest = scored
-    .filter((s) => !s.alwaysEligible && s.hasMatch && s.score >= 3)
+    .filter((s) => !s.alwaysEligible && s.hasMatch && s.score >= 4)
     .sort((a, b) => b.score - a.score);
 
   const picked: KnowledgeDoc[] = [];
