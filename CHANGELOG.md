@@ -8,7 +8,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Planned
-- See [docs/ROADMAP.md](./docs/ROADMAP.md) for the future backlog.
+- See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
 ## [1.3.0] — 2026-08-09
 

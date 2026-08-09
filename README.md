@@ -8,11 +8,11 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, Fast/Smart presets, model picker, rewrite shortcuts
-- **Projects** — group chats and project-scoped knowledge
-- **Share chats** internally (logged-in colleagues, read-only links)
-- **Cited answers** from the company knowledge base (admin on/off)
-- **Admin** — users, models, live usage, knowledge base, multi-layer guardrails (inspector + events), theme-aware UI
-- **Guest try-chat** on the home page (daily limit; signed-in users unlimited)
+- **Projects** — up to 5 folders per user; project-scoped knowledge boost
+- **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
+- **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
+- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), theme-aware UI
+- **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
 
@@ -73,10 +73,10 @@ There you can:
 
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
-- **Knowledge** — company/project facts injected like lightweight RAG (EN / AZ / RU / TR aware)
-- **Guardrails** — layered detectors (keywords, injection, secrets, PII), live inspector, event log
-- Enable / disable accounts
-- Enable / disable which Ollama models users can use
+- **Knowledge** — company/project facts via lightweight keyword RAG (EN / AZ / RU / TR); citations toggle
+- **Guardrails** — keywords (+ de-obfuscation), prompt-injection, secrets, PII; live inspector; event log
+- **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
+- Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 
 ## Config
@@ -100,9 +100,10 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (incl. share tokens), messages, settings, models, usage events, knowledge docs
+- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
+- Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
 ## Deep chat test
 
@@ -126,7 +127,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./
 - Run on one powerful PC; others can open `http://THAT-PC-IP:3000` on the LAN if firewall allows
 - Change `SESSION_SECRET` and admin password before sharing
 - Keep Ollama updated; pull the models your team needs
-- This is intentionally simple — no teams, billing, or cloud sync
+- This is intentionally simple — no departments, billing, or cloud sync (see roadmap for what’s next)
 
 ## Stack
 

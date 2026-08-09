@@ -1,118 +1,109 @@
 # SINAMGPT — Product roadmap
 
 Living plan for features that make SINAMGPT more valuable as a **local company GPT**.  
-Update status here as work lands. Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping.
+Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: status here should match the code.
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Shipped in [v1.1.0](../CHANGELOG.md#110--2026-08-09)** (2026-08-09): citations, projects, share links, Fast/Smart, rewrite shortcuts.  
-**Hardening in [v1.2.0](../CHANGELOG.md#120--2026-08-09)** (2026-08-09): language/knowledge fix, project rename/delete + 5/user cap, share/UI polish, auth & guest security.  
-**Safety tooling in [v1.3.0](../CHANGELOG.md#130--2026-08-09)** (2026-08-09): multi-layer guardrails + live inspector/events, `npm run test:chat`.
+**Current release:** [v1.3.0](../CHANGELOG.md#130--2026-08-09) (see [README](../README.md)).
 
 ---
 
-## Active track (chosen 2026-08-09 · shipped in v1.1.0)
+## Product today (v1.3.0)
+
+What operators and users can rely on right now:
+
+| Area | Reality |
+|------|---------|
+| **Chat** | Streaming replies, model picker, Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system) |
+| **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
+| **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
+| **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
+| **Knowledge** | Lightweight keyword RAG (EN / AZ / RU / TR); citations under answers when Admin → Knowledge → Citations is on (incl. guests when knowledge applies) |
+| **Guardrails** | Layered hard checks (keywords + de-obfuscation, prompt-injection, secrets, PII) + soft persona/topics; Admin **Live inspector** + **event history** |
+| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
+| **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
+| **Quality check** | `npm run test:chat` smoke suite against a running server |
+
+---
+
+## Next active track
+
+No sprint is committed yet. Pick items from **Candidates** below, move them into this table, and set status to `in progress`.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 1 | **Cited company answers** | `done` | Show which knowledge docs backed a reply; admin on/off in Knowledge settings |
-| 2 | **Projects / folders** | `done` | Group chats by project; project-scoped knowledge |
-| 3 | **Shareable internal link** | `done` | Share chat with logged-in colleagues on the LAN |
-| 4 | **Fast vs smart + per-chat model** | `done` | Quick/deep presets; remember last model per chat |
-| 5 | **Rewrite shortcuts** | `done` | One-click shorter / more formal / continue on last answer |
+| — | *(none chosen)* | — | Promote from candidates when you start work |
 
----
+### Candidates (suggested order)
 
-### 1. Cited company answers
-
-**Goal:** Under assistant replies, show e.g. `From: SESDA overview · Company profile` when knowledge was used.
-
-**Scope**
-- Persist citation list on assistant messages (ids + titles)
-- Stream/load citations into chat UI (logged-in + optional guest)
-- Admin: Knowledge settings → **Show citations** toggle (default on)
-- If knowledge disabled or no docs matched → no citation row
-
-**Done when:** Toggle works; citations appear only when enabled and sources exist; survive reload of the conversation.
-
----
-
-### 2. Projects / folders
-
-**Goal:** Organize chats like work (e.g. SESDA, Internal portal) with optional project-specific knowledge.
-
-**Scope**
-- `projects` table; conversation belongs to a project (nullable = Inbox)
-- Sidebar: project list + chats inside
-- Knowledge docs can tag `project_id` or project tags; retrieval prefers that project’s docs
-- Admin or user can create/rename/archive projects
-
-**Done when:** User can create a project, move chats into it, and answers prefer that project’s knowledge.
-
----
-
-### 3. Shareable internal link
-
-**Goal:** “Share this chat” → link that another logged-in user on the same deployment can open (read-only first).
-
-**Scope**
-- Share token on conversation; `GET /share/[token]` or `/chat/shared/[token]`
-- Auth required; no public/anonymous share
-- Owner can revoke share
-- Read-only view v1 (optional: allow continue later)
-
-**Done when:** Owner shares, colleague opens while logged in, sees the thread; revoke works.
-
----
-
-### 4. Fast vs smart + per-chat model
-
-**Goal:** Clear speed/quality choice without digging into admin generation settings.
-
-**Scope**
-- UI: Fast / Smart (maps to configurable model ids in admin or env)
-- Conversation already stores `model` — keep updating it when user switches
-- Remember last Fast/Smart (or last model) in `localStorage` + per conversation
-
-**Done when:** Switching Fast/Smart changes the model for the next reply and sticks for that chat.
-
----
-
-### 5. Rewrite shortcuts
-
-**Goal:** One-click improve last assistant message without retyping.
-
-**Scope**
-- Actions on last assistant bubble: **Shorter**, **More formal**, **Continue**
-- Server mode e.g. `rewrite` with instruction; replaces or appends assistant message
-- Works with streaming; respects knowledge/guardrails
-
-**Done when:** Each action regenerates a useful variant of the last answer in-place.
+| Priority | Idea | Why next |
+|----------|------|----------|
+| 1 | **File / PDF → knowledge** | Biggest adoption gap vs typing docs by hand |
+| 2 | **Better RAG** (chunk + local embeddings) | Sharper hits than keyword scoring |
+| 3 | **Share → continue as copy** | Colleagues can fork a shared thread into their own chat |
+| 4 | **Ops: backup `owngpt.db`** | One-click safety for the company machine |
+| 5 | **Wider audit trail** | Extend beyond `guardrail_events` to admin/chat actions |
 
 ---
 
 ## Future backlog (not started)
 
-Ideas kept for later — not committed to a sprint.
+Ideas kept for later — not a commitment.
 
 | Idea | Why it matters |
 |------|----------------|
-| File / PDF → knowledge | Real company adoption |
 | Chat modes (Ask SINAM / Work / Write) | Productized feel |
-| Better RAG (chunk + local embeddings) | Sharper knowledge hits |
-| Audit log | IT / compliance |
-| Departments / knowledge visibility | Multi-team |
+| Departments / knowledge visibility | Multi-team beyond personal projects |
 | Export chat (Markdown / PDF) | Manager handoffs |
-| Backup button (`owngpt.db`) | Ops safety |
 | Voice input | Quick questions |
 | ⌘K command palette | Power users |
 | First-login onboarding | Reduce confusion |
+| Project archive (soft-delete) | Schema has `is_archived`; UI today **hard-deletes** and untags knowledge |
+
+---
+
+## Shipped history
+
+Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.1.0 — Company productivity (2026-08-09)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Cited company answers | `done` | `From: …` sources; Admin → Knowledge → Citations |
+| Projects / folders | `done` | Group chats; project-scoped knowledge boost |
+| Shareable internal link | `done` | Logged-in, read-only `/share/[token]` |
+| Fast vs Smart + per-chat model | `done` | Admin → Settings maps Fast/Smart models |
+| Rewrite shortcuts | `done` | Shorter / More formal / Continue |
+| Theme + multi-backend LLM | `done` | Light/dark/system; Ollama + vLLM |
+
+### v1.2.0 — Hardening (2026-08-09)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Language / knowledge fix | `done` | No RU drift on English greetings; company-intent gate for inject |
+| Projects polish | `done` | Rename/delete; **5/user**; own folders only; project IDOR checks |
+| Share / mobile UX | `done` | Portaled share menu; Fast/Smart row on small screens; rotate confirm |
+| Auth & guest security | `done` | Rate limits; unified login errors; guest Zod/burst/refund; safe markdown links |
+
+### v1.3.0 — Safety tooling (2026-08-09)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Multi-layer guardrails | `done` | Keywords, injection, secrets, PII (+ optional strict PII) |
+| Live inspector + events | `done` | Admin sees what ran / matched / decision; `guardrail_events` |
+| Deep chat test | `done` | `npm run test:chat` (+ `--quick`) |
+| Synonym matching fix | `done` | Whole-token expansion (no `hell` inside `hello`) |
+
+Details and compare links: [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
 ## How to update this doc
 
-1. When starting a feature → set status to `in progress`.
-2. When merged/usable → set to `done` and add a line under CHANGELOG **Unreleased** (promote into a version section on release).
-3. When parking → `deferred` + one-line reason.
-4. New big ideas go under **Future backlog** first; promote into **Active track** only when chosen.
+1. **Starting work** — move a candidate into **Next active track**, status `in progress`.
+2. **Shipped** — status `done`; add a line under CHANGELOG **Unreleased**; on release, add a row under **Shipped history** and refresh **Product today**.
+3. **Parking** — `deferred` + one-line reason.
+4. **New ideas** — **Future backlog** first; promote to **Candidates** or **Next active track** only when chosen.
+5. Do not describe archive, embeddings, PDF upload, or public share as done unless the code ships them.
