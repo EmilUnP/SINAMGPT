@@ -3,7 +3,6 @@ import { getDb } from "@/lib/db";
 import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
-  normalizeMultilangText,
   tokenizeMultilang,
 } from "@/lib/multilang";
 

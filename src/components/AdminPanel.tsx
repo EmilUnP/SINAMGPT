@@ -355,7 +355,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   }, []);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const filteredUsers = useMemo(() => {
@@ -385,15 +387,28 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     filteredUsers.length,
   );
 
-  useEffect(() => {
+  /*
+   * Changing a filter restarts pagination. Resetting in the handler keeps it
+   * in the same commit as the filter change; an effect would render once with
+   * the stale page first. An over-range page needs no effect at all —
+   * safeUserPage clamps during render and every consumer reads safeUserPage.
+   */
+  const changeUserQuery = (value: string) => {
+    setUserQuery(value);
     setUserPage(1);
-  }, [userQuery, userFilter, userPageSize]);
-
-  useEffect(() => {
-    if (userPage > userTotalPages) {
-      setUserPage(userTotalPages);
-    }
-  }, [userPage, userTotalPages]);
+  };
+  const changeUserFilter = (
+    value: "all" | "active" | "disabled" | "admin",
+  ) => {
+    setUserFilter(value);
+    setUserPage(1);
+  };
+  const changeUserPageSize = (
+    value: (typeof USER_PAGE_SIZE_OPTIONS)[number],
+  ) => {
+    setUserPageSize(value);
+    setUserPage(1);
+  };
 
   const enabledModels = useMemo(
     () => models.filter((m) => m.is_enabled).length,
@@ -1180,7 +1195,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   />
                   <input
                     value={userQuery}
-                    onChange={(e) => setUserQuery(e.target.value)}
+                    onChange={(e) => changeUserQuery(e.target.value)}
                     placeholder="Search username"
                     className="w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-[var(--admin-muted)]/30 focus:border-[var(--accent)]/50 sm:w-48"
                   />
@@ -1188,7 +1203,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 <select
                   value={userFilter}
                   onChange={(e) =>
-                    setUserFilter(
+                    changeUserFilter(
                       e.target.value as "all" | "active" | "disabled" | "admin",
                     )
                   }
@@ -1204,7 +1219,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   <select
                     value={userPageSize}
                     onChange={(e) =>
-                      setUserPageSize(
+                      changeUserPageSize(
                         Number(e.target.value) as (typeof USER_PAGE_SIZE_OPTIONS)[number],
                       )
                     }

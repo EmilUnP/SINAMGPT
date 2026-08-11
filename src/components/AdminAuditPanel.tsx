@@ -88,7 +88,9 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
   }, [category, onError]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   return (
