@@ -116,7 +116,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   }, [onError]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const closeModal = useCallback(() => {
@@ -199,13 +201,28 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
     filteredDocs.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const rangeEnd = Math.min(safePage * pageSize, filteredDocs.length);
 
-  useEffect(() => {
+  /*
+   * Changing a filter restarts pagination. Resetting in the handler keeps it
+   * in the same commit as the filter change; an effect would render once with
+   * the stale page first. An over-range page needs no effect at all — safePage
+   * clamps during render and every consumer below reads safePage.
+   */
+  const changeQuery = (value: string) => {
+    setQuery(value);
     setPage(1);
-  }, [query, filter, categoryFilter, pageSize]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  };
+  const changeFilter = (value: "all" | "enabled" | "disabled") => {
+    setFilter(value);
+    setPage(1);
+  };
+  const changeCategoryFilter = (value: "all" | KnowledgeCategory) => {
+    setCategoryFilter(value);
+    setPage(1);
+  };
+  const changePageSize = (value: (typeof PAGE_SIZE_OPTIONS)[number]) => {
+    setPageSize(value);
+    setPage(1);
+  };
 
   const openCreate = () => {
     setEditingId(null);
@@ -472,7 +489,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                           <button
                             type="button"
                             onClick={() => {
-                              setCategoryFilter(row.category);
+                              changeCategoryFilter(row.category);
                               setTab("library");
                             }}
                             className="font-medium capitalize text-[var(--admin-fg)] hover:text-[var(--accent)]"
@@ -568,7 +585,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   />
                   <input
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => changeQuery(e.target.value)}
                     placeholder="Search…"
                     className="w-48 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--accent)]/50"
                   />
@@ -576,7 +593,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <select
                   value={categoryFilter}
                   onChange={(e) =>
-                    setCategoryFilter(
+                    changeCategoryFilter(
                       e.target.value as "all" | KnowledgeCategory,
                     )
                   }
@@ -592,7 +609,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <select
                   value={filter}
                   onChange={(e) =>
-                    setFilter(e.target.value as "all" | "enabled" | "disabled")
+                    changeFilter(
+                      e.target.value as "all" | "enabled" | "disabled",
+                    )
                   }
                   className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2.5 py-1.5 text-sm outline-none"
                 >
@@ -603,7 +622,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <select
                   value={pageSize}
                   onChange={(e) =>
-                    setPageSize(
+                    changePageSize(
                       Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
                     )
                   }

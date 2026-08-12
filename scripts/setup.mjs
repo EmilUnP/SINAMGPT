@@ -34,7 +34,7 @@ OwnGPT setup ready.
 4) Start the app:
    npm run dev
 
-Open http://localhost:3000
+Open http://localhost:3055
 - Normal users: register and chat
 - Admin: sign in with ADMIN_* credentials → /admin
 `);

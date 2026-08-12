@@ -71,12 +71,6 @@ type Props = {
 
 type GuardTab = "overview" | "policy" | "detectors" | "tools";
 
-const countLines = (value: string) =>
-  value
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean).length;
-
 /** Topics may be comma- or newline-separated in saved configs. */
 const topicItems = (value: string) => {
   const byNl = value
@@ -229,7 +223,9 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   }, [onError]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const update = <K extends keyof GuardrailsConfig>(

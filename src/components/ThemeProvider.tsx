@@ -4,10 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -27,13 +26,59 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const getSystemDark = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-color-scheme: dark)").matches;
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+/*
+ * Both inputs to the theme live outside React — the OS colour scheme and
+ * localStorage — so they are read through useSyncExternalStore rather than
+ * mirrored into state by a mount effect. The server snapshots match what
+ * themeBootScript assumes before hydration.
+ */
+
+const subscribeSystemDark = (onChange: () => void) => {
+  const mq = window.matchMedia(DARK_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+};
+
+const getSystemDarkSnapshot = () => window.matchMedia(DARK_QUERY).matches;
+const getSystemDarkServerSnapshot = () => false;
+
+/** Cached so the snapshot stays referentially stable between writes. */
+let preferenceCache: ThemePreference | null = null;
+const preferenceListeners = new Set<() => void>();
+
+const subscribePreference = (onChange: () => void) => {
+  preferenceListeners.add(onChange);
+  return () => {
+    preferenceListeners.delete(onChange);
+  };
+};
+
+const getPreferenceSnapshot = (): ThemePreference => {
+  if (preferenceCache === null) preferenceCache = readStoredTheme();
+  return preferenceCache;
+};
+
+const getPreferenceServerSnapshot = (): ThemePreference => "system";
+
+const writePreference = (next: ThemePreference) => {
+  preferenceCache = next;
+  storeTheme(next);
+  for (const listener of preferenceListeners) listener();
+};
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [systemDark, setSystemDark] = useState(false);
+  const preference = useSyncExternalStore(
+    subscribePreference,
+    getPreferenceSnapshot,
+    getPreferenceServerSnapshot,
+  );
+  const systemDark = useSyncExternalStore(
+    subscribeSystemDark,
+    getSystemDarkSnapshot,
+    getSystemDarkServerSnapshot,
+  );
 
   const resolved = useMemo(
     () => resolveTheme(preference, systemDark),
@@ -41,30 +86,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useLayoutEffect(() => {
-    const stored = readStoredTheme();
-    const dark = getSystemDark();
-    setPreferenceState(stored);
-    setSystemDark(dark);
-    applyThemeToDocument(resolveTheme(stored, dark));
-  }, []);
-
-  useLayoutEffect(() => {
     applyThemeToDocument(resolved);
   }, [resolved]);
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (event: MediaQueryListEvent) => {
-      setSystemDark(event.matches);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
   const setPreference = useCallback((next: ThemePreference) => {
-    setPreferenceState(next);
-    storeTheme(next);
-    applyThemeToDocument(resolveTheme(next, getSystemDark()));
+    writePreference(next);
   }, []);
 
   const value = useMemo(

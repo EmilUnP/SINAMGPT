@@ -43,6 +43,7 @@ import { KnowledgeCitations } from "./KnowledgeCitations";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { ThemeToggle } from "./ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
+import { useIsMounted } from "@/lib/use-mounted";
 import type {
   Conversation,
   KnowledgeCitation,
@@ -143,7 +144,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   // Keep disabled attrs identical on SSR + first client paint (hydration-safe).
-  const [ready, setReady] = useState(false);
+  const ready = useIsMounted();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -161,7 +162,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
-  const [sharePortalReady, setSharePortalReady] = useState(false);
+  const sharePortalReady = useIsMounted();
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -169,11 +170,6 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const searchTimerRef = useRef<number | null>(null);
   const shareBtnRef = useRef<HTMLButtonElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setReady(true);
-    setSharePortalReady(true);
-  }, []);
 
   const updateShareMenuPos = useCallback(() => {
     const el = shareBtnRef.current;

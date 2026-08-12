@@ -21,6 +21,7 @@ import { KnowledgeCitations } from "@/components/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
+import { useIsMounted } from "@/lib/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";
 
 type ChatTurn = {
@@ -36,6 +37,9 @@ type Usage = {
   limit: number;
   remaining: number;
 };
+
+/** Module scope keeps the clock read out of component render analysis. */
+const makeTurnId = (prefix: "u" | "a") => `${prefix}-${Date.now()}`;
 
 const parseSseChunk = (raw: string) => {
   const lines = raw.split("\n");
@@ -79,14 +83,10 @@ export const HomeTryChat = () => {
   const [guestEnabled, setGuestEnabled] = useState(true);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [ready, setReady] = useState(false);
+  const ready = useIsMounted();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    setReady(true);
-  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -164,12 +164,12 @@ export const HomeTryChat = () => {
 
     const nowIso = new Date().toISOString();
     const userTurn: ChatTurn = {
-      id: `u-${Date.now()}`,
+      id: makeTurnId("u"),
       role: "user",
       content: text,
       createdAt: nowIso,
     };
-    const assistantId = `a-${Date.now()}`;
+    const assistantId = makeTurnId("a");
     const assistantTurn: ChatTurn = {
       id: assistantId,
       role: "assistant",

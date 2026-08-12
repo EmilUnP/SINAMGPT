@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-set PORT=3000
+set PORT=3055
 
 echo.
 echo === SINAMGPT restart ===

@@ -9,7 +9,7 @@
  * Usage:
  *   npm run test:chat
  *   npm run test:chat -- --quick
- *   BASE_URL=http://127.0.0.1:3000 npm run test:chat
+ *   BASE_URL=http://127.0.0.1:3055 npm run test:chat
  *
  * Credentials default to ADMIN_* from .env.local (or env vars).
  */
@@ -48,7 +48,7 @@ const loadEnvFile = (filePath) => {
 loadEnvFile(path.join(root, ".env.local"));
 loadEnvFile(path.join(root, ".env"));
 
-const BASE_URL = (process.env.BASE_URL || "http://127.0.0.1:3000").replace(
+const BASE_URL = (process.env.BASE_URL || "http://127.0.0.1:3055").replace(
   /\/$/,
   "",
 );

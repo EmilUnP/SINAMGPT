@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
+import { useIsMounted } from "@/lib/use-mounted";
 import type { ThemePreference } from "@/lib/theme";
 
 const options: Array<{
@@ -27,15 +28,11 @@ export const ThemeToggle = ({
 }: ThemeToggleProps) => {
   const { preference, resolved, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const updateMenuPos = () => {
     const el = rootRef.current;

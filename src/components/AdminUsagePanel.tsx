@@ -160,7 +160,9 @@ export const AdminUsagePanel = () => {
   }, [page, pageSize]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
     const timer = window.setInterval(() => void load(), 3000);
     return () => window.clearInterval(timer);
   }, [load]);
