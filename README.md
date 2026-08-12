@@ -30,9 +30,9 @@ npm run setup
 npm run dev
 ```
 
-On Windows you can also double-click `start.bat` (restarts the app on port 3000).
+On Windows you can also double-click `start.bat` (restarts the app on port 3055).
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3055](http://localhost:3055)
 
 1. **Home** (`/`) — try the model immediately (guest, limited, no saved history)
 2. **Sign in / Register** — full chat with saved history
@@ -115,7 +115,7 @@ npm run test:chat
 npm run test:chat -- --quick
 ```
 
-Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` / `TEST_PASSWORD`). Optional: `BASE_URL=http://127.0.0.1:3000`.
+Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` / `TEST_PASSWORD`). Optional: `BASE_URL=http://127.0.0.1:3055`.
 
 Checks login, models, streaming chat, English language drift, citations on company questions, projects, share links, and rewrite.
 
@@ -125,7 +125,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./
 
 ## Company use tips
 
-- Run on one powerful PC; others can open `http://THAT-PC-IP:3000` on the LAN if firewall allows
+- Run on one powerful PC; others can open `http://THAT-PC-IP:3055` on the LAN if firewall allows
 - Change `SESSION_SECRET` and admin password before sharing
 - Keep Ollama updated; pull the models your team needs
 - This is intentionally simple — no departments, billing, or cloud sync (see roadmap for what’s next)
