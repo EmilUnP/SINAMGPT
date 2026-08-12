@@ -10,6 +10,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.4.2] — 2026-08-12
+
+Patch: repair the release pipeline. The production build was failing and the lint gate was red, so neither could vouch for a release.
+
+### Fixed
+- **Production build** — the register page failed to prerender and aborted `npm run build`; a deploy could not be produced from `main`
+- **Lint gate** — cleared 15 React 19 hook errors and 3 warnings so `npm run lint` passes and can gate a release again
+- **Release tags** — `v1.1.0` through `v1.4.1` were released but never tagged, leaving every changelog compare link below pointing at a tag that did not exist; the tags now match the commits that shipped them
+
+### Changed
+- **Theme** — light/dark/system now reads the OS setting and the saved choice directly rather than copying them into component state after load, removing an extra render on every page open; the pre-load theme flash guard is unchanged
+- **Admin → Users / Knowledge** — changing a search or filter resets to page 1 in the same update as the filter itself, instead of one render later
+
 ## [1.4.1] — 2026-08-09
 
 Patch: treat Knowledge and Guardrails as living Admin config so company content can change without a code deploy.
@@ -107,7 +120,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...v1.3.0

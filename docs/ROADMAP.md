@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.4.1](../CHANGELOG.md#141--2026-08-09) (see [README](../README.md)).
+**Current release:** [v1.4.2](../CHANGELOG.md#142--2026-08-12) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.4.1)
+## Product today (v1.4.2)
 
 What operators and users can rely on right now:
 
@@ -110,6 +110,14 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
 | Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
 | Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
+
+### v1.4.2 — Release pipeline repair (2026-08-12)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Green production build | `done` | Register page prerender fixed; `npm run build` succeeds |
+| Green lint gate | `done` | React 19 hook violations cleared; `npm run lint` passes |
+| Complete release tags | `done` | `v1.1.0`–`v1.4.1` backfilled; changelog compare links resolve |
 
 Details and compare links: [CHANGELOG.md](../CHANGELOG.md).
 
