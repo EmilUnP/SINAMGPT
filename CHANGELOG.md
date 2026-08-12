@@ -20,6 +20,7 @@ Patch: repair the release pipeline. The production build was failing and the lin
 - **Release tags** — `v1.1.0` through `v1.4.1` were released but never tagged, leaving every changelog compare link below pointing at a tag that did not exist; the tags now match the commits that shipped them
 
 ### Changed
+- **Default port is now 3055** (was 3000) — `start.bat`, the setup script and the smoke test all follow; open <http://localhost:3055> after starting
 - **Theme** — light/dark/system now reads the OS setting and the saved choice directly rather than copying them into component state after load, removing an extra render on every page open; the pre-load theme flash guard is unchanged
 - **Admin → Users / Knowledge** — changing a search or filter resets to page 1 in the same update as the filter itself, instead of one render later
 
