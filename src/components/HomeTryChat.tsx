@@ -413,7 +413,7 @@ export const HomeTryChat = () => {
                     <span className="block text-sm font-medium text-[var(--home-fg)]">
                       {item.title}
                     </span>
-                    <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-[var(--home-muted)]">
+                    <span className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--home-muted)]">
                       {item.prompt}
                     </span>
                   </button>

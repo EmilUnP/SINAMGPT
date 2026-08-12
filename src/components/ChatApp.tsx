@@ -1629,7 +1629,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     <span className="block text-sm font-medium text-[var(--text)]">
                       {item.title}
                     </span>
-                    <span className="mt-1 line-clamp-2 block text-xs text-[var(--text-muted)]">
+                    <span className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">
                       {item.prompt}
                     </span>
                   </button>
