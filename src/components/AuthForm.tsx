@@ -7,6 +7,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { History, Infinity as InfinityIcon, ShieldCheck } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useTranslations } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Mode = "login" | "register";
@@ -23,6 +25,7 @@ const safeNextPath = (raw: string | null): string | null => {
 };
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
+  const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
@@ -62,7 +65,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     event.preventDefault();
     setError("");
     if (!isLogin && !registrationEnabled) {
-      setError("Registration is currently closed. Please sign in instead.");
+      setError(t("auth.registrationClosedError"));
       return;
     }
     setIsLoading(true);
@@ -77,14 +80,14 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       const data = (await res.json()) as { error?: string };
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        setError(data.error || t("auth.somethingWrong"));
         return;
       }
 
       router.push(nextPath || "/chat");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("auth.networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +97,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)]">
       <AnimatedBackground />
 
-      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5 sm:right-6 sm:top-6">
+        <LanguageToggle size="sm" />
         <ThemeToggle size="sm" />
       </div>
 
@@ -115,24 +119,24 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
             </span>
           </Link>
           <h1 className="mt-5 text-2xl font-semibold tracking-tight text-[var(--home-fg)] sm:text-3xl">
-            {isLogin ? "Sign in to your account" : "Create your account"}
+            {isLogin ? t("auth.signInTitle") : t("auth.registerTitle")}
           </h1>
           <p className="mt-2 text-sm text-[var(--home-muted)]">
             {isLogin
-              ? "Saved chats, full history, and unlimited messages."
+              ? t("auth.signInSubtitle")
               : registrationEnabled
-                ? "Register once — then chat with your local company model."
-                : "New registrations are currently closed by an admin."}
+                ? t("auth.registerSubtitle")
+                : t("auth.registerClosedSubtitle")}
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
-              <InfinityIcon size={12} /> Unlimited
+              <InfinityIcon size={12} /> {t("auth.chipUnlimited")}
             </span>
             <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
-              <History size={12} /> Saved history
+              <History size={12} /> {t("auth.chipHistory")}
             </span>
             <span className="chip border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]">
-              <ShieldCheck size={12} /> Local private
+              <ShieldCheck size={12} /> {t("auth.chipPrivate")}
             </span>
           </div>
         </div>
@@ -143,19 +147,19 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           <label className="block text-sm font-medium text-[var(--home-fg)]/80">
-            Username
+            {t("auth.username")}
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               required
-              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-[15px] text-[var(--home-input)] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
-              placeholder="e.g. emil"
+              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-base text-[var(--home-input)] sm:text-[15px] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
+              placeholder={t("auth.usernamePlaceholder")}
             />
           </label>
 
           <label className="mt-4 block text-sm font-medium text-[var(--home-fg)]/80">
-            Password
+            {t("auth.password")}
             <input
               type="password"
               value={password}
@@ -163,8 +167,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               autoComplete={isLogin ? "current-password" : "new-password"}
               required
               minLength={isLogin ? 1 : 6}
-              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-[15px] text-[var(--home-input)] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
-              placeholder={isLogin ? "••••••••" : "At least 6 characters"}
+              className="mt-1.5 w-full rounded-2xl border border-[var(--home-card-border)] bg-[var(--composer-bg)] px-4 py-3 text-base text-[var(--home-input)] sm:text-[15px] outline-none transition placeholder:text-[var(--home-placeholder)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--ring)]"
+              placeholder={isLogin ? "••••••••" : t("auth.passwordPlaceholderNew")}
             />
           </label>
 
@@ -181,38 +185,38 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           >
             {isLoading
               ? isLogin
-                ? "Signing in…"
-                : "Creating…"
+                ? t("auth.signingIn")
+                : t("auth.creating")
               : isLogin
-                ? "Sign in"
+                ? t("auth.signIn")
                 : registrationEnabled
-                  ? "Create account"
-                  : "Registration closed"}
+                  ? t("auth.createAccount")
+                  : t("auth.registrationClosed")}
           </button>
 
           <p className="mt-5 text-center text-sm text-[var(--home-muted)]">
             {isLogin ? (
               registrationEnabled ? (
                 <>
-                  No account?{" "}
+                  {t("auth.noAccount")}{" "}
                   <Link
                     href="/register"
                     className="text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
                   >
-                    Register
+                    {t("auth.register")}
                   </Link>
                 </>
               ) : (
-                <>Registration is closed · sign in if you already have an account</>
+                <>{t("auth.registrationClosedHint")}</>
               )
             ) : (
               <>
-                Already have an account?{" "}
+                {t("auth.haveAccount")}{" "}
                 <Link
                   href="/login"
                   className="text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
                 >
-                  Sign in
+                  {t("auth.signIn")}
                 </Link>
               </>
             )}
@@ -221,17 +225,17 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         {guestEnabled ? (
           <p className="mt-6 text-center text-sm text-[var(--home-faint)]">
-            Or{" "}
+            {t("auth.or")}{" "}
             <Link
               href="/"
               className="text-[var(--accent)] underline decoration-[var(--accent)]/25 underline-offset-4 hover:opacity-90"
             >
-              try SINAMGPT without signing in
+              {t("auth.tryWithoutSignIn")}
             </Link>
           </p>
         ) : (
           <p className="mt-6 text-center text-sm text-[var(--home-faint)]">
-            Guest try-chat is currently disabled
+            {t("auth.guestDisabled")}
           </p>
         )}
       </div>

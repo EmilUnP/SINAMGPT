@@ -2,39 +2,32 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Languages } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
-import { useTheme } from "@/components/ThemeProvider";
+import {
+  LOCALES,
+  LOCALE_LABELS,
+  LOCALE_SHORT,
+  type AppLocale,
+} from "@/lib/locale";
 import { useIsMounted } from "@/lib/use-mounted";
-import type { ThemePreference } from "@/lib/theme";
 
-type ThemeToggleProps = {
+type LanguageToggleProps = {
   size?: "sm" | "md";
   className?: string;
 };
 
-export const ThemeToggle = ({
+export const LanguageToggle = ({
   size = "md",
   className = "",
-}: ThemeToggleProps) => {
-  const { preference, resolved, setPreference } = useTheme();
-  const { t } = useLocale();
+}: LanguageToggleProps) => {
+  const { locale, setLocale, t } = useLocale();
   const [open, setOpen] = useState(false);
   const mounted = useIsMounted();
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
-
-  const options: Array<{
-    id: ThemePreference;
-    label: string;
-    icon: typeof Sun;
-  }> = [
-    { id: "light", label: t("common.themeLight"), icon: Sun },
-    { id: "dark", label: t("common.themeDark"), icon: Moon },
-    { id: "system", label: t("common.themeSystem"), icon: Monitor },
-  ];
 
   const updateMenuPos = () => {
     const el = rootRef.current;
@@ -77,10 +70,13 @@ export const ThemeToggle = ({
     };
   }, [open]);
 
-  const ActiveIcon =
-    preference === "system" ? Monitor : resolved === "dark" ? Moon : Sun;
   const buttonPad = size === "sm" ? "p-1.5" : "p-2";
   const iconSize = size === "sm" ? 15 : 16;
+
+  const handleSelect = (next: AppLocale) => {
+    setLocale(next);
+    setOpen(false);
+  };
 
   const menu =
     mounted && open
@@ -89,27 +85,26 @@ export const ThemeToggle = ({
             ref={menuRef}
             id={menuId}
             role="menu"
-            className="theme-toggle-menu fixed z-[200] min-w-[10rem] overflow-hidden rounded-xl p-1"
+            className="theme-toggle-menu fixed z-[200] min-w-[10.5rem] overflow-hidden rounded-xl p-1"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
-            {options.map(({ id, label, icon: Icon }) => {
-              const active = preference === id;
+            {LOCALES.map((id) => {
+              const active = locale === id;
               return (
                 <button
                   key={id}
                   type="button"
                   role="menuitemradio"
                   aria-checked={active}
-                  onClick={() => {
-                    setPreference(id);
-                    setOpen(false);
-                  }}
+                  onClick={() => handleSelect(id)}
                   className={`theme-toggle-item flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm ${
                     active ? "is-active" : ""
                   }`}
                 >
-                  <Icon size={15} strokeWidth={1.85} />
-                  <span className="flex-1">{label}</span>
+                  <span className="w-7 shrink-0 text-[11px] font-semibold tracking-wide opacity-80">
+                    {LOCALE_SHORT[id]}
+                  </span>
+                  <span className="flex-1">{LOCALE_LABELS[id]}</span>
                   {active ? (
                     <span className="theme-toggle-dot" aria-hidden />
                   ) : null}
@@ -126,14 +121,17 @@ export const ThemeToggle = ({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`theme-toggle-btn inline-flex items-center justify-center rounded-full ${buttonPad}`}
-        aria-label={t("common.chooseTheme")}
+        className={`theme-toggle-btn inline-flex items-center justify-center gap-1 rounded-full ${buttonPad}`}
+        aria-label={t("common.chooseLanguage")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        title={t("common.themeTitle", { preference })}
+        title={t("common.languageTitle", { label: LOCALE_LABELS[locale] })}
       >
-        <ActiveIcon size={iconSize} strokeWidth={1.85} />
+        <Languages size={iconSize} strokeWidth={1.85} />
+        <span className="pr-0.5 text-[10px] font-semibold tracking-wide">
+          {LOCALE_SHORT[locale]}
+        </span>
       </button>
       {menu}
     </div>

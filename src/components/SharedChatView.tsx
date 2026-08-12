@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Lock, UserRound } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { KnowledgeCitations } from "@/components/KnowledgeCitations";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useTranslations } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Message } from "@/lib/types";
@@ -22,6 +24,8 @@ export const SharedChatView = ({
   model,
   messages,
 }: SharedChatViewProps) => {
+  const t = useTranslations();
+
   return (
     <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--text)]">
       <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-4 py-3 backdrop-blur">
@@ -30,7 +34,7 @@ export const SharedChatView = ({
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
         >
           <ArrowLeft size={16} />
-          Back
+          {t("share.back")}
         </Link>
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Image
@@ -48,7 +52,7 @@ export const SharedChatView = ({
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--text-muted)]">
               <span className="inline-flex items-center gap-1">
                 <Lock size={11} />
-                Shared · read-only
+                {t("share.sharedReadOnly")}
               </span>
               <span className="inline-flex items-center gap-1">
                 <UserRound size={11} />
@@ -58,6 +62,7 @@ export const SharedChatView = ({
             </p>
           </div>
         </div>
+        <LanguageToggle size="sm" />
         <ThemeToggle size="sm" />
       </header>
 
@@ -65,7 +70,7 @@ export const SharedChatView = ({
         <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
           {messages.length === 0 ? (
             <p className="text-center text-sm text-[var(--text-muted)]">
-              This shared chat has no messages yet.
+              {t("share.empty")}
             </p>
           ) : (
             messages.map((message) => {

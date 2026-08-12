@@ -33,6 +33,7 @@ import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
 import { AdminSettingsPanel } from "@/components/AdminSettingsPanel";
 import { AdminUsagePanel } from "@/components/AdminUsagePanel";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { AdminUserRow, User } from "@/lib/types";
 
@@ -746,6 +747,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
             <button
               type="button"

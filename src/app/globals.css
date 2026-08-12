@@ -279,6 +279,27 @@ html[data-theme="dark"] ::selection {
   color: var(--text);
 }
 
+/*
+ * The pill renders at 29px, which is a small target for a finger. On touch
+ * pointers, stretch the hit area to 44px without changing the painted size —
+ * the pseudo-element is transparent and out of flow, so layout is untouched.
+ */
+@media (pointer: coarse) {
+  .theme-toggle-btn {
+    position: relative;
+  }
+
+  .theme-toggle-btn::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
 .theme-toggle-menu {
   border: 1px solid var(--menu-border);
   background: var(--menu-bg);
