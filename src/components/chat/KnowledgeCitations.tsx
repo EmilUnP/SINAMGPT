@@ -1,4 +1,7 @@
+"use client";
+
 import { BookMarked } from "lucide-react";
+import { useTranslations } from "@/components/LocaleProvider";
 import type { KnowledgeCitation } from "@/lib/types";
 
 type KnowledgeCitationsProps = {
@@ -13,6 +16,7 @@ export const KnowledgeCitations = ({
   className = "",
   tone = "chat",
 }: KnowledgeCitationsProps) => {
+  const t = useTranslations();
   if (!sources?.length) return null;
 
   const titles = sources.map((s) => s.title).join(" · ");
@@ -34,7 +38,8 @@ export const KnowledgeCitations = ({
         }`}
       />
       <p>
-        <span className="font-medium opacity-90">From:</span> {titles}
+        <span className="font-medium opacity-90">{t("common.from")}</span>{" "}
+        {titles}
       </p>
     </div>
   );

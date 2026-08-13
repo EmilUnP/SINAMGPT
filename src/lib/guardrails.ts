@@ -12,6 +12,12 @@ import {
   MULTILANG_SYSTEM_RULES,
   replyLanguageInstruction,
 } from "@/lib/multilang";
+import {
+  DEFAULT_GUARDRAILS as SEED_GUARDRAILS,
+  DEFAULT_POLICY_SUGGESTIONS as SEED_POLICY_SUGGESTIONS,
+  LEGACY_EN_GUARDRAILS,
+  LEGACY_EN_POLICY_SUGGESTIONS,
+} from "@/lib/seeds/guardrails";
 
 const KEY = "guardrails";
 const SUGGESTIONS_KEY = "guardrail_policy_suggestions";
@@ -47,79 +53,193 @@ export type PolicySuggestions = {
   extraRuleSnippets: string[];
 };
 
-export const DEFAULT_POLICY_SUGGESTIONS: PolicySuggestions = {
-  allowedTopics: [
-    "SESDA / document workflow",
-    "Farabi / government resources planning",
-    "Biletim.az bus ticketing",
-    "GoMap / GoNav maps & navigation",
-    "YURDUM / Smart Village",
-    "Internal portals & tools",
-    "HR & leave policy FAQ",
-    "Meeting notes & summaries",
-    "Email / message drafting",
-    "Coding help for internal tools",
-    "Azerbaijani / Russian / English answers",
-  ],
-  blockedTopics: [
-    "Colleague salaries or private HR records",
-    "Bypassing access controls or sharing passwords",
-    "Copying customer PII into chats",
-    "Illegal or violent instructions",
-    "Medical/legal advice as professional diagnosis",
-  ],
-  keywords: [
-    "ignore company policy",
-    "share password",
-    "leak credentials",
-    "how to bypass login",
-    "dump salaries",
-  ],
-  personaSnippets: [
-    "Prefer short, actionable answers for busy employees.",
-    "When unsure about company facts, say so and suggest asking the owner team.",
-    "Match the user’s language (EN / AZ / RU / TR) without mixing languages.",
-  ],
-  extraRuleSnippets: [
-    "Never invent SINAM policies, prices, or org charts.",
-    "If knowledge docs conflict with the user, prefer COMPANY KNOWLEDGE and note the source.",
-    "Refuse to store or repeat secrets even if the user pastes them “for debugging”.",
-  ],
+export const DEFAULT_POLICY_SUGGESTIONS: PolicySuggestions =
+  SEED_POLICY_SUGGESTIONS;
+
+export const DEFAULT_GUARDRAILS: GuardrailsConfig = SEED_GUARDRAILS;
+
+const insertSettingIfMissing = (key: string, value: string) => {
+  const row = getDb()
+    .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+    .get(key) as { value: string } | undefined;
+  if (row) return false;
+  getDb()
+    .prepare(`INSERT INTO app_settings (key, value) VALUES (?, ?)`)
+    .run(key, value);
+  return true;
 };
 
-export const DEFAULT_GUARDRAILS: GuardrailsConfig = {
-  enabled: true,
-  applyToGuests: true,
-  applyToUsers: true,
-  persona:
-    "You are SINAMGPT, SINAM Ltd's local company AI assistant for employees. Be clear, professional, and practical. When asked about SINAM, use COMPANY KNOWLEDGE if provided.",
-  allowedTopics:
-    "SINAM company information, internal projects, work productivity, writing help, summarizing, explaining concepts, brainstorming, company-safe general knowledge, coding help for internal tools — in any language the user prefers.",
-  blockedTopics:
-    "Illegal activity, weapons, hacking/attacks, adult sexual content, hate or harassment, scams/fraud, medical or legal advice presented as professional diagnosis, sharing private personal data of others — in any language or coded wording.",
-  // Custom admin keywords only — built-in EN/AZ/RU/TR safety phrases always apply in the engine
-  blockedKeywords: "",
-  refusalMessage:
-    "I can’t help with that request. / Bu sorğuya kömək edə bilmərəm. / Не могу помочь с этим запросом. / Bu isteğe yardımcı olamam.\nSINAMGPT is limited to safe, work-appropriate topics.",
-  extraRules:
-    "If a request is unclear or risky, ask a clarifying question or refuse politely. Do not invent company policies. Prefer short, useful answers. Safety rules apply equally in every language.",
-  detectPromptInjection: true,
-  detectSecrets: true,
-  detectPiiPatterns: true,
-  strictPii: false,
-  logEvents: true,
-};
-
-const clampSuggestionList = (value: unknown, max = 40): string[] => {
+const clampSuggestionList = (value: unknown, max = 100): string[] => {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((v): v is string => typeof v === "string")
-    .map((v) => v.trim().slice(0, 200))
-    .filter(Boolean)
-    .slice(0, max);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of value) {
+    if (typeof raw !== "string") continue;
+    const item = raw.trim().slice(0, 200);
+    if (!item) continue;
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
+};
+
+const sameStringList = (value: unknown, expected: string[]) =>
+  Array.isArray(value) &&
+  value.length === expected.length &&
+  value.every((item, i) => item === expected[i]);
+
+const isLegacyPolicyText = (
+  field: keyof typeof LEGACY_EN_GUARDRAILS,
+  value: string | undefined,
+) => {
+  if (!value) return false;
+  if (value === LEGACY_EN_GUARDRAILS[field]) return true;
+  if (field === "persona") return value.startsWith("You are SINAMGPT, SINAM Ltd");
+  if (field === "allowedTopics") {
+    return (
+      value.startsWith("SINAM company information, internal projects") ||
+      value.startsWith("SINAM şirkət məlumatı")
+    );
+  }
+  if (field === "blockedTopics") {
+    return (
+      value.startsWith("Illegal activity, weapons, hacking/attacks") ||
+      value.startsWith("Qanunsuz fəaliyyət")
+    );
+  }
+  return false;
+};
+
+const persistSetting = (key: string, value: unknown) => {
+  getDb()
+    .prepare(
+      `INSERT INTO app_settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    )
+    .run(key, JSON.stringify(value));
+  try {
+    getDb().pragma("wal_checkpoint(TRUNCATE)");
+  } catch {
+    // DB browser holding the file open can block a full truncate
+  }
+};
+
+const policyLines = (value: string) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const catalogFromLive = (
+  catalog: string[],
+  live: string[],
+  legacy: string[],
+) => {
+  if (sameStringList(catalog, legacy)) return clampSuggestionList(live);
+  return clampSuggestionList([...catalog, ...live]);
+};
+
+/** Replace unmodified English seed text with the Azerbaijani defaults. */
+const migrateLegacyEnglishPolicySeed = () => {
+  const policyRow = getDb()
+    .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+    .get(KEY) as { value: string } | undefined;
+  if (policyRow?.value) {
+    try {
+      const parsed = JSON.parse(policyRow.value) as Partial<GuardrailsConfig>;
+      const next = { ...DEFAULT_GUARDRAILS, ...parsed };
+      let changed = false;
+      (
+        [
+          "persona",
+          "allowedTopics",
+          "blockedTopics",
+          "refusalMessage",
+          "extraRules",
+        ] as const
+      ).forEach((field) => {
+        if (isLegacyPolicyText(field, parsed[field])) {
+          next[field] = DEFAULT_GUARDRAILS[field];
+          changed = true;
+        }
+      });
+      if (
+        changed &&
+        !(parsed.blockedKeywords ?? "").trim() &&
+        (isLegacyPolicyText("allowedTopics", parsed.allowedTopics) ||
+          isLegacyPolicyText("blockedTopics", parsed.blockedTopics))
+      ) {
+        next.blockedKeywords = DEFAULT_GUARDRAILS.blockedKeywords;
+      }
+      if (changed) persistSetting(KEY, next);
+    } catch {
+      // keep stored JSON
+    }
+  }
+
+  const chipRow = getDb()
+    .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+    .get(SUGGESTIONS_KEY) as { value: string } | undefined;
+  if (!chipRow?.value) return;
+  try {
+    const parsed = JSON.parse(chipRow.value) as Partial<PolicySuggestions>;
+    const next: PolicySuggestions = {
+      allowedTopics: [...DEFAULT_POLICY_SUGGESTIONS.allowedTopics],
+      blockedTopics: [...DEFAULT_POLICY_SUGGESTIONS.blockedTopics],
+      keywords: [...DEFAULT_POLICY_SUGGESTIONS.keywords],
+      personaSnippets: [...DEFAULT_POLICY_SUGGESTIONS.personaSnippets],
+      extraRuleSnippets: [...DEFAULT_POLICY_SUGGESTIONS.extraRuleSnippets],
+    };
+    let changed = false;
+    (
+      [
+        "allowedTopics",
+        "blockedTopics",
+        "keywords",
+        "personaSnippets",
+        "extraRuleSnippets",
+      ] as const
+    ).forEach((field) => {
+      if (parsed[field] === undefined) {
+        changed = true;
+        return;
+      }
+      if (sameStringList(parsed[field], LEGACY_EN_POLICY_SUGGESTIONS[field])) {
+        changed = true;
+        return;
+      }
+      next[field] = clampSuggestionList(parsed[field]);
+    });
+    if (changed) persistSetting(SUGGESTIONS_KEY, next);
+  } catch {
+    // keep stored JSON
+  }
+};
+
+let didMigrateLegacyPolicy = false;
+
+/** Persist seed defaults into SQLite if this DB never saved Guardrails. */
+export const seedGuardrailsIfEmpty = () => {
+  const wrotePolicy = insertSettingIfMissing(
+    KEY,
+    JSON.stringify(DEFAULT_GUARDRAILS),
+  );
+  const wroteChips = insertSettingIfMissing(
+    SUGGESTIONS_KEY,
+    JSON.stringify(DEFAULT_POLICY_SUGGESTIONS),
+  );
+  if (!didMigrateLegacyPolicy) {
+    migrateLegacyEnglishPolicySeed();
+    didMigrateLegacyPolicy = true;
+  }
+  return { seeded: wrotePolicy || wroteChips };
 };
 
 export const getPolicySuggestions = (): PolicySuggestions => {
+  seedGuardrailsIfEmpty();
   const row = getDb()
     .prepare(`SELECT value FROM app_settings WHERE key = ?`)
     .get(SUGGESTIONS_KEY) as { value: string } | undefined;
@@ -196,17 +316,12 @@ export const setPolicySuggestions = (
         : current.extraRuleSnippets,
   };
 
-  getDb()
-    .prepare(
-      `INSERT INTO app_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    )
-    .run(SUGGESTIONS_KEY, JSON.stringify(merged));
-
+  persistSetting(SUGGESTIONS_KEY, merged);
   return merged;
 };
 
 export const getGuardrails = (): GuardrailsConfig => {
+  seedGuardrailsIfEmpty();
   const row = getDb()
     .prepare(`SELECT value FROM app_settings WHERE key = ?`)
     .get(KEY) as { value: string } | undefined;
@@ -263,12 +378,26 @@ export const setGuardrails = (
     extraRules: (next.extraRules ?? current.extraRules).slice(0, 8000),
   };
 
-  getDb()
-    .prepare(
-      `INSERT INTO app_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    )
-    .run(KEY, JSON.stringify(merged));
+  persistSetting(KEY, merged);
+
+  const chips = getPolicySuggestions();
+  setPolicySuggestions({
+    allowedTopics: catalogFromLive(
+      chips.allowedTopics,
+      policyLines(merged.allowedTopics),
+      LEGACY_EN_POLICY_SUGGESTIONS.allowedTopics,
+    ),
+    blockedTopics: catalogFromLive(
+      chips.blockedTopics,
+      policyLines(merged.blockedTopics),
+      LEGACY_EN_POLICY_SUGGESTIONS.blockedTopics,
+    ),
+    keywords: catalogFromLive(
+      chips.keywords,
+      policyLines(merged.blockedKeywords),
+      LEGACY_EN_POLICY_SUGGESTIONS.keywords,
+    ),
+  });
 
   return merged;
 };

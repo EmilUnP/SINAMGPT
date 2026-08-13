@@ -17,7 +17,8 @@ import {
   AdminToggleCard,
   adminBtnPrimary,
   adminFieldClass,
-} from "@/components/AdminChrome";
+} from "./AdminChrome";
+import { useTranslations } from "@/components/LocaleProvider";
 
 export type SettingsDraft = {
   guestEnabled: boolean;
@@ -102,6 +103,7 @@ export const AdminSettingsPanel = ({
   isSaving,
   onSave,
 }: Props) => {
+  const t = useTranslations();
   const [tab, setTab] = useState<SettingsTab>("access");
 
   const patch = (partial: Partial<SettingsDraft>) =>
@@ -112,7 +114,7 @@ export const AdminSettingsPanel = ({
       {models.map((m) => (
         <option key={m.name} value={m.name}>
           {m.display_name || m.name}
-          {!m.is_enabled ? " (disabled)" : ""}
+          {!m.is_enabled ? t("admin.settings.modelDisabled") : ""}
         </option>
       ))}
     </>
@@ -123,8 +125,8 @@ export const AdminSettingsPanel = ({
       <div className="space-y-4 px-4 py-4">
         <AdminPageHeader
           icon={Settings2}
-          title="App settings"
-          description="Control guest access, registration, default models, context limits, and generation behavior for Ollama / vLLM."
+          title={t("admin.settings.title")}
+          description={t("admin.settings.description")}
           actions={
             <button
               type="button"
@@ -132,7 +134,7 @@ export const AdminSettingsPanel = ({
               onClick={onSave}
               className={adminBtnPrimary}
             >
-              {isSaving ? "Saving…" : "Save settings"}
+              {isSaving ? t("admin.chrome.saving") : t("admin.chrome.saveSettings")}
             </button>
           }
         />
@@ -140,9 +142,13 @@ export const AdminSettingsPanel = ({
           active={tab}
           onChange={setTab}
           tabs={[
-            { id: "access", label: "Access", icon: Users },
-            { id: "chat", label: "Chat & models", icon: Bot },
-            { id: "generation", label: "Generation", icon: SlidersHorizontal },
+            { id: "access", label: t("admin.settings.tabAccess"), icon: Users },
+            { id: "chat", label: t("admin.settings.tabChat"), icon: Bot },
+            {
+              id: "generation",
+              label: t("admin.settings.tabGeneration"),
+              icon: SlidersHorizontal,
+            },
           ]}
         />
       </div>
@@ -150,20 +156,20 @@ export const AdminSettingsPanel = ({
       {tab === "access" ? (
         <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
           <SectionCard
-            title="Guest try-chat"
-            description="Home page chat without an account. Keep limits tight for public LAN use."
+            title={t("admin.settings.guestTitle")}
+            description={t("admin.settings.guestDesc")}
           >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_repeat(3,minmax(0,1fr))]">
               <AdminToggleCard
                 emphasize
                 checked={draft.guestEnabled}
                 onChange={(v) => patch({ guestEnabled: v })}
-                label="Guest chat enabled"
-                hint="When off, the home try-chat is hidden / blocked"
+                label={t("admin.settings.guestEnabled")}
+                hint={t("admin.settings.guestEnabledHint")}
               />
               <Field
-                label="Daily messages"
-                hint="0 = guests blocked by quota"
+                label={t("admin.settings.dailyMessages")}
+                hint={t("admin.settings.dailyHint")}
               >
                 <input
                   type="number"
@@ -174,7 +180,7 @@ export const AdminSettingsPanel = ({
                   className={adminFieldClass}
                 />
               </Field>
-              <Field label="Max message chars">
+              <Field label={t("admin.settings.maxChars")}>
                 <input
                   type="number"
                   min={100}
@@ -187,8 +193,8 @@ export const AdminSettingsPanel = ({
                 />
               </Field>
               <Field
-                label="History turns"
-                hint="Past messages sent to the model"
+                label={t("admin.settings.historyTurns")}
+                hint={t("admin.settings.historyHint")}
               >
                 <input
                   type="number"
@@ -203,34 +209,34 @@ export const AdminSettingsPanel = ({
           </SectionCard>
 
           <SectionCard
-            title="Accounts"
-            description="Who can create a login for full chat history."
+            title={t("admin.settings.accountsTitle")}
+            description={t("admin.settings.accountsDesc")}
           >
             <div className="grid gap-3 lg:grid-cols-2">
               <AdminToggleCard
                 emphasize
                 checked={draft.registrationEnabled}
                 onChange={(v) => patch({ registrationEnabled: v })}
-                label="Allow new user registration"
-                hint="Turn off to freeze the user list; existing accounts still sign in"
+                label={t("admin.settings.allowRegistration")}
+                hint={t("admin.settings.allowRegistrationHint")}
               />
               <AdminHint>
                 <span className="inline-flex items-center gap-1.5 font-medium text-[var(--admin-fg)]">
                   <UserPlus size={14} className="text-[var(--accent)]" />
-                  Logged-in chat
+                  {t("admin.settings.loggedInChat")}
                 </span>
                 <p className="mt-1">
-                  Message count stays{" "}
+                  {t("admin.settings.loggedInHintBefore")}{" "}
                   <span className="font-semibold text-[var(--status-ok-fg)]">
-                    unlimited
+                    {t("admin.settings.unlimited")}
                   </span>
-                  . Cap load with user max chars / history under{" "}
+                  {t("admin.settings.loggedInHintAfter")}{" "}
                   <button
                     type="button"
                     onClick={() => setTab("chat")}
                     className="font-medium text-[var(--accent)] hover:underline"
                   >
-                    Chat & models
+                    {t("admin.settings.tabChat")}
                   </button>
                   .
                 </p>
@@ -243,40 +249,46 @@ export const AdminSettingsPanel = ({
       {tab === "chat" ? (
         <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
           <SectionCard
-            title="Model presets"
-            description="Default for new chats, plus Fast / Smart shortcuts in the chat header."
+            title={t("admin.settings.modelPresets")}
+            description={t("admin.settings.modelPresetsDesc")}
           >
             <div className="grid gap-3 sm:grid-cols-3">
               <Field
-                label="Default model"
-                hint="Used when guest/user opens a new chat"
+                label={t("admin.settings.defaultModel")}
+                hint={t("admin.settings.defaultModelHint")}
               >
                 <select
                   value={draft.defaultModel}
                   onChange={(e) => patch({ defaultModel: e.target.value })}
                   className={adminFieldClass}
                 >
-                  <option value="">First enabled / env default</option>
+                  <option value="">{t("admin.settings.firstEnabled")}</option>
                   {modelOptions}
                 </select>
               </Field>
-              <Field label="Fast model" hint="Chat “Fast” preset">
+              <Field
+                label={t("admin.settings.fastModel")}
+                hint={t("admin.settings.fastHint")}
+              >
                 <select
                   value={draft.fastModel}
                   onChange={(e) => patch({ fastModel: e.target.value })}
                   className={adminFieldClass}
                 >
-                  <option value="">Same as default</option>
+                  <option value="">{t("admin.settings.sameAsDefault")}</option>
                   {modelOptions}
                 </select>
               </Field>
-              <Field label="Smart model" hint="Chat “Smart” preset">
+              <Field
+                label={t("admin.settings.smartModel")}
+                hint={t("admin.settings.smartHint")}
+              >
                 <select
                   value={draft.smartModel}
                   onChange={(e) => patch({ smartModel: e.target.value })}
                   className={adminFieldClass}
                 >
-                  <option value="">Same as default</option>
+                  <option value="">{t("admin.settings.sameAsDefault")}</option>
                   {modelOptions}
                 </select>
               </Field>
@@ -284,13 +296,13 @@ export const AdminSettingsPanel = ({
           </SectionCard>
 
           <SectionCard
-            title="Logged-in context limits"
-            description="How much text and history signed-in users can send per request."
+            title={t("admin.settings.contextTitle")}
+            description={t("admin.settings.contextDesc")}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
-                label="User max message chars"
-                hint="Hard cap on a single user message (500–32000)"
+                label={t("admin.settings.userMaxChars")}
+                hint={t("admin.settings.userMaxCharsHint")}
               >
                 <input
                   type="number"
@@ -304,8 +316,8 @@ export const AdminSettingsPanel = ({
                 />
               </Field>
               <Field
-                label="User history messages"
-                hint="0 = send the full conversation to the model"
+                label={t("admin.settings.userHistory")}
+                hint={t("admin.settings.userHistoryHint")}
               >
                 <input
                   type="number"
@@ -322,12 +334,14 @@ export const AdminSettingsPanel = ({
           <AdminHint>
             <span className="inline-flex items-center gap-1.5 font-medium text-[var(--admin-fg)]">
               <MessageSquare size={14} className="text-[var(--accent)]" />
-              Tip
+              {t("admin.settings.tip")}
             </span>
             <p className="mt-1">
-              Enable or disable which models appear in the picker under the{" "}
-              <strong className="text-[var(--admin-fg)]">Models</strong> tab —
-              settings here only pick defaults among available ones.
+              {t("admin.settings.modelsTipBefore")}{" "}
+              <strong className="text-[var(--admin-fg)]">
+                {t("admin.tabs.models")}
+              </strong>{" "}
+              {t("admin.settings.modelsTipAfter")}
             </p>
           </AdminHint>
         </div>
@@ -336,13 +350,13 @@ export const AdminSettingsPanel = ({
       {tab === "generation" ? (
         <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
           <SectionCard
-            title="Sampling"
-            description="Applies to both Ollama and vLLM chat completions."
+            title={t("admin.settings.sampling")}
+            description={t("admin.settings.samplingDesc")}
           >
             <div className="grid gap-3 sm:grid-cols-3">
               <Field
-                label="Temperature"
-                hint="0 = focused · 0.7 default · 1.2+ more creative"
+                label={t("admin.settings.temperature")}
+                hint={t("admin.settings.temperatureHint")}
               >
                 <input
                   type="number"
@@ -355,8 +369,8 @@ export const AdminSettingsPanel = ({
                 />
               </Field>
               <Field
-                label="Max reply tokens"
-                hint="-1 = backend default · lower = shorter / faster"
+                label={t("admin.settings.maxTokens")}
+                hint={t("admin.settings.maxTokensHint")}
               >
                 <input
                   type="number"
@@ -368,8 +382,8 @@ export const AdminSettingsPanel = ({
                 />
               </Field>
               <Field
-                label="Top-p (nucleus)"
-                hint="0.9 default · lower = tighter / safer"
+                label={t("admin.settings.topP")}
+                hint={t("admin.settings.topPHint")}
               >
                 <input
                   type="number"
@@ -385,18 +399,20 @@ export const AdminSettingsPanel = ({
           </SectionCard>
 
           <AdminHint>
-            Changes apply to <strong className="text-[var(--admin-fg)]">new</strong>{" "}
-            generations after you save — in-flight streams keep the old
-            parameters.
+            {t("admin.settings.genHintBefore")}{" "}
+            <strong className="text-[var(--admin-fg)]">
+              {t("admin.settings.genHintStrong")}
+            </strong>{" "}
+            {t("admin.settings.genHintAfter")}
           </AdminHint>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
         <p className="text-xs text-[var(--admin-muted)]">
-          Saved default model:{" "}
+          {t("admin.settings.savedDefault")}{" "}
           <span className="font-medium text-[var(--admin-fg)]">
-            {savedDefaultModel || "env / first enabled"}
+            {savedDefaultModel || t("admin.settings.envFirst")}
           </span>
         </p>
         <button
@@ -405,7 +421,7 @@ export const AdminSettingsPanel = ({
           onClick={onSave}
           className={adminBtnPrimary}
         >
-          {isSaving ? "Saving…" : "Save settings"}
+          {isSaving ? t("admin.chrome.saving") : t("admin.chrome.saveSettings")}
         </button>
       </div>
     </AdminPanelCard>

@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import { LocaleProvider } from "@/components/LocaleProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { localeBootScript } from "@/lib/locale";
 import { themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
 const display = Fraunces({
   variable: "--font-display",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["500", "600", "700"],
 });
 
 const body = Manrope({
   variable: "--font-body",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
 });
 
@@ -29,8 +31,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-full" suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-        <ThemeProvider>{children}</ThemeProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `${themeBootScript}${localeBootScript}`,
+          }}
+        />
+        <ThemeProvider>
+          <LocaleProvider>{children}</LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

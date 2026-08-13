@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
-import { clientIp, recordAuditEvent } from "@/lib/audit";
 import { getDb } from "@/lib/db";
 import type { User } from "@/lib/types";
 
@@ -65,17 +64,6 @@ export async function PATCH(request: Request, { params }: Params) {
     getDb()
       .prepare(`UPDATE users SET is_active = ? WHERE id = ?`)
       .run(parsed.data.is_active ? 1 : 0, id);
-
-    const action = parsed.data.is_active ? "user.enable" : "user.disable";
-    recordAuditEvent({
-      category: "admin",
-      action,
-      actor: { id: admin.id, username: admin.username },
-      target: { type: "user", id: target.id },
-      summary: `${admin.username} ${parsed.data.is_active ? "enabled" : "disabled"} ${target.username}`,
-      meta: { target_username: target.username },
-      ip: clientIp(request),
-    });
   }
 
   const updated = getDb()
@@ -125,16 +113,6 @@ export async function DELETE(request: Request, { params }: Params) {
   }
 
   getDb().prepare(`DELETE FROM users WHERE id = ?`).run(id);
-
-  recordAuditEvent({
-    category: "admin",
-    action: "user.delete",
-    actor: { id: admin.id, username: admin.username },
-    target: { type: "user", id: target.id },
-    summary: `${admin.username} deleted user ${target.username}`,
-    meta: { target_username: target.username, role: target.role },
-    ip: clientIp(request),
-  });
 
   return NextResponse.json({ ok: true });
 }

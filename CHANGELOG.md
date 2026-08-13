@@ -10,6 +10,77 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.8.0] — 2026-08-13
+
+Model lab is a real test console: live chat of the run, scored results, and charts. Suites and RAG matching are sharper against the SINAM pack.
+
+### Added
+- **Lab Live tab** — prompts and replies stream in like chat while a suite runs
+- **Lab Results tab** — pass rate, facts, citations, language/tone, latency min/median/max, fail reasons, cite/answer/refuse scores
+- **Lab Charts tab** — accuracy, token (or char) speed, first-token vs total latency, and cumulative pass rate, filling in as cases finish
+
+### Changed
+- **Lab suites** — Quick (40), Assist (42), Guardrails (31). Workplace/Stress dropped; cases cover EN/AZ knowledge, writing tasks, and more refuse vectors
+- **Lab scoring** — each case scores expected facts (hit/miss), accuracy %, language/tone, first-token time, and chars or tokens per second
+- **`test:chat`** — hits the SINAM knowledge pack (about, contact, SESDA, Farabi, products) and guardrail refusals (salary, AZ passwords, jailbreak, secrets)
+- **Keyword RAG** — AZ inflections (əməkdaşı↔əməkdaş), year/employee/product synonyms, specific docs ranked above always-include About/Contact, stronger “use these facts” inject (no URL-only answers)
+
+## [1.7.0] — 2026-08-13
+
+Admin Model lab plus a cleaner split of the app UI.
+
+### Added
+- **Model lab (`/lab`)** — admin-only test page (not an Admin tab) that runs real `/api/chat` suites: Quick, Workplace, and Stress (latency + refuse checks)
+
+### Changed
+- **App UI layout** — Admin, Model lab, chat, auth, and share screens live in their own component folders (same idea as the existing `/api/admin` split)
+
+## [1.6.0] — 2026-08-13
+
+Admin policy UX: Guardrails items are explicit On/Off switches, and unused Admin surfaces are gone.
+
+### Added
+- **Policy item switches** — allowed topics, refuse topics, keywords, and persona/extra snippets show **On / Off**. Clicking saves immediately and applies to new chats. Save changes is only for the text boxes (persona, refusal, extra rules)
+
+### Fixed
+- **Stale session on Admin/chat pages** — a leftover cookie after a DB wipe no longer 500s the page (`Cookies can only be modified in a Server Action or Route Handler`); the page now clears it via logout and sends you to login
+
+### Removed
+- **Guardrails Inspector** — the dry-run test tab and its admin inspect API (live chat blocking is unchanged)
+- **Admin Audit** — the Audit tab, `/api/admin/audit`, and audit event logging
+
+## [1.5.0] — 2026-08-13
+
+Language release: the product UI is English / Azərbaycan, and company seeds (knowledge + guardrails policy) ship in Azerbaijani.
+
+### Added
+- **EN / AZ interface** — language toggle with flag icons on chat, auth, share, and Admin; remembered in the browser (`owngpt-locale`)
+- **Full Admin i18n** — Overview, Usage, Users, Models, Knowledge, Guardrails (including Policy / Detectors / Inspector), Audit, and Settings
+- **Azerbaijani knowledge seed pack** — SINAM starter docs live in `src/lib/seeds/knowledge.ts`
+- **Azerbaijani guardrails policy seed** — persona, topics, extra rules, and quick-add chips in `src/lib/seeds/guardrails.ts`
+
+### Changed
+- **Seeds live in their own files** — knowledge and guardrails defaults are no longer hardcoded inside the library modules
+- **Guardrails persist on first init** — policy JSON and quick-add chips are written to `app_settings` like other settings (no empty Admin until you click Save)
+
+### Fixed
+- **DB wipe login loop** — a leftover session cookie after deleting `data/` no longer 307-loops `/chat`
+- **Unmodified English policy** — existing DBs still on the old English persona/topics/chips are migrated to the Azerbaijani defaults (custom edits are left as-is)
+
+## [1.4.2] — 2026-08-12
+
+Patch: repair the release pipeline. The production build was failing and the lint gate was red, so neither could vouch for a release.
+
+### Fixed
+- **Production build** — the register page failed to prerender and aborted `npm run build`; a deploy could not be produced from `main`
+- **Lint gate** — cleared 15 React 19 hook errors and 3 warnings so `npm run lint` passes and can gate a release again
+- **Release tags** — `v1.1.0` through `v1.4.1` were released but never tagged, leaving every changelog compare link below pointing at a tag that did not exist; the tags now match the commits that shipped them
+
+### Changed
+- **Default port is now 3055** (was 3000) — `start.bat`, the setup script and the smoke test all follow; open <http://localhost:3055> after starting
+- **Theme** — light/dark/system now reads the OS setting and the saved choice directly rather than copying them into component state after load, removing an extra render on every page open; the pre-load theme flash guard is unchanged
+- **Admin → Users / Knowledge** — changing a search or filter resets to page 1 in the same update as the filter itself, instead of one render later
+
 ## [1.4.1] — 2026-08-09
 
 Patch: treat Knowledge and Guardrails as living Admin config so company content can change without a code deploy.
@@ -107,7 +178,12 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...v1.5.0
+[1.4.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.2.0...v1.3.0

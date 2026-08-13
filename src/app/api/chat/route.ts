@@ -277,6 +277,14 @@ const streamAssistantReply = (input: {
               created_at: new Date().toISOString(),
               sources: knowledgeSources.length ? knowledgeSources : null,
             } satisfies Message,
+            usage: {
+              tokensEval,
+              tokensPrompt,
+              tokensPerSec:
+                tokensEval != null && evalDurationNs && evalDurationNs > 0
+                  ? Math.round((tokensEval / (evalDurationNs / 1e9)) * 10) / 10
+                  : null,
+            },
           });
 
           controller.close();

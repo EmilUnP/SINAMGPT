@@ -5,26 +5,26 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.4.1](../CHANGELOG.md#141--2026-08-09) (see [README](../README.md)).
+**Current release:** [v1.8.0](../CHANGELOG.md#180--2026-08-13) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.4.1)
+## Product today (v1.8.0)
 
 What operators and users can rely on right now:
 
 | Area | Reality |
 |------|---------|
+| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani |
 | **Chat** | Streaming replies, model picker, Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system) |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
-| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); pack seed add-missing / refresh / replace; citations; corpus stats |
-| **Guardrails** | Living policy + layered detectors; DB-backed quick-add chips; built-in harm phrases stay in code; Admin Overview / Policy / Detectors / Inspector |
-| **Audit** | Admin → **Audit** trail for admin mutations, auth outcomes, share/project ops; merges recent guardrail hits |
+| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
+| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
-| **Quality check** | `npm run test:chat` smoke suite against a running server |
+| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
 
 ---
 
@@ -64,6 +64,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.8.0 — Lab console (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Lab Live / Results / Charts | `done` | Streaming chat of the run; scored facts/language/speed; accuracy, tok/s, latency charts |
+| Lab suites | `done` | Quick 40, Assist 42, Guardrails 31; Stress dropped |
+| Keyword RAG | `done` | AZ inflections, product/year synonyms, specific-doc ranking |
 
 ### v1.1.0 — Company productivity (2026-08-09)
 
@@ -110,6 +118,40 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
 | Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
 | Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
+
+### v1.7.0 — Model lab (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Model lab `/lab` | `done` | Admin-only; real `/api/chat` suites (Quick, Assist, Guardrails) |
+| UI folder split | `done` | Admin, lab, chat, auth, share components separated |
+
+### v1.6.0 — Policy switches & slimmer Admin (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Policy On/Off switches | `done` | Topics, keywords, snippets apply to new chats on click |
+| Inspector removed | `done` | Dry-run tab and inspect API gone; chat blocking unchanged |
+| Audit removed | `done` | Admin tab, API, and event logging gone |
+| Stale cookie page 500 | `done` | Pages bounce through logout instead of deleting cookies while rendering |
+
+### v1.5.0 — EN / AZ product language (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| EN / AZ UI | `done` | Flag toggle; chat, auth, share, Admin |
+| AZ knowledge seed | `done` | SINAM pack in `src/lib/seeds/knowledge.ts` |
+| AZ guardrails policy seed | `done` | Persona/topics/chips in `src/lib/seeds/guardrails.ts`; unmodified EN DB rows migrate |
+| Guardrails auto-seed | `done` | Policy JSON written to `app_settings` on first init |
+| Stale session after DB wipe | `done` | Cookie cleared so `/chat` no longer 307-loops |
+
+### v1.4.2 — Release pipeline repair (2026-08-12)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Green production build | `done` | Register page prerender fixed; `npm run build` succeeds |
+| Green lint gate | `done` | React 19 hook violations cleared; `npm run lint` passes |
+| Complete release tags | `done` | `v1.1.0`–`v1.4.1` backfilled; changelog compare links resolve |
 
 Details and compare links: [CHANGELOG.md](../CHANGELOG.md).
 

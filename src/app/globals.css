@@ -279,6 +279,32 @@ html[data-theme="dark"] ::selection {
   color: var(--text);
 }
 
+/*
+ * The pill renders at 29px, which is a small target for a finger. On touch
+ * pointers, stretch the hit area to 44px without changing the painted size —
+ * the pseudo-element is transparent and out of flow, so layout is untouched.
+ */
+@media (pointer: coarse) {
+  .theme-toggle-btn {
+    position: relative;
+  }
+
+  .theme-toggle-btn::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/*
+ * Popover surface shared by every floating picker (theme, language, model).
+ * The .theme-toggle-* names are kept as aliases so existing markup is unchanged.
+ */
+.menu-surface,
 .theme-toggle-menu {
   border: 1px solid var(--menu-border);
   background: var(--menu-bg);
@@ -287,6 +313,7 @@ html[data-theme="dark"] ::selection {
   color: var(--text);
 }
 
+.menu-item,
 .theme-toggle-item {
   color: var(--text-muted);
   transition:
@@ -294,15 +321,45 @@ html[data-theme="dark"] ::selection {
     color 0.12s ease;
 }
 
+.menu-item:hover,
 .theme-toggle-item:hover {
   background: var(--menu-hover);
   color: var(--text);
 }
 
+/* Keyboard focus gets the same affordance as hover. */
+.menu-item.is-focused {
+  background: var(--menu-hover);
+  color: var(--text);
+}
+
+.menu-item.is-active,
 .theme-toggle-item.is-active {
   background: var(--menu-active-bg);
   color: var(--menu-active-fg);
   font-weight: 600;
+}
+
+.model-picker-trigger {
+  border: 1px solid var(--border);
+  background: var(--select-bg);
+  color: var(--text);
+}
+
+.model-picker-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.model-picker-trigger:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* On the guest landing page the control sits on glass, not on a panel. */
+.model-picker-trigger.on-glass {
+  border-color: var(--home-chip-border);
+  background: var(--home-chip-bg);
+  color: var(--home-chip-fg);
 }
 
 .theme-toggle-dot {

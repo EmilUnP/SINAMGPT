@@ -1,15 +1,10 @@
 import { Suspense } from "react";
-import { AuthForm } from "@/components/AuthForm";
+import { AuthForm } from "@/components/auth";
+import { LoadingFallback } from "@/components/LoadingFallback";
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-dvh items-center justify-center text-sm text-[var(--home-muted)]">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <AuthForm mode="login" />
     </Suspense>
   );

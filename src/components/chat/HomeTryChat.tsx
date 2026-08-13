@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -16,10 +17,13 @@ import {
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { CopyButton } from "@/components/CopyButton";
-import { KnowledgeCitations } from "@/components/KnowledgeCitations";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLocale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CopyButton } from "./CopyButton";
+import { KnowledgeCitations } from "./KnowledgeCitations";
+import { MarkdownMessage } from "./MarkdownMessage";
+import { ModelPicker } from "./ModelPicker";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";
@@ -53,26 +57,8 @@ const parseSseChunk = (raw: string) => {
   return { event, data: JSON.parse(dataLines.join("\n")) };
 };
 
-const suggestions = [
-  {
-    title: "Quick hello",
-    prompt: "Say hello in one short friendly sentence, then ask how you can help.",
-  },
-  {
-    title: "Explain AI",
-    prompt: "In 3 short sentences, explain what AI is in simple words.",
-  },
-  {
-    title: "Write a tip",
-    prompt: "Give me one practical productivity tip I can use today. Keep it under 40 words.",
-  },
-  {
-    title: "Fun fact",
-    prompt: "Tell me one interesting fun fact about technology. Keep it to 2 sentences.",
-  },
-];
-
 export const HomeTryChat = () => {
+  const { locale, t } = useLocale();
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [model, setModel] = useState("");
@@ -88,6 +74,28 @@ export const HomeTryChat = () => {
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const suggestions = useMemo(
+    () => [
+      {
+        title: t("home.suggestionHello"),
+        prompt: t("home.suggestionHelloPrompt"),
+      },
+      {
+        title: t("home.suggestionAi"),
+        prompt: t("home.suggestionAiPrompt"),
+      },
+      {
+        title: t("home.suggestionTip"),
+        prompt: t("home.suggestionTipPrompt"),
+      },
+      {
+        title: t("home.suggestionFact"),
+        prompt: t("home.suggestionFactPrompt"),
+      },
+    ],
+    [t],
+  );
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -100,7 +108,7 @@ export const HomeTryChat = () => {
           error?: string;
         };
         if (!res.ok) {
-          setError(data.error || "Ollama is not available");
+          setError(data.error || t("home.ollamaUnavailable"));
           return;
         }
         if (data.guestEnabled === false) {
@@ -116,11 +124,11 @@ export const HomeTryChat = () => {
         setModel(data.defaultModel || list[0]?.name || "");
         if (data.usage) setUsage(data.usage);
       } catch {
-        setError("Could not reach the local model service");
+        setError(t("home.couldNotReach"));
       }
     };
     void load();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -144,17 +152,15 @@ export const HomeTryChat = () => {
     const text = (preset ?? input).trim();
     if (!text || isSending) return;
     if (!guestEnabled) {
-      setError("Guest try-chat is disabled. Sign in to use SINAMGPT.");
+      setError(t("home.guestDisabledError"));
       return;
     }
     if (!model) {
-      setError("No local model found. Start Ollama and pull a model.");
+      setError(t("home.noModel"));
       return;
     }
     if (usage && usage.remaining <= 0) {
-      setError(
-        `Guest limit reached (${usage.limit}/day). Sign in for unlimited chat.`,
-      );
+      setError(t("home.guestLimitReached", { limit: usage.limit }));
       return;
     }
 
@@ -203,7 +209,7 @@ export const HomeTryChat = () => {
           usage?: Usage;
         };
         if (data.usage) setUsage(data.usage);
-        throw new Error(data.error || "Chat failed");
+        throw new Error(data.error || t("home.chatFailed"));
       }
 
       const reader = res.body.getReader();
@@ -251,7 +257,7 @@ export const HomeTryChat = () => {
 
           if (parsed.event === "error") {
             throw new Error(
-              (parsed.data as { error?: string }).error || "Stream error",
+              (parsed.data as { error?: string }).error || t("home.streamError"),
             );
           }
         }
@@ -261,12 +267,12 @@ export const HomeTryChat = () => {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? { ...m, content: m.content || "(stopped)" }
+              ? { ...m, content: m.content || t("common.stopped") }
               : m,
           ),
         );
       } else {
-        const msg = err instanceof Error ? err.message : "Failed to send";
+        const msg = err instanceof Error ? err.message : t("home.failedToSend");
         setError(msg);
         setMessages((prev) =>
           prev.filter((m) => m.id !== userTurn.id && m.id !== assistantId),
@@ -298,7 +304,7 @@ export const HomeTryChat = () => {
         <div className="flex items-center gap-3">
           <Image
             src={sinamLogo}
-            alt="SINAMGPT"
+            alt={t("common.brand")}
             width={36}
             height={36}
             className="h-9 w-9 rounded-full"
@@ -307,50 +313,41 @@ export const HomeTryChat = () => {
           />
           <div>
             <p className="text-[15px] font-semibold tracking-[0.04em] text-[var(--home-fg)]">
-              SINAMGPT
+              {t("common.brand")}
             </p>
             <p className="text-[11px] text-[var(--home-faint)]">
-              Local company AI
+              {t("home.tagline")}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {models.length > 0 && guestEnabled ? (
-            <select
+            <ModelPicker
+              models={models}
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={setModel}
               disabled={isSending}
-              className="max-w-[9.5rem] rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-3 py-1.5 text-xs text-[var(--home-chip-fg)] outline-none sm:max-w-[12rem]"
-            >
-              {models.map((item) => (
-                <option
-                  key={item.name}
-                  value={item.name}
-                  className="bg-[var(--home-option-bg)]"
-                >
-                  {item.display_name || item.name}
-                  {item.backend === "vllm"
-                    ? " · vLLM"
-                    : item.backend === "ollama"
-                      ? " · Ollama"
-                      : ""}
-                </option>
-              ))}
-            </select>
+              size="sm"
+              variant="glass"
+              emptyLabel={t("chat.noModels")}
+              ariaLabel={t("chat.model")}
+              className="max-w-[9.5rem] sm:max-w-[12rem]"
+            />
           ) : null}
+          <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />
           <Link
             href="/login"
             className="rounded-full px-3 py-2 text-sm text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4"
           >
-            Sign in
+            {t("home.signIn")}
           </Link>
           <Link
             href="/register"
             className="rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_24px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400 sm:px-4"
           >
-            Sign up
+            {t("home.signUp")}
           </Link>
         </div>
       </header>
@@ -361,52 +358,53 @@ export const HomeTryChat = () => {
             <div className="hero-brand">
               <Image
                 src={sinamLogo}
-                alt="SINAMGPT"
+                alt={t("common.brand")}
                 width={112}
                 height={112}
-                className="logo-breathe mx-auto h-28 w-28 rounded-full"
+                className="logo-breathe mx-auto h-20 w-20 rounded-full sm:h-28 sm:w-28"
                 style={{ width: "auto", height: "auto" }}
                 priority
               />
-              <p className="mt-7 text-sm font-semibold tracking-[0.22em] text-[var(--home-fg)]/90">
-                SINAMGPT
+              <p className="mt-5 text-sm font-semibold tracking-[0.22em] text-[var(--home-fg)]/90 sm:mt-7">
+                {t("common.brand")}
               </p>
             </div>
 
             <div className="hero-copy mt-4">
               <h1 className="text-[2.15rem] font-normal tracking-tight text-[var(--home-fg)] sm:text-[2.9rem]">
                 {guestEnabled
-                  ? "Where should we start?"
-                  : "Sign in to continue"}
+                  ? t("home.heroAsk")
+                  : t("home.heroSignIn")}
               </h1>
               <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--home-muted)]">
                 {guestEnabled
-                  ? "Ask anything work-related — or pick a starter below."
-                  : "Guest try-chat is currently disabled by an admin."}
+                  ? t("home.heroAskSub")
+                  : t("home.heroDisabledSub")}
               </p>
               {guestEnabled && usage ? (
                 <p className="mt-3 text-xs text-[var(--home-faint)]">
-                  {usage.remaining} free guest{" "}
-                  {usage.remaining === 1 ? "message" : "messages"} left today
+                  {usage.remaining === 1
+                    ? t("home.messagesLeftOne", { n: usage.remaining })
+                    : t("home.messagesLeftMany", { n: usage.remaining })}
                 </p>
               ) : null}
             </div>
 
             {guestEnabled ? (
-              <div className="hero-actions mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="hero-actions mt-8 grid w-full max-w-2xl grid-cols-2 gap-3 sm:mt-10">
                 {suggestions.map((item, index) => (
                   <button
                     key={item.title}
                     type="button"
                     onClick={() => void handleSend(item.prompt)}
                     disabled={actionsLocked}
-                    className="suggestion-tile soft-rise rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-chip-bg)] px-5 py-4 text-left hover:-translate-y-0.5 hover:border-[var(--accent)]/40 disabled:opacity-40"
+                    className="suggestion-tile soft-rise rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-chip-bg)] px-4 py-3.5 text-left hover:-translate-y-0.5 hover:border-[var(--accent)]/40 disabled:opacity-40 sm:px-5 sm:py-4"
                     style={{ animationDelay: `${0.08 + 0.06 * index}s` }}
                   >
                     <span className="block text-sm font-medium text-[var(--home-fg)]">
                       {item.title}
                     </span>
-                    <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-[var(--home-muted)]">
+                    <span className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--home-muted)]">
                       {item.prompt}
                     </span>
                   </button>
@@ -418,13 +416,13 @@ export const HomeTryChat = () => {
                   href="/login"
                   className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)]"
                 >
-                  Sign in
+                  {t("home.signIn")}
                 </Link>
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-6 py-2.5 text-sm font-medium text-[var(--home-fg)]"
                 >
-                  Create account
+                  {t("home.createAccount")}
                 </Link>
               </div>
             )}
@@ -449,13 +447,13 @@ export const HomeTryChat = () => {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--home-faint)]">
-                        Daily guest limit
+                        {t("home.dailyLimitLabel")}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tracking-tight text-[var(--home-fg)]">
-                        You’ve used today’s free messages
+                        {t("home.dailyLimitTitle")}
                       </p>
                       <p className="mt-0.5 text-xs leading-snug text-[var(--home-muted)]">
-                        Sign in for unlimited chat and saved history.
+                        {t("home.dailyLimitSub")}
                       </p>
                     </div>
                   </div>
@@ -464,13 +462,13 @@ export const HomeTryChat = () => {
                       href="/login"
                       className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400"
                     >
-                      Sign in
+                      {t("home.signIn")}
                     </Link>
                     <Link
                       href="/register"
                       className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-4 py-2 text-xs font-medium text-[var(--home-fg)] transition hover:border-[var(--accent)]/40"
                     >
-                      Create account
+                      {t("home.createAccount")}
                     </Link>
                   </div>
                 </div>
@@ -486,7 +484,7 @@ export const HomeTryChat = () => {
                 className="inline-flex items-center gap-1.5 rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-3 py-1.5 text-xs text-[var(--home-chip-fg)] transition hover:opacity-90"
               >
                 <MessageSquarePlus size={13} />
-                New try
+                {t("home.newTry")}
               </button>
             </div>
 
@@ -513,10 +511,10 @@ export const HomeTryChat = () => {
                           style={{ width: "auto", height: "auto" }}
                         />
                       ) : null}
-                      <span>{isUser ? "You" : "SINAMGPT"}</span>
+                      <span>{isUser ? t("common.you") : t("common.brand")}</span>
                       {message.createdAt ? (
                         <span className="opacity-70">
-                          · {formatChatTime(message.createdAt)}
+                          · {formatChatTime(message.createdAt, locale)}
                         </span>
                       ) : null}
                     </div>
@@ -579,13 +577,13 @@ export const HomeTryChat = () => {
             <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--home-faint)]">
-                  Daily guest limit
+                  {t("home.dailyLimitLabel")}
                 </p>
                 <p className="mt-0.5 text-sm font-semibold text-[var(--home-fg)]">
-                  You’ve used today’s free messages
+                  {t("home.dailyLimitTitle")}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--home-muted)]">
-                  Sign in for unlimited chat and saved history.
+                  {t("home.dailyLimitSub")}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -593,13 +591,13 @@ export const HomeTryChat = () => {
                   href="/login"
                   className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400"
                 >
-                  Sign in
+                  {t("home.signIn")}
                 </Link>
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-4 py-2 text-xs font-medium text-[var(--home-fg)] transition hover:border-[var(--accent)]/40"
                 >
-                  Create account
+                  {t("home.createAccount")}
                 </Link>
               </div>
             </div>
@@ -617,6 +615,8 @@ export const HomeTryChat = () => {
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           <div className="flex items-end gap-2">
+            {/* text-base (16px) on phones — anything smaller makes iOS Safari
+                zoom the page when the field takes focus. */}
             <textarea
               ref={textareaRef}
               value={input}
@@ -625,20 +625,20 @@ export const HomeTryChat = () => {
               rows={1}
               placeholder={
                 !guestEnabled
-                  ? "Guest chat disabled — sign in…"
+                  ? t("home.placeholderDisabled")
                   : limitHit
-                    ? "Sign in to keep chatting…"
-                    : "Ask SINAMGPT anything…"
+                    ? t("home.placeholderLimit")
+                    : t("home.placeholderAsk")
               }
               disabled={limitHit || !guestEnabled}
-              className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-[15px] text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50"
+              className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-base text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50 sm:text-[15px]"
             />
             {isSending ? (
               <button
                 type="button"
                 onClick={handleStop}
-                className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)]"
-                aria-label="Stop"
+                className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)] sm:h-10 sm:w-10"
+                aria-label={t("home.stop")}
               >
                 <Square size={14} fill="currentColor" />
               </button>
@@ -647,8 +647,8 @@ export const HomeTryChat = () => {
                 type="button"
                 onClick={() => void handleSend()}
                 disabled={actionsLocked || (ready && !input.trim())}
-                className="mb-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Send"
+                className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
+                aria-label={t("home.send")}
               >
                 <SendHorizonal size={16} />
               </button>
@@ -657,7 +657,7 @@ export const HomeTryChat = () => {
         </div>
 
         <p className="mt-3 text-center text-[11px] text-[var(--home-faint)]">
-          Enter to send · Shift+Enter for new line · Guest history is not saved
+          {t("home.footerHint")}
         </p>
       </main>
     </div>

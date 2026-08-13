@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
-import { clientIp, recordAuditEvent } from "@/lib/audit";
 import { listGuardrailEvents } from "@/lib/guardrail-engine";
 import {
   DEFAULT_GUARDRAILS,
   DEFAULT_POLICY_SUGGESTIONS,
-  checkInputGuardrails,
   getGuardrails,
   getPolicySuggestions,
   setGuardrails,
@@ -37,6 +35,16 @@ export async function GET(request: Request) {
   });
 }
 
+const suggestionListSchema = z.array(z.string().max(200)).max(100);
+
+const suggestionsSchema = z.object({
+  allowedTopics: suggestionListSchema.optional(),
+  blockedTopics: suggestionListSchema.optional(),
+  keywords: suggestionListSchema.optional(),
+  personaSnippets: suggestionListSchema.optional(),
+  extraRuleSnippets: suggestionListSchema.optional(),
+});
+
 const patchSchema = z.object({
   enabled: z.boolean().optional(),
   applyToGuests: z.boolean().optional(),
@@ -52,13 +60,7 @@ const patchSchema = z.object({
   detectPiiPatterns: z.boolean().optional(),
   strictPii: z.boolean().optional(),
   logEvents: z.boolean().optional(),
-});
-
-const inspectSchema = z.object({
-  action: z.literal("inspect"),
-  message: z.string().trim().min(1).max(8000),
-  audience: z.enum(["guest", "user"]).default("user"),
-  projectId: z.string().trim().min(1).max(64).nullable().optional(),
+  suggestions: suggestionsSchema.optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -76,16 +78,28 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const guardrails = setGuardrails(parsed.data);
-  recordAuditEvent({
-    category: "guardrails",
-    action: "guardrails.save",
-    actor: { id: admin.id, username: admin.username },
-    summary: `${admin.username} saved guardrails`,
-    meta: { keys: Object.keys(parsed.data) },
-    ip: clientIp(request),
+  const { suggestions: nextSuggestions, ...policy } = parsed.data;
+  const guardrails = setGuardrails(policy);
+  const stored = getPolicySuggestions();
+  const suggestions = setPolicySuggestions({
+    allowedTopics: [
+      ...(nextSuggestions?.allowedTopics ?? stored.allowedTopics),
+      ...guardrails.allowedTopics.split("\n"),
+    ],
+    blockedTopics: [
+      ...(nextSuggestions?.blockedTopics ?? stored.blockedTopics),
+      ...guardrails.blockedTopics.split("\n"),
+    ],
+    keywords: [
+      ...(nextSuggestions?.keywords ?? stored.keywords),
+      ...guardrails.blockedKeywords.split("\n"),
+    ],
+    personaSnippets:
+      nextSuggestions?.personaSnippets ?? stored.personaSnippets,
+    extraRuleSnippets:
+      nextSuggestions?.extraRuleSnippets ?? stored.extraRuleSnippets,
   });
-  return NextResponse.json({ guardrails });
+  return NextResponse.json({ guardrails, suggestions });
 }
 
 export async function POST(request: Request) {
@@ -98,13 +112,6 @@ export async function POST(request: Request) {
 
   if (body?.action === "reset") {
     const guardrails = setGuardrails(DEFAULT_GUARDRAILS);
-    recordAuditEvent({
-      category: "guardrails",
-      action: "guardrails.reset",
-      actor: { id: admin.id, username: admin.username },
-      summary: `${admin.username} reset guardrails to defaults`,
-      ip: clientIp(request),
-    });
     return NextResponse.json({ guardrails });
   }
 
@@ -112,24 +119,10 @@ export async function POST(request: Request) {
     const suggestions = setPolicySuggestions({
       ...DEFAULT_POLICY_SUGGESTIONS,
     });
-    recordAuditEvent({
-      category: "guardrails",
-      action: "guardrails.suggestions_reset",
-      actor: { id: admin.id, username: admin.username },
-      summary: `${admin.username} reset policy quick-add chips`,
-      ip: clientIp(request),
-    });
     return NextResponse.json({ suggestions });
   }
 
   if (body?.action === "suggestions") {
-    const suggestionsSchema = z.object({
-      allowedTopics: z.array(z.string().max(200)).max(40).optional(),
-      blockedTopics: z.array(z.string().max(200)).max(40).optional(),
-      keywords: z.array(z.string().max(200)).max(40).optional(),
-      personaSnippets: z.array(z.string().max(200)).max(40).optional(),
-      extraRuleSnippets: z.array(z.string().max(200)).max(40).optional(),
-    });
     const parsed = suggestionsSchema.safeParse(body.suggestions ?? body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -140,37 +133,7 @@ export async function POST(request: Request) {
     const suggestions = setPolicySuggestions(
       parsed.data as Partial<PolicySuggestions>,
     );
-    recordAuditEvent({
-      category: "guardrails",
-      action: "guardrails.suggestions_save",
-      actor: { id: admin.id, username: admin.username },
-      summary: `${admin.username} saved policy quick-add chips`,
-      meta: { keys: Object.keys(parsed.data) },
-      ip: clientIp(request),
-    });
     return NextResponse.json({ suggestions });
-  }
-
-  if (body?.action === "inspect") {
-    const parsed = inspectSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid inspect input" },
-        { status: 400 },
-      );
-    }
-    const result = checkInputGuardrails(parsed.data.message, parsed.data.audience, {
-      projectId: parsed.data.projectId,
-      username: admin.username,
-      userId: admin.id,
-      log: false, // dry-run does not pollute the event log
-    });
-    return NextResponse.json({
-      blocked: result.blocked,
-      reason: result.blocked ? result.reason : null,
-      refusal: result.blocked ? result.refusal : null,
-      inspection: result.inspection,
-    });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

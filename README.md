@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.4.1](./CHANGELOG.md#141--2026-08-09) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.8.0](./CHANGELOG.md#180--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -11,7 +11,9 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
-- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), **Audit** trail, theme-aware UI
+- **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
+- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
+- **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -36,7 +38,7 @@ Open [http://localhost:3055](http://localhost:3055)
 
 1. **Home** (`/`) — try the model immediately (guest, limited, no saved history)
 2. **Sign in / Register** — full chat with saved history
-3. Admin account can open `/admin`
+3. Admin account can open `/admin` and **Model lab** at `/lab`
 
 For production on the company machine:
 
@@ -74,11 +76,11 @@ There you can:
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
 - **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
-- **Guardrails** — living policy (persona/topics/custom keywords + DB quick-add chips); built-in harm phrases; live inspector; event log
-- **Audit** — admin changes, logins, share/project actions, plus guardrail hits in one view
+- **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; event log
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
+- **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 
 ## Config
 
@@ -101,7 +103,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events, audit events
+- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)
@@ -117,7 +119,9 @@ npm run test:chat -- --quick
 
 Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` / `TEST_PASSWORD`). Optional: `BASE_URL=http://127.0.0.1:3055`.
 
-Checks login, models, streaming chat, English language drift, citations on company questions, projects, share links, and rewrite.
+Checks login, models, streaming chat, English language drift, citations on SINAM knowledge (about, SESDA, Farabi, contact), guardrail refusals (salary, jailbreak, secrets), projects, share links, and rewrite.
+
+Admins can also run live model checks in the UI at `/lab` (Quick / Assist / Guardrails — Live, Results, and Charts tabs).
 
 ## Releases & changelog
 

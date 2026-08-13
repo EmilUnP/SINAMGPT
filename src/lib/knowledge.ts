@@ -4,7 +4,14 @@ import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
   tokenizeMultilang,
+  tokensAlign,
 } from "@/lib/multilang";
+import {
+  DEPRECATED_KNOWLEDGE_TITLES,
+  SINAM_SEED_DOCS,
+} from "@/lib/seeds/knowledge";
+
+export { SINAM_SEED_DOCS } from "@/lib/seeds/knowledge";
 
 const SETTINGS_KEY = "knowledge_settings";
 
@@ -226,35 +233,53 @@ export const retrieveKnowledge = (
   const companyIntent = looksLikeCompanyQuestion(query);
   const activeProject = projectId?.trim() || null;
 
+  const tokenHit = (haystack: Set<string>, token: string) => {
+    if (haystack.has(token)) return true;
+    if (token.length < 4) return false;
+    for (const item of haystack) {
+      if (tokensAlign(token, item)) return true;
+    }
+    return false;
+  };
+
   const scored = docs.map((doc) => {
-    // Whole-token match only (avoid "help" matching "helped")
     const titleTokens = new Set(tokenizeMultilang(doc.title));
     const tagTokens = new Set(tokenizeMultilang(doc.tags));
     const contentTokens = new Set(tokenizeMultilang(doc.content));
+    const titleNorm = ` ${[...titleTokens].join(" ")} `;
     let matchScore = 0;
     let strongHits = 0;
 
     for (const token of queryTokens) {
       if (token.length < 3) continue;
-      if (titleTokens.has(token)) {
+      if (tokenHit(titleTokens, token)) {
+        matchScore += 6;
+        strongHits += 1;
+      }
+      if (tokenHit(tagTokens, token)) {
         matchScore += 4;
         strongHits += 1;
       }
-      if (tagTokens.has(token)) {
-        matchScore += 3;
+      if (tokenHit(contentTokens, token)) matchScore += 2;
+    }
+
+    // Phrase in title (e.g. "iş saatları", "həllər kataloqu")
+    const queryWords = [...queryTokens].filter((t) => t.length >= 4);
+    for (let i = 0; i < queryWords.length - 1; i += 1) {
+      const phrase = ` ${queryWords[i]} ${queryWords[i + 1]} `;
+      if (titleNorm.includes(phrase)) {
+        matchScore += 8;
         strongHits += 1;
       }
-      if (contentTokens.has(token)) matchScore += 1;
     }
 
     if (
       companyIntent &&
       (doc.category === "company" || doc.category === "product")
     ) {
-      matchScore += 5;
+      matchScore += 3;
     }
 
-    // Prefer project-scoped docs when chatting inside a project
     if (activeProject) {
       if (doc.project_id === activeProject) matchScore += 12;
       else if (doc.project_id && doc.project_id !== activeProject) {
@@ -262,34 +287,41 @@ export const retrieveKnowledge = (
       }
     }
 
-    // Pin always_include docs only for real company questions
     const alwaysEligible = doc.always_include === 1 && companyIntent;
-    const hasMatch = strongHits > 0 || matchScore >= 4;
+    const hasMatch = strongHits > 0 || matchScore >= 6;
+    // Small pin only — specific stats/catalog hits must still outrank generic always-include.
+    const score = matchScore + doc.priority / 1000 + (alwaysEligible ? 2 : 0);
 
-    // Priority is a tiny tiebreaker only (never enough to pass the threshold alone)
-    let score = matchScore + doc.priority / 1000;
-    if (alwaysEligible) score += 1000;
-
-    return { doc, score, hasMatch, alwaysEligible };
+    return { doc, score, hasMatch, alwaysEligible, strongHits };
   });
+
+  const specific = scored
+    .filter((s) => s.hasMatch && s.strongHits > 0)
+    .sort((a, b) => b.score - a.score || b.strongHits - a.strongHits);
 
   const always = scored
     .filter((s) => s.alwaysEligible)
     .sort((a, b) => b.score - a.score);
 
-  const rest = scored
-    .filter((s) => !s.alwaysEligible && s.hasMatch && s.score >= 4)
+  const weak = scored
+    .filter((s) => s.hasMatch && s.strongHits === 0 && s.score >= 6)
     .sort((a, b) => b.score - a.score);
 
   const picked: KnowledgeDoc[] = [];
   const seen = new Set<string>();
+  const take = (rows: typeof scored) => {
+    for (const row of rows) {
+      if (seen.has(row.doc.id)) continue;
+      seen.add(row.doc.id);
+      picked.push(row.doc);
+      if (picked.length >= settings.maxDocs) return;
+    }
+  };
 
-  for (const row of [...always, ...rest]) {
-    if (seen.has(row.doc.id)) continue;
-    seen.add(row.doc.id);
-    picked.push(row.doc);
-    if (picked.length >= settings.maxDocs) break;
-  }
+  // Specific matches first so "employees / products" beat About + Contact.
+  take(specific);
+  take(always);
+  take(weak);
 
   // Fallback company doc only for real company questions
   if (!picked.length && companyIntent) {
@@ -324,8 +356,13 @@ export const resolveKnowledgeContext = (
   }
 
   const chunks: string[] = [
-    "COMPANY KNOWLEDGE (trusted local facts — use when answering about SINAM / company / projects; do not invent facts beyond this):",
-    "These notes are in English for storage only. Rewrite them into the REPLY LANGUAGE. Do not switch language because tags list Russian/Azerbaijani keywords. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "COMPANY KNOWLEDGE (trusted local facts — the sections below are ordered by relevance to this question):",
+    "HOW TO USE THEM:",
+    "- Answer from these notes. Prefer the first / most specific section over generic About/Contact.",
+    "- Put concrete facts in the reply: years, headcount, phones, emails, product names (SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM).",
+    "- Never answer with only a URL or a single markdown link.",
+    "- Rewrite into the REPLY LANGUAGE. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "- Do not invent numbers or products that are not in the notes.",
     "If the user is not asking about the company, ignore this block and answer normally.",
   ];
 
@@ -361,199 +398,6 @@ export const buildKnowledgeBlock = (
   query: string,
   audience: "guest" | "user",
 ): string => resolveKnowledgeContext(query, audience).block;
-
-export const SINAM_SEED_DOCS: Array<{
-  title: string;
-  category: KnowledgeCategory;
-  content: string;
-  tags: string;
-  priority: number;
-  always_include: boolean;
-}> = [
-  {
-    title: "About SINAM",
-    category: "company",
-    content: `SINAM Ltd (website: https://sinam.net) is an ICT company founded in 1994 in Azerbaijan.
-Tagline / focus: Enabling Digital Transformation — Innovate. Digitize. Automate. / Our Innovative Solutions — Inspire. Optimize. Transform.
-SINAM drives transformation projects in government and private sectors using cutting-edge ICT.
-It helps clients improve governance, increase operational efficiency, and boost financial results.
-Today SINAM is a Trans-Caspian market leader in e-Transformation and e-Government services and has been instrumental in the region's informatization drive.
-Public site: https://sinam.net (EN solutions catalog: https://sinam.net/en/solutions).`,
-    tags: "sinam, company, about, ict, egovernment, transformation, şirkət, sirket, компания, haqqında, haqqinda",
-    priority: 100,
-    always_include: true,
-  },
-  {
-    title: "SINAM contact & hours",
-    category: "company",
-    content: `Phone: +994 12 510 11 00
-Email: office@sinam.net
-Working hours: Monday–Friday, 09:00–18:00
-Website: https://sinam.net`,
-    tags: "contact, phone, email, office, hours, address, əlaqə, elaqe, kontakt, контакт, telefon, ünvan, unvan, iş saatı",
-    priority: 90,
-    always_include: true,
-  },
-  {
-    title: "SINAM snapshot stats",
-    category: "company",
-    content: `Public snapshot from sinam.net:
-- 30+ years in business (since 1994)
-- 150+ employees
-- Site highlights reach across 95+ countries and a large served-population figure
-Use as approximate marketing stats; for exact legal/financial figures, defer to official company materials or office@sinam.net.`,
-    tags: "stats, history, employees, years, countries, işçilər, isciler, сотрудники, tarix",
-    priority: 70,
-    always_include: false,
-  },
-  {
-    title: "SINAM solutions catalog",
-    category: "product",
-    content: `SINAM publishes a wide solutions portfolio on https://sinam.net/en/solutions, including (non-exhaustive):
-- Document & workflow: SESDA (Electronic Document Management), Electronic Signature, Electronic Archive
-- Government / finance: Farabi / SGRP (Government Resources Planning), Budget Information Management, Treasury Information Management, Integrated Tax Administration, National Pension Fund systems, Customs declarations
-- Maps & mobility: GoMap.az / GoMap.ge (GIS map database), GoNav.Az (online navigator), YURDUM (AR/AI geo guide), Fleet Management, FreeFields
-- Citizen services: Biletim.az bus ticketing, Electronic Visa, e-Governance & Public Service Center, E-Prescription
-- Platforms: SINAM ERP, Education Management System, IoT Management Platform, Smart Village, Data Warehouse & analytics, Instant / mass payment systems, Video Conference, SPBX VoIP, network infrastructure
-When users ask “what products does SINAM have?”, summarize categories and name flagship products (SESDA, Farabi, Biletim, GoMap/GoNav, Yurdum). For deep specs not listed here, point to the matching sinam.net solutions page or office@sinam.net.`,
-    tags: "solutions, products, catalog, portfolio, egovernment, digitization, həllər, heller, məhsul, mehsul, продукт, layihə, layihe, projects",
-    priority: 88,
-    always_include: false,
-  },
-  {
-    title: "SESDA document management",
-    category: "product",
-    content: `SESDA is SINAM’s Electronic Document Management / document workflow platform (also called SINAM Document Workflow System).
-Source: https://sinam.net/en/solutions/electronic-document-management-system
-What it does:
-- Full document lifecycle: create, register, approve, e-sign, execute, monitor, archive
-- Incoming / outgoing / internal docs and interagency electronic exchange
-- Integrations with government/corporate systems (examples cited on site: RSD, MyGov, NHAIS, and others)
-- Full-text search, filtering, analytics/reporting (incl. Excel export; Form 1 / Form 2 statistical reports)
-- Role-based access, electronic signatures, audit logs, full document history
-- Flexible for government institutions, large enterprises, and smaller orgs
-Notable clients / case mentions on the site (periods as published): Central Bank of Azerbaijan, National Archive, Ministry of Agriculture, Ministry of Health, Ministry of Energy, ASAN (State Agency for Service to Citizens and Social Innovations).
-SESDA | Connect Package (public pricing example): One User — ₼20 / month (VAT included) — Infrastructure, Online Training, Updates, Technical Support.
-For extra pricing tiers or deployment details not listed here, contact office@sinam.net.`,
-    tags: "sesda, document, workflow, edms, edm, e-sign, connect, qiymət, qiymet, цена, sənəd, sened, документ, документооборот",
-    priority: 92,
-    always_include: false,
-  },
-  {
-    title: "Farabi government resources planning",
-    category: "product",
-    content: `Farabi refers to SINAM’s Government Resources Planning (SGRP) solution and related FARABI Data Center work.
-Source: https://sinam.net/en/solutions/farabi
-What it is:
-- Integrated web application to plan, register, control, and analyze organizational work processes
-- Scalable for e-Government and usable by public or private organizations of various sizes
-Case study (from sinam.net): Financial and Accounting Reporting Application for Budgetary Institutions
-- Client: Ministry of Finance of the Republic of Azerbaijan (2012–ongoing as published)
-- Modern report submission for ~4,000 users across budget offices in ministries, higher education, and other state agencies
-- Mentions Oracle BI platform, record management, FARABI Data Center
-When users say “Farabi”, explain SGRP / government resource & financial reporting context — do not invent unrelated product features.`,
-    tags: "farabi, farabı, sgrp, government resources planning, ministry of finance, budget, reporting, фараби, maliyyə, maliyye",
-    priority: 90,
-    always_include: false,
-  },
-  {
-    title: "Biletim.az bus ticketing",
-    category: "product",
-    content: `Biletim.az is SINAM’s Bus Ticketing System for intercity, inter-district, and international bus trips.
-Source: https://sinam.net/en/solutions/biletim · public portal: https://biletim.az
-Capabilities (from SINAM site):
-- Online and offline ticket purchase with QR codes
-- Seat selection from the bus schedule
-- Sales from any bus station; quick refunds
-- Track bus location on the map
-- Web portal + iOS/Android apps; cash at counter or online debit card
-- Dispatcher can check online tickets in the platform app; tickets via email/portal; board by showing QR to the driver
-Case study: Azerbaijan Land Transport Agency / Ministry of Transport and Digital Development (2022)
-- Daily ticket sales cited for 405 routes to 39 cities
-- Board without a physical paper ticket
-Public launch notes (government media, Dec 2022): tickets sold up to ~10 days ahead; app on App Store / Google Play.`,
-    tags: "biletim, biletim.az, bus, ticket, ticketing, ayna, transport, avtobus, bilet, билет, билетим",
-    priority: 90,
-    always_include: false,
-  },
-  {
-    title: "GoMap.az and GoMap.ge",
-    category: "product",
-    content: `GoMap.az (and GoMap.ge) is SINAM’s interactive geographic information / map portal covering Azerbaijan and Georgia.
-Source: https://sinam.net/en/solutions/geo-information-systems
-What it provides:
-- Interactive map: administrative divisions, settlements, buildings, postal indexes, road networks
-- Points of interest: hotels, restaurants, organizations, shops, and other establishments
-- Optimal route planning, text search, client-server data exchange in multiple formats
-- API GoMap.az for integrations
-Case context published with Ministry for Culture of Azerbaijan (2008–2010): tourism/landmarks promotion and resource monitoring.
-GoMap’s electronic map database also powers the GoNav.Az online navigator.`,
-    tags: "gomap, gomap.az, gomap.ge, gis, map, xəritə, xerite, карта, geo, navigation map",
-    priority: 90,
-    always_include: false,
-  },
-  {
-    title: "GoNav.Az online navigator",
-    category: "product",
-    content: `GoNav.Az is SINAM’s online navigator for Azerbaijan (and travel into Georgia).
-Source: https://sinam.net/en/solutions/gonav
-Key points:
-- Browser-based — usable from tablet/phone without a separate install (as described on the site)
-- Map data comes from the GoMap.Az electronic map database (Azerbaijan + Georgia), with roads/streets and traffic regulations
-- Single-line search for objects, cities, villages, new and old addresses
-- Optimal routing for car and on foot; considers traffic rules and congestion
-- Client mention: Ministry of Digital Development and Transport of Azerbaijan
-Related products: GoMap (map DB), YURDUM (AR/AI guide), Fleet Management.`,
-    tags: "gonav, gonav.az, navigator, navigation, routing, go map, naviqator, навигатор, yol",
-    priority: 88,
-    always_include: false,
-  },
-  {
-    title: "YURDUM navigation and smart village",
-    category: "product",
-    content: `YURDUM is SINAM’s geo / guide solution using Augmented Reality, AI, and object recognition (machine learning).
-Source: https://sinam.net/en/solutions/yurdum
-Use cases:
-- Digital guides for residents and visitors covering infrastructure, tourist sites, and cultural landmarks
-- “Smart Village” ICT components — detailed village electronic maps, points of interest, graphic recognition via ML, AR mobile app
-Case study published: Ministry of Agriculture of Azerbaijan (2021–2024) — Building ICT components for the Smart Village.
-Related: GoMap / GoNav for country-scale maps and routing.`,
-    tags: "yurdum, yurd, smart village, ar, augmented reality, ai, kənd, kend, деревня, tourism, guide",
-    priority: 85,
-    always_include: false,
-  },
-  {
-    title: "Other flagship SINAM platforms",
-    category: "product",
-    content: `Additional SINAM platforms commonly referenced on https://sinam.net/en/solutions (summaries — not full specs):
-- SINAM Enterprise Resource Planning (ERP) — enterprise planning/operations suite
-- Electronic Visa System — e-visa processing for government
-- Education Management System — education-sector digitization
-- SINAM IoT Management Platform & Smart Village Management Platform — connected devices / rural digitalization
-- E-Prescription System — electronic prescriptions
-- e-Governance & Public Service Center — citizen-facing public services
-- Data Warehouse and Analytical Reporting — analytics
-- Instant Payment System / Automated Mass Payments — payment rails
-- Treasury / Budget / Tax / Pension / Customs systems — specialized government finance & border systems
-- FreeFields mobile app, Fleet Management, Video Conference Management, Veterinary Service Monitoring
-- SPBX VoIP telephony and network infrastructure solutions
-If a user asks about a named product not detailed elsewhere in knowledge, give this high-level placement and link them to https://sinam.net/en/solutions or office@sinam.net — do not invent feature lists.`,
-    tags: "erp, evisa, education, iot, smart village, e-prescription, asan, payments, treasury, tax, customs, freefields, fleet, voip",
-    priority: 72,
-    always_include: false,
-  },
-  {
-    title: "SINAMGPT product note",
-    category: "project",
-    content: `SINAMGPT is SINAM's internal/local company AI chat assistant.
-It runs on local models (Ollama / optional vLLM) inside the company environment.
-It uses admin-managed Company Knowledge (this pack) plus guardrails — not a public fine-tuned cloud model.
-Employees can ask about SINAM products (SESDA, Farabi, Biletim, GoMap, GoNav, Yurdum, etc.), drafting, summarizing, and general work help. Private chats stay on the local machine.`,
-    tags: "sinamgpt, owngpt, ai, assistant, internal, project, köməkçi, komekci, ассистент",
-    priority: 85,
-    always_include: false,
-  },
-];
 
 export const seedSinamKnowledgeIfEmpty = () => {
   const count = getDb()
@@ -606,12 +450,10 @@ export const reseedSinamKnowledge = (
     return { ...result, updated: 0, mode: "replace" as const };
   }
 
-  // Retire older seed titles replaced by richer pack entries
-  const deprecatedTitles = ["Solutions focus", "SESDA Connect package"];
   const del = getDb().prepare(
     `DELETE FROM knowledge_docs WHERE title = ? COLLATE NOCASE`,
   );
-  for (const title of deprecatedTitles) del.run(title);
+  for (const title of DEPRECATED_KNOWLEDGE_TITLES) del.run(title);
 
   const existingByTitle = new Map(
     (

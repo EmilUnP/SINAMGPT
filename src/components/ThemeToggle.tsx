@@ -3,19 +3,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import { useIsMounted } from "@/lib/use-mounted";
 import type { ThemePreference } from "@/lib/theme";
-
-const options: Array<{
-  id: ThemePreference;
-  label: string;
-  icon: typeof Sun;
-}> = [
-  { id: "light", label: "Light", icon: Sun },
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "system", label: "System", icon: Monitor },
-];
 
 type ThemeToggleProps = {
   size?: "sm" | "md";
@@ -27,12 +18,23 @@ export const ThemeToggle = ({
   className = "",
 }: ThemeToggleProps) => {
   const { preference, resolved, setPreference } = useTheme();
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const mounted = useIsMounted();
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
+
+  const options: Array<{
+    id: ThemePreference;
+    label: string;
+    icon: typeof Sun;
+  }> = [
+    { id: "light", label: t("common.themeLight"), icon: Sun },
+    { id: "dark", label: t("common.themeDark"), icon: Moon },
+    { id: "system", label: t("common.themeSystem"), icon: Monitor },
+  ];
 
   const updateMenuPos = () => {
     const el = rootRef.current;
@@ -125,11 +127,11 @@ export const ThemeToggle = ({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`theme-toggle-btn inline-flex items-center justify-center rounded-full ${buttonPad}`}
-        aria-label="Choose theme"
+        aria-label={t("common.chooseTheme")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        title={`Theme: ${preference}`}
+        title={t("common.themeTitle", { preference })}
       >
         <ActiveIcon size={iconSize} strokeWidth={1.85} />
       </button>

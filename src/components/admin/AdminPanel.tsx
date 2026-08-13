@@ -10,11 +10,11 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
   Gauge,
   LayoutDashboard,
   Radio,
   RefreshCw,
-  ScrollText,
   Search,
   Server,
   Settings2,
@@ -28,11 +28,12 @@ import {
   Zap,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
-import { AdminAuditPanel } from "@/components/AdminAuditPanel";
-import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
-import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
-import { AdminSettingsPanel } from "@/components/AdminSettingsPanel";
-import { AdminUsagePanel } from "@/components/AdminUsagePanel";
+import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
+import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
+import { AdminSettingsPanel } from "./AdminSettingsPanel";
+import { AdminUsagePanel } from "./AdminUsagePanel";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLocale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { AdminUserRow, User } from "@/lib/types";
 
@@ -123,30 +124,10 @@ type TabId =
   | "models"
   | "knowledge"
   | "guardrails"
-  | "audit"
   | "settings";
 
 type AdminPanelProps = {
   admin: User;
-};
-
-const tabs: Array<{ id: TabId; label: string; icon: typeof LayoutDashboard }> = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "usage", label: "Live usage", icon: Activity },
-  { id: "users", label: "Users", icon: Users },
-  { id: "models", label: "Models", icon: Bot },
-  { id: "knowledge", label: "Knowledge", icon: BookOpen },
-  { id: "guardrails", label: "Guardrails", icon: ShieldAlert },
-  { id: "audit", label: "Audit", icon: ScrollText },
-  { id: "settings", label: "Settings", icon: Settings2 },
-];
-
-const formatDate = (value: string | null) => {
-  if (!value) return "—";
-  const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 };
 
 const formatSize = (bytes: number) => {
@@ -183,6 +164,30 @@ const withinDays = (value: string | null, days: number) => {
 };
 
 export const AdminPanel = ({ admin }: AdminPanelProps) => {
+  const { locale, t } = useLocale();
+  const tabs: Array<{ id: TabId; label: string; icon: typeof LayoutDashboard }> =
+    [
+      { id: "overview", label: t("admin.tabs.overview"), icon: LayoutDashboard },
+      { id: "usage", label: t("admin.tabs.usage"), icon: Activity },
+      { id: "users", label: t("admin.tabs.users"), icon: Users },
+      { id: "models", label: t("admin.tabs.models"), icon: Bot },
+      { id: "knowledge", label: t("admin.tabs.knowledge"), icon: BookOpen },
+      {
+        id: "guardrails",
+        label: t("admin.tabs.guardrails"),
+        icon: ShieldAlert,
+      },
+      { id: "settings", label: t("admin.tabs.settings"), icon: Settings2 },
+    ];
+
+  const formatDate = (value: string | null) => {
+    if (!value) return "—";
+    const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString(locale === "az" ? "az-AZ" : "en-US");
+  };
+
   const [tab, setTab] = useState<TabId>("overview");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -276,14 +281,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       };
 
       if (!usersRes.ok) {
-        setError(usersData.error || "Failed to load users");
+        setError(usersData.error || t("admin.users.failedLoad"));
         return;
       }
       if (!modelsRes.ok && modelsData.error) {
         setError(modelsData.error);
       }
       if (!settingsRes.ok) {
-        setError(settingsData.error || "Failed to load settings");
+        setError(settingsData.error || t("admin.settings.failedLoad"));
         return;
       }
 
@@ -348,11 +353,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         });
       }
     } catch {
-      setError("Network error loading admin data");
+      setError(t("admin.users.networkLoad"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void (async () => {
@@ -449,15 +454,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error || "Update failed");
+        setError(data.error || t("admin.users.updateFailed"));
         return;
       }
       setNotice(
-        `${user.username} is now ${user.is_active === 1 ? "disabled" : "enabled"}`,
+        user.is_active === 1
+          ? t("admin.users.nowDisabled", { name: user.username })
+          : t("admin.users.nowEnabled", { name: user.username }),
       );
       await load();
     } catch {
-      setError("Network error");
+      setError(t("admin.chrome.networkError"));
     } finally {
       setBusyId(null);
     }
@@ -466,7 +473,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   const handleDelete = async (user: AdminUserRow) => {
     if (
       !window.confirm(
-        `Delete user "${user.username}" and all their chats? This cannot be undone.`,
+        t("admin.users.deleteConfirm", { name: user.username }),
       )
     ) {
       return;
@@ -481,13 +488,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error || "Delete failed");
+        setError(data.error || t("admin.users.deleteFailed"));
         return;
       }
-      setNotice(`Deleted ${user.username}`);
+      setNotice(t("admin.users.deleted", { name: user.username }));
       await load();
     } catch {
-      setError("Network error");
+      setError(t("admin.chrome.networkError"));
     } finally {
       setBusyId(null);
     }
@@ -511,7 +518,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error || "Could not update model");
+        setError(data.error || t("admin.models.couldNotUpdate"));
         return;
       }
       setModels(data.models ?? []);
@@ -523,10 +530,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         );
       }
       setNotice(
-        `${model.name} is now ${!model.is_enabled ? "enabled" : "disabled"} for users`,
+        !model.is_enabled
+          ? t("admin.models.nowEnabled", { name: model.name })
+          : t("admin.models.nowDisabled", { name: model.name }),
       );
     } catch {
-      setError("Network error");
+      setError(t("admin.chrome.networkError"));
     } finally {
       setBusyModel(null);
     }
@@ -536,7 +545,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     const next = (displayDrafts[model.name] ?? "").trim();
     const current = (model.display_name || model.name).trim();
     if (next === current) {
-      setNotice("Display name unchanged");
+      setNotice(t("admin.models.displayUnchanged"));
       return;
     }
 
@@ -557,7 +566,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error || "Could not save display name");
+        setError(data.error || t("admin.models.couldNotSaveName"));
         return;
       }
       setModels(data.models ?? []);
@@ -571,10 +580,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       setNotice(
         next
           ? `“${model.name}” will show as “${next}”`
-          : `Reset “${model.name}” to its model id`,
+          : t("admin.models.resetToId", { name: model.name }),
       );
     } catch {
-      setError("Network error");
+      setError(t("admin.chrome.networkError"));
     } finally {
       setBusyModel(null);
     }
@@ -591,7 +600,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     const topP = Number(settingsDraft.topP);
 
     if (!Number.isFinite(guestDailyLimit) || guestDailyLimit < 0 || guestDailyLimit > 1000) {
-      setError("Guest daily limit must be between 0 and 1000");
+      setError(t("admin.settings.errGuestLimit"));
       return;
     }
     if (
@@ -599,7 +608,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       guestMaxMessageChars < 100 ||
       guestMaxMessageChars > 20000
     ) {
-      setError("Guest max message length must be between 100 and 20000");
+      setError(t("admin.settings.errGuestChars"));
       return;
     }
     if (
@@ -607,7 +616,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       guestHistoryLimit < 0 ||
       guestHistoryLimit > 40
     ) {
-      setError("Guest history limit must be between 0 and 40");
+      setError(t("admin.settings.errGuestHistory"));
       return;
     }
     if (
@@ -615,7 +624,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       userMaxMessageChars < 500 ||
       userMaxMessageChars > 32000
     ) {
-      setError("User max message length must be between 500 and 32000");
+      setError(t("admin.settings.errUserChars"));
       return;
     }
     if (
@@ -623,11 +632,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       userHistoryLimit < 0 ||
       userHistoryLimit > 200
     ) {
-      setError("User history limit must be between 0 and 200 (0 = all)");
+      setError(t("admin.settings.errUserHistory"));
       return;
     }
     if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
-      setError("Temperature must be between 0 and 2");
+      setError(t("admin.settings.errTemp"));
       return;
     }
     if (
@@ -635,11 +644,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       numPredict < -1 ||
       numPredict > 8192
     ) {
-      setError("Max reply tokens must be -1 (default) or 1–8192");
+      setError(t("admin.settings.errTokens"));
       return;
     }
     if (!Number.isFinite(topP) || topP < 0.05 || topP > 1) {
-      setError("Top-p must be between 0.05 and 1");
+      setError(t("admin.settings.errTopP"));
       return;
     }
 
@@ -671,7 +680,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error || "Could not save settings");
+        setError(data.error || t("admin.settings.couldNotSave"));
         return;
       }
       if (data.settings) {
@@ -693,9 +702,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           topP: String(s.topP),
         });
       }
-      setNotice("Settings saved.");
+      setNotice(t("admin.settings.saved"));
     } catch {
-      setError("Network error");
+      setError(t("admin.chrome.networkError"));
     } finally {
       setSavingSettings(false);
     }
@@ -720,7 +729,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
             >
               <ArrowLeft size={16} />
-              Chat
+              {t("admin.chrome.backToChat")}
             </Link>
             <div className="flex items-center gap-2.5">
               <Image
@@ -736,7 +745,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 <div className="flex items-center gap-2">
                   <Shield size={16} className="text-[var(--accent)]" />
                   <h1 className="text-lg font-semibold tracking-tight">
-                    Admin
+                    {t("admin.chrome.title")}
                   </h1>
                 </div>
                 <p className="text-xs text-[var(--admin-muted)]">
@@ -746,14 +755,22 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
+            <Link
+              href="/lab"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
+            >
+              <FlaskConical size={14} />
+              {t("chat.modelLab")}
+            </Link>
             <button
               type="button"
               onClick={() => void load()}
               className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
             >
               <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-              Refresh
+              {t("admin.chrome.refresh")}
             </button>
           </div>
         </div>
@@ -836,7 +853,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 >
                   <Server size={12} />
                   {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
-                  {b.ok ? "online" : "down"}
+                  {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")}
                   {` · ${fmtMs(b.latencyMs)}`}
                 </span>
               ))}
@@ -845,7 +862,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   size={12}
                   className={pulse?.liveCount ? "animate-pulse" : ""}
                 />
-                {pulse?.liveCount ?? 0} live streams
+                {t("admin.overview.liveCount", { n: pulse?.liveCount ?? 0 })}
               </span>
               <span
                 className={`status-pill ${
@@ -853,7 +870,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 }`}
               >
                 <ShieldAlert size={12} />
-                Guardrails {meta?.guardrailsOn ? "on" : "off"}
+                {meta?.guardrailsOn
+                  ? t("admin.overview.guardrailsOn")
+                  : t("admin.overview.guardrailsOff")}
                 {meta ? ` · ${meta.keywordRules} hard rules` : ""}
               </span>
               <span
@@ -862,7 +881,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 }`}
               >
                 <BookOpen size={12} />
-                Knowledge {meta?.knowledgeOn ? "on" : "off"}
+                {meta?.knowledgeOn
+                  ? t("admin.overview.knowledgeOn")
+                  : t("admin.overview.knowledgeOff")}
                 {meta
                   ? ` · ${meta.knowledgeEnabled}/${meta.knowledgeDocs} docs`
                   : ""}
@@ -872,28 +893,34 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
-                  label: "Requests today",
+                  label: t("admin.overview.requestsToday"),
                   value: fmtNum(pulse?.summary.requests_today),
-                  hint: `${fmtNum(pulse?.summary.requests_24h)} last 24h`,
+                  hint: t("admin.usage.last24h", {
+                    n: fmtNum(pulse?.summary.requests_24h),
+                  }),
                   icon: Activity,
                 },
                 {
-                  label: "Avg first token",
+                  label: t("admin.overview.avgFirstToken"),
                   value: fmtMs(pulse?.summary.avg_ttft_ms),
-                  hint: `Avg reply ${fmtMs(pulse?.summary.avg_duration_ms)}`,
+                  hint: t("admin.overview.avgReply", {
+                    value: fmtMs(pulse?.summary.avg_duration_ms),
+                  }),
                   icon: Zap,
                 },
                 {
-                  label: "Avg speed",
+                  label: t("admin.overview.avgSpeed"),
                   value:
                     pulse?.summary.avg_tokens_per_sec != null
-                      ? `${pulse.summary.avg_tokens_per_sec} t/s`
+                      ? t("admin.overview.tokPerSec", {
+                          n: pulse.summary.avg_tokens_per_sec,
+                        })
                       : "—",
                   hint: `${fmtNum(pulse?.summary.requests_7d)} requests / 7d`,
                   icon: Gauge,
                 },
                 {
-                  label: "Error rate",
+                  label: t("admin.overview.errorRate"),
                   value: errorRate != null ? `${errorRate}%` : "—",
                   hint: `${fmtNum(pulse?.summary.error_requests)} errors all-time`,
                   icon: Timer,
@@ -922,29 +949,29 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {[
                 {
-                  label: "Users",
+                  label: t("admin.overview.users"),
                   value: totals?.total_users ?? "—",
                   hint: `${activeLast7d} active in 7d`,
                 },
                 {
-                  label: "Accounts on",
+                  label: t("admin.overview.accountsOn"),
                   value: totals?.active_users ?? "—",
                   hint: `${disabledUsers} disabled · ${adminUsers} admin`,
                 },
                 {
-                  label: "Chats",
+                  label: t("admin.overview.chats"),
                   value: totals?.total_conversations ?? "—",
-                  hint: "Saved conversations",
+                  hint: t("admin.overview.savedConversations"),
                 },
                 {
-                  label: "Messages",
+                  label: t("admin.overview.messages"),
                   value: totals?.total_messages ?? "—",
                   hint: `${totals?.total_user_messages ?? "—"} user prompts`,
                 },
                 {
-                  label: "Guest / User AI",
+                  label: t("admin.overview.guestUserAi"),
                   value: `${fmtNum(pulse?.summary.guest_requests)} / ${fmtNum(pulse?.summary.user_requests)}`,
-                  hint: "All-time request split",
+                  hint: t("admin.overview.allTimeSplit"),
                 },
               ].map((card) => (
                 <div
@@ -968,10 +995,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-[var(--admin-fg)]">
-                    Traffic · last 24h
+                    {t("admin.overview.last24h")}
                   </h2>
                   <p className="text-xs text-[var(--admin-muted)]">
-                    Request volume by hour
+                    {t("admin.overview.requestsPerHour")}
                   </p>
                 </div>
                 <button
@@ -979,7 +1006,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   onClick={() => setTab("usage")}
                   className="text-xs font-medium text-[var(--accent)] transition hover:opacity-80"
                 >
-                  Open live usage →
+                  {t("admin.overview.openLiveUsage")}
                 </button>
               </div>
               {pulse?.byHour.length ? (
@@ -1009,16 +1036,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 </div>
               ) : (
                 <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
-                  No AI traffic in the last 24 hours yet
+                  {t("admin.overview.noUsage24h")}
                 </p>
               )}
             </section>
 
             <div className="grid gap-3 lg:grid-cols-2">
               <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-                <h2 className="text-sm font-semibold">Top models</h2>
+                <h2 className="text-sm font-semibold">{t("admin.overview.topModels")}</h2>
                 <p className="mb-3 text-xs text-[var(--admin-muted)]">
-                  Most used · avg generation speed
+                  {t("admin.overview.volumeSpeed")}
                 </p>
                 {pulse?.byModel.length ? (
                   <ul className="space-y-2">
@@ -1031,23 +1058,23 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           {row.model}
                         </span>
                         <span className="shrink-0 text-xs text-[var(--admin-muted)]">
-                          {row.requests} req
+                          {t("admin.overview.reqs", { n: row.requests })}
                           {row.avg_tokens_per_sec != null
-                            ? ` · ${row.avg_tokens_per_sec} t/s`
+                            ? ` · ${t("admin.overview.tokPerSec", { n: row.avg_tokens_per_sec })}`
                             : ""}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-[var(--admin-muted)]">No model usage yet</p>
+                  <p className="text-sm text-[var(--admin-muted)]">{t("admin.overview.noModelUsage")}</p>
                 )}
               </section>
 
               <section className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4">
-                <h2 className="text-sm font-semibold">Top chatters</h2>
+                <h2 className="text-sm font-semibold">{t("admin.overview.topChatters")}</h2>
                 <p className="mb-3 text-xs text-[var(--admin-muted)]">
-                  Highest request volume
+                  {t("admin.overview.mostActive")}
                 </p>
                 {pulse?.topUsers.length ? (
                   <ul className="space-y-2">
@@ -1063,13 +1090,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           </span>
                         </span>
                         <span className="shrink-0 text-xs text-[var(--admin-muted)]">
-                          {row.requests} req
+                          {t("admin.overview.reqs", { n: row.requests })}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-[var(--admin-muted)]">No chatters yet</p>
+                  <p className="text-sm text-[var(--admin-muted)]">{t("admin.overview.noChatters")}</p>
                 )}
               </section>
             </div>
@@ -1080,10 +1107,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 onClick={() => setTab("usage")}
                 className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-[var(--admin-muted)]">AI performance</p>
-                <p className="mt-1 text-xl font-semibold">Live usage</p>
+                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.aiPerformance")}</p>
+                <p className="mt-1 text-xl font-semibold">{t("admin.overview.liveUsage")}</p>
                 <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  Streams, latency history, backend health
+                  {t("admin.overview.speedLoadHistory")}
                 </p>
               </button>
               <button
@@ -1091,12 +1118,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 onClick={() => setTab("models")}
                 className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-[var(--admin-muted)]">Models</p>
+                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.models")}</p>
                 <p className="mt-1 text-xl font-semibold">
-                  {enabledModels} enabled
+                  {t("admin.overview.enabledCount", { enabled: enabledModels })}
                 </p>
                 <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {models.length - enabledModels} disabled · manage catalog
+                  {t("admin.overview.toggleWhichModels")}
                 </p>
               </button>
               <button
@@ -1104,12 +1131,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 onClick={() => setTab("knowledge")}
                 className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-[var(--admin-muted)]">Company knowledge</p>
+                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.companyKnowledge")}</p>
                 <p className="mt-1 text-xl font-semibold">
-                  {meta?.knowledgeEnabled ?? "—"} live docs
+                  {t("admin.overview.docsCount", {
+                    n: meta?.knowledgeEnabled ?? "—",
+                  })}
                 </p>
                 <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {meta?.knowledgeDocs ?? 0} total · RAG context for answers
+                  {t("admin.overview.retrievalCitations")}
                 </p>
               </button>
               <button
@@ -1117,16 +1146,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 onClick={() => setTab("settings")}
                 className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]"
               >
-                <p className="text-xs text-[var(--admin-muted)]">Access settings</p>
+                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.accessSettings")}</p>
                 <p className="mt-1 text-xl font-semibold">
                   {settings?.guestEnabled === false
-                    ? "Guest off"
-                    : `${settings?.guestDailyLimit ?? "—"} / day`}
+                    ? t("admin.overview.guestOff")
+                    : `${t("admin.overview.guestOn")} ${t("admin.overview.perDay", { n: settings?.guestDailyLimit ?? "—" })}`}
                 </p>
                 <p className="mt-1 text-sm text-[var(--admin-muted)]">
                   {settings?.registrationEnabled === false
-                    ? "Registration closed"
-                    : "Registration open"}{" "}
+                    ? t("admin.overview.registrationClosed")
+                    : t("admin.overview.registrationOpen")}{" "}
                   · temp {settings?.temperature ?? "—"} · top-p{" "}
                   {settings?.topP ?? "—"}
                   {settings?.numPredict != null && settings.numPredict >= 0
@@ -1166,24 +1195,19 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           />
         ) : null}
 
-        {tab === "audit" ? (
-          <AdminAuditPanel
-            onError={(message) => {
-              setNotice("");
-              setError(message);
-            }}
-          />
-        ) : null}
-
         {tab === "users" ? (
           <section className="animate-fade-up overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
             <div className="flex flex-col gap-3 border-b border-[var(--admin-border)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-sm font-semibold">All users</h2>
+                <h2 className="text-sm font-semibold">{t("admin.users.allUsers")}</h2>
                 <p className="text-xs text-[var(--admin-muted)]">
-                  Search, filter, disable login, or delete accounts and chats
+                  {t("admin.users.subtitle")}
                   {filteredUsers.length
-                    ? ` · showing ${userRangeStart}–${userRangeEnd} of ${filteredUsers.length}`
+                    ? t("admin.users.showing", {
+                        start: userRangeStart,
+                        end: userRangeEnd,
+                        total: filteredUsers.length,
+                      })
                     : ""}
                 </p>
               </div>
@@ -1196,7 +1220,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   <input
                     value={userQuery}
                     onChange={(e) => changeUserQuery(e.target.value)}
-                    placeholder="Search username"
+                    placeholder={t("admin.users.searchUsername")}
                     className="w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-[var(--admin-muted)]/30 focus:border-[var(--accent)]/50 sm:w-48"
                   />
                 </div>
@@ -1209,13 +1233,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   }
                   className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)]/80 px-3 py-2 text-sm outline-none focus:border-[var(--accent)]/50"
                 >
-                  <option value="all">All</option>
-                  <option value="active">Active</option>
-                  <option value="disabled">Disabled</option>
-                  <option value="admin">Admins</option>
+                  <option value="all">{t("admin.users.all")}</option>
+                  <option value="active">{t("admin.users.active")}</option>
+                  <option value="disabled">{t("admin.users.disabled")}</option>
+                  <option value="admin">{t("admin.users.admins")}</option>
                 </select>
                 <label className="flex items-center gap-2 text-xs text-[var(--admin-muted)]">
-                  Rows
+                  {t("admin.chrome.rows")}
                   <select
                     value={userPageSize}
                     onChange={(e) =>
@@ -1239,15 +1263,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Registered</th>
-                    <th>Last active</th>
-                    <th>Chats</th>
-                    <th>Msgs</th>
-                    <th>Prompts</th>
-                    <th>Actions</th>
+                    <th>{t("admin.users.colUser")}</th>
+                    <th>{t("admin.users.colRole")}</th>
+                    <th>{t("admin.users.colStatus")}</th>
+                    <th>{t("admin.users.colRegistered")}</th>
+                    <th>{t("admin.users.colLastActive")}</th>
+                    <th>{t("admin.users.colChats")}</th>
+                    <th>{t("admin.users.colMsgs")}</th>
+                    <th>{t("admin.users.colPrompts")}</th>
+                    <th>{t("admin.users.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1257,7 +1281,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         colSpan={9}
                         className="px-4 py-10 text-center text-[var(--admin-muted)]"
                       >
-                        Loading…
+                        {t("admin.chrome.loading")}
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
@@ -1266,7 +1290,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                         colSpan={9}
                         className="px-4 py-10 text-center text-[var(--admin-muted)]"
                       >
-                        No users match this filter
+                        {t("admin.users.noMatch")}
                       </td>
                     </tr>
                   ) : (
@@ -1282,7 +1306,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             {user.username}
                             {isSelf ? (
                               <span className="ml-2 text-xs text-[var(--admin-muted)]">
-                                (you)
+                                {t("admin.users.you")}
                               </span>
                             ) : null}
                           </td>
@@ -1294,7 +1318,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                   : "status-neutral"
                               }`}
                             >
-                              {user.role}
+                              {user.role === "admin"
+                                ? t("admin.users.roleAdmin")
+                                : t("admin.users.roleUser")}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -1303,7 +1329,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 user.is_active === 1 ? "status-ok" : "status-bad"
                               }`}
                             >
-                              {user.is_active === 1 ? "active" : "disabled"}
+                              {user.is_active === 1
+                                ? t("admin.users.statusActive")
+                                : t("admin.users.statusDisabled")}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-[var(--admin-muted)]">
@@ -1325,11 +1353,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               >
                                 {user.is_active === 1 ? (
                                   <>
-                                    <UserX size={14} /> Disable
+                                    <UserX size={14} /> {t("admin.chrome.disable")}
                                   </>
                                 ) : (
                                   <>
-                                    <UserCheck size={14} /> Enable
+                                    <UserCheck size={14} /> {t("admin.chrome.enable")}
                                   </>
                                 )}
                               </button>
@@ -1340,7 +1368,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--status-bad-fg)] hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Trash2 size={14} />
-                                Delete
+                                {t("admin.chrome.delete")}
                               </button>
                             </div>
                           </td>
@@ -1353,7 +1381,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
               <p className="text-xs text-[var(--admin-muted)]">
-                Page {safeUserPage} of {userTotalPages}
+                {t("admin.users.pageOf", {
+                  page: safeUserPage,
+                  total: userTotalPages,
+                })}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -1363,7 +1394,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft size={14} />
-                  Prev
+                  {t("admin.chrome.prev")}
                 </button>
                 <button
                   type="button"
@@ -1371,7 +1402,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   onClick={() => setUserPage(safeUserPage + 1)}
                   className="inline-flex items-center gap-1 rounded-lg border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-1.5 text-xs text-[var(--admin-fg)] transition hover:bg-[var(--hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Next
+                  {t("admin.chrome.next")}
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -1382,42 +1413,31 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         {tab === "models" ? (
           <section className="animate-fade-up overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)]/90 backdrop-blur-md">
             <div className="border-b border-[var(--admin-border)] px-4 py-3">
-              <h2 className="text-sm font-semibold">LLM models</h2>
+              <h2 className="text-sm font-semibold">{t("admin.models.title")}</h2>
               <p className="text-xs text-[var(--admin-muted)]">
-                Synced in parallel from Ollama and/or vLLM. Edit the display
-                name shown in chat pickers. Clear + save to reset to the model
-                id.
+                {t("admin.models.subtitle")}
               </p>
             </div>
 
             {isLoading ? (
               <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-                Loading…
+                {t("admin.chrome.loading")}
               </p>
             ) : models.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-                No models found. Start Ollama (`ollama list`) and/or vLLM, and
-                set{" "}
-                <code className="rounded bg-[var(--chip-info-bg)] px-1.5 py-0.5 text-[var(--admin-muted)]">
-                  LLM_BACKENDS=ollama,vllm
-                </code>{" "}
-                in{" "}
-                <code className="rounded bg-[var(--chip-info-bg)] px-1.5 py-0.5 text-[var(--admin-muted)]">
-                  .env.local
-                </code>
-                .
+                {t("admin.models.empty")}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="admin-table">
                   <thead>
                     <tr>
-                      <th>Model id</th>
-                      <th>Backend</th>
-                      <th>Size</th>
-                      <th className="min-w-[220px]">Display name</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th>{t("admin.models.colId")}</th>
+                      <th>{t("admin.models.colBackend")}</th>
+                      <th>{t("admin.models.colSize")}</th>
+                      <th className="min-w-[220px]">{t("admin.models.colDisplay")}</th>
+                      <th>{t("admin.models.colStatus")}</th>
+                      <th>{t("admin.models.colActions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1479,7 +1499,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 }
                                 className="shrink-0 rounded-lg bg-gradient-to-r from-blue-600 to-sky-500 px-2.5 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                {busy && dirty ? "…" : "Save"}
+                                {busy && dirty ? "…" : t("admin.chrome.save")}
                               </button>
                             </div>
                           </td>
@@ -1489,7 +1509,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 model.is_enabled ? "status-ok" : "status-bad"
                               }`}
                             >
-                              {model.is_enabled ? "enabled" : "disabled"}
+                              {model.is_enabled
+                                ? t("admin.models.enabled")
+                                : t("admin.models.disabled")}
                             </span>
                           </td>
                           <td className="px-4 py-2.5">
@@ -1506,8 +1528,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               {busy && !dirty
                                 ? "…"
                                 : model.is_enabled
-                                  ? "Disable"
-                                  : "Enable"}
+                                  ? t("admin.chrome.disable")
+                                  : t("admin.chrome.enable")}
                             </button>
                           </td>
                         </tr>

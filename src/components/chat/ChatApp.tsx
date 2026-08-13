@@ -2,6 +2,7 @@
 
 import {
   Check,
+  FlaskConical,
   Folder,
   FolderPlus,
   Infinity as InfinityIcon,
@@ -40,8 +41,11 @@ import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
 import { KnowledgeCitations } from "./KnowledgeCitations";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
-import { ThemeToggle } from "./ThemeToggle";
+import { ModelPicker } from "./ModelPicker";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
@@ -90,25 +94,6 @@ const persistModelChoice = (mode: ModelMode, modelName: string) => {
   }
 };
 
-const suggestions = [
-  {
-    title: "Quick hello",
-    prompt: "Say hello in one short friendly sentence, then ask how you can help.",
-  },
-  {
-    title: "Explain AI",
-    prompt: "In 3 short sentences, explain what AI is in simple words.",
-  },
-  {
-    title: "Write a tip",
-    prompt: "Give me one practical productivity tip I can use today. Keep it under 40 words.",
-  },
-  {
-    title: "Fun fact",
-    prompt: "Tell me one interesting fun fact about technology. Keep it to 2 sentences.",
-  },
-];
-
 const parseSseChunk = (raw: string) => {
   const lines = raw.split("\n");
   let event = "message";
@@ -125,6 +110,25 @@ const parseSseChunk = (raw: string) => {
 
 export const ChatApp = ({ user }: ChatAppProps) => {
   const router = useRouter();
+  const { locale, t } = useLocale();
+  const suggestions = [
+    {
+      title: t("chat.suggestionHello"),
+      prompt: t("chat.suggestionHelloPrompt"),
+    },
+    {
+      title: t("chat.suggestionAi"),
+      prompt: t("chat.suggestionAiPrompt"),
+    },
+    {
+      title: t("chat.suggestionTip"),
+      prompt: t("chat.suggestionTipPrompt"),
+    },
+    {
+      title: t("chat.suggestionFact"),
+      prompt: t("chat.suggestionFactPrompt"),
+    },
+  ];
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -257,12 +261,12 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       const res = await fetch(
         qs ? `/api/conversations?${qs}` : "/api/conversations",
       );
-      if (!res.ok) throw new Error("Failed to load chats");
+      if (!res.ok) throw new Error(t("chat.failedLoadChats"));
       const data = (await res.json()) as { conversations: Conversation[] };
       setConversations(data.conversations);
       return data.conversations;
     },
-    [activeProjectId],
+    [activeProjectId, t],
   );
 
   const loadProjects = useCallback(async () => {
@@ -287,7 +291,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     };
 
     if (!res.ok) {
-      setModelsError(data.error || "Ollama not available");
+      setModelsError(data.error || t("chat.ollamaUnavailable"));
       setModels([]);
       return;
     }
@@ -332,7 +336,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       setModelMode("smart");
       return nextSmart || fallback;
     });
-  }, []);
+  }, [t]);
 
   const applyModelMode = (mode: ModelMode) => {
     const next =
@@ -357,7 +361,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         setIsLoadingList(true);
         await Promise.all([loadConversations(), loadModels(), loadProjects()]);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+        setError(err instanceof Error ? err.message : t("chat.failedToLoad"));
       } finally {
         setIsLoadingList(false);
       }
@@ -389,7 +393,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
     const res = await fetch(`/api/conversations/${id}`);
     if (!res.ok) {
-      setError("Could not open chat");
+      setError(t("chat.couldNotOpen"));
       return;
     }
 
@@ -450,9 +454,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const handleCreateShare = async (rotate = false) => {
     if (!activeId) return;
     if (rotate && shareToken) {
-      const ok = window.confirm(
-        "Create a new link? The old share link will stop working for anyone who already has it.",
-      );
+      const ok = window.confirm(t("chat.shareConfirmNew"));
       if (!ok) return;
     }
     setShareBusy(true);
@@ -466,13 +468,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         error?: string;
       };
       if (!res.ok || !data.share_token) {
-        setError(data.error || "Could not create share link");
+        setError(data.error || t("chat.couldNotCreateShare"));
         return;
       }
       setShareToken(data.share_token);
       setShareOpen(true);
     } catch {
-      setError("Could not create share link");
+      setError(t("chat.couldNotCreateShare"));
     } finally {
       setShareBusy(false);
     }
@@ -486,14 +488,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         method: "DELETE",
       });
       if (!res.ok) {
-        setError("Could not revoke share link");
+        setError(t("chat.couldNotRevokeShare"));
         return;
       }
       setShareToken(null);
       setShareCopied(false);
       setShareOpen(false);
     } catch {
-      setError("Could not revoke share link");
+      setError(t("chat.couldNotRevokeShare"));
     } finally {
       setShareBusy(false);
     }
@@ -506,14 +508,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 2000);
     } catch {
-      setError("Could not copy link");
+      setError(t("chat.couldNotCopyLink"));
     }
   };
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      setError("Could not delete chat");
+      setError(t("chat.couldNotDeleteChat"));
       return;
     }
 
@@ -533,7 +535,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       body: JSON.stringify({ is_pinned: nextPinned }),
     });
     if (!res.ok) {
-      setError("Could not update pin");
+      setError(t("chat.couldNotUpdatePin"));
       return;
     }
     const data = (await res.json()) as { conversation?: Conversation };
@@ -564,7 +566,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     const name = newProjectName.trim();
     if (!name) return;
     if (atProjectLimit) {
-      setError(`You can create up to ${projectLimit} projects.`);
+      setError(t("chat.projectLimitCreate", { limit: projectLimit }));
       return;
     }
     const res = await fetch("/api/projects", {
@@ -574,7 +576,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     });
     const data = (await res.json()) as { project?: Project; error?: string };
     if (!res.ok || !data.project) {
-      setError(data.error || "Could not create project");
+      setError(data.error || t("chat.couldNotCreateProject"));
       return;
     }
     setProjects((prev) =>
@@ -598,7 +600,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     if (!renamingProjectId) return;
     const name = renameDraft.trim();
     if (!name) {
-      setError("Project name is required");
+      setError(t("chat.projectNameRequired"));
       return;
     }
     const res = await fetch(`/api/projects/${renamingProjectId}`, {
@@ -608,7 +610,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     });
     const data = (await res.json()) as { project?: Project; error?: string };
     if (!res.ok || !data.project) {
-      setError(data.error || "Could not rename project");
+      setError(data.error || t("chat.couldNotRenameProject"));
       return;
     }
     setProjects((prev) =>
@@ -625,7 +627,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const handleDeleteProject = async (project: Project) => {
     if (
       !window.confirm(
-        `Delete project “${project.name}”? Chats stay saved but leave this project.`,
+        t("chat.deleteProjectConfirm", { name: project.name }),
       )
     ) {
       return;
@@ -635,7 +637,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     });
     if (!res.ok) {
       const data = (await res.json()) as { error?: string };
-      setError(data.error || "Could not delete project");
+      setError(data.error || t("chat.couldNotDeleteProject"));
       return;
     }
     setProjects((prev) => prev.filter((p) => p.id !== project.id));
@@ -656,7 +658,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       body: JSON.stringify({ project_id: projectId }),
     });
     if (!res.ok) {
-      setError("Could not move chat");
+      setError(t("chat.couldNotMoveChat"));
       return;
     }
     const data = (await res.json()) as { conversation?: Conversation };
@@ -698,7 +700,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   }) => {
     if (isSending) return;
     if (!model) {
-      setError("No local model selected. Start Ollama and pull a model.");
+      setError(t("chat.noModelSelected"));
       return;
     }
 
@@ -721,7 +723,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
       if (!res.ok || !res.body) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || "Chat failed");
+        throw new Error(data.error || t("chat.chatFailed"));
       }
 
       const reader = res.body.getReader();
@@ -805,7 +807,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
           if (parsed.event === "error") {
             throw new Error(
-              (parsed.data as { error?: string }).error || "Stream error",
+              (parsed.data as { error?: string }).error || t("chat.streamError"),
             );
           }
         }
@@ -818,14 +820,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               ? {
                   ...m,
                   isStreaming: false,
-                  content: m.content || "(stopped)",
+                  content: m.content || t("common.stopped"),
                 }
               : m,
           ),
         );
       } else {
         const message =
-          err instanceof Error ? err.message : "Failed to send message";
+          err instanceof Error ? err.message : t("chat.failedToSend");
         setError(message);
         if (opts.reloadConversationOnError && activeId) {
           await openConversation(activeId);
@@ -1024,9 +1026,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             style={{ width: "auto", height: "auto" }}
           />
           <div className="min-w-0">
-            <p className="text-lg font-semibold tracking-tight">SINAMGPT</p>
+            <p className="text-lg font-semibold tracking-tight">{t("common.brand")}</p>
             <p className="text-xs text-[var(--sidebar-muted)]">
-              Saved · unlimited
+              {t("chat.savedUnlimited")}
             </p>
           </div>
         </div>
@@ -1037,7 +1039,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             setMobileSidebar(false);
           }}
           className="rounded-lg p-2 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
-          aria-label="Close sidebar"
+          aria-label={t("chat.closeSidebar")}
         >
           <PanelLeftClose size={18} />
         </button>
@@ -1050,7 +1052,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400"
         >
           <MessageSquarePlus size={16} />
-          New chat
+          {t("chat.newChat")}
         </button>
 
         <label className="flex items-center gap-2 rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-3 py-2">
@@ -1058,7 +1060,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search title or messages"
+            placeholder={t("chat.searchPlaceholder")}
             className="w-full bg-transparent text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)]"
           />
         </label>
@@ -1067,7 +1069,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       <div className="border-b border-[var(--sidebar-border)] px-3 pb-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--sidebar-muted)]">
-            Projects
+            {t("chat.projects")}
             <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">
               {projects.length}/{projectLimit}
             </span>
@@ -1077,7 +1079,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             onClick={() => {
               if (atProjectLimit) {
                 setError(
-                  `You can create up to ${projectLimit} projects. Delete one to add another.`,
+                  t("chat.projectLimitError", { limit: projectLimit }),
                 );
                 return;
               }
@@ -1086,11 +1088,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             }}
             disabled={atProjectLimit && !showNewProject}
             className="rounded-md p-1 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)] disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="New project"
+            aria-label={t("chat.newProject")}
             title={
               atProjectLimit
-                ? `Limit reached (${projectLimit})`
-                : "New project"
+                ? t("chat.projectLimitReached", { limit: projectLimit })
+                : t("chat.newProject")
             }
           >
             <FolderPlus size={14} />
@@ -1111,7 +1113,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   setNewProjectName("");
                 }
               }}
-              placeholder="Project name"
+              placeholder={t("chat.projectNamePlaceholder")}
               className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
               autoFocus
             />
@@ -1120,7 +1122,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               onClick={() => void handleCreateProject()}
               className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
             >
-              Add
+              {t("common.add")}
             </button>
           </div>
         ) : null}
@@ -1139,7 +1141,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   setRenameDraft("");
                 }
               }}
-              placeholder="Rename project"
+              placeholder={t("chat.renameProjectPlaceholder")}
               className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
               autoFocus
             />
@@ -1148,7 +1150,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               onClick={() => void handleSaveRenameProject()}
               className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
             >
-              Save
+              {t("common.save")}
             </button>
           </div>
         ) : null}
@@ -1162,7 +1164,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-subtle)]"
             }`}
           >
-            All chats
+            {t("chat.allChats")}
           </button>
           {projects.map((project) => {
             const isActive = activeProjectId === project.id;
@@ -1192,8 +1194,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--sidebar-fg)]"
                       : "opacity-0 group-hover:opacity-100"
                   } hover:bg-[var(--sidebar-hover)]`}
-                  aria-label={`Rename ${project.name}`}
-                  title="Rename"
+                  aria-label={t("chat.renameProjectAria", { name: project.name })}
+                  title={t("common.rename")}
                 >
                   <Pencil size={11} />
                 </button>
@@ -1205,8 +1207,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--danger)]"
                       : "opacity-0 group-hover:opacity-100"
                   } hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]`}
-                  aria-label={`Delete ${project.name}`}
-                  title="Delete"
+                  aria-label={t("chat.deleteProjectAria", { name: project.name })}
+                  title={t("common.delete")}
                 >
                   <Trash2 size={11} />
                 </button>
@@ -1219,16 +1221,16 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {isLoadingList ? (
           <p className="px-2 py-3 text-sm text-[var(--sidebar-muted)]">
-            Loading chats…
+            {t("chat.loadingChats")}
           </p>
         ) : conversations.length === 0 ? (
           <div className="px-2 py-6 text-center">
             <p className="text-sm text-[var(--sidebar-muted)]">
               {search
-                ? "No chats match your search."
+                ? t("chat.noChatsSearch")
                 : activeProjectId
-                  ? "No chats in this project yet."
-                  : "No chats yet."}
+                  ? t("chat.noChatsProject")
+                  : t("chat.noChatsYet")}
             </p>
             {!search ? (
               <button
@@ -1236,7 +1238,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 onClick={handleNewChat}
                 className="mt-3 text-xs text-[var(--accent)] hover:underline"
               >
-                Start your first chat
+                {t("chat.startFirstChat")}
               </button>
             ) : null}
           </div>
@@ -1271,7 +1273,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-[var(--sidebar-muted)]">
                       <span className="truncate">{modelLabel(chat.model)}</span>
                       <span className="shrink-0">
-                        {relativeTime(chat.updated_at)}
+                        {relativeTime(chat.updated_at, locale)}
                       </span>
                     </span>
                   </button>
@@ -1280,8 +1282,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       type="button"
                       onClick={() => void handleTogglePin(chat)}
                       className="rounded-md p-1.5 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--accent)]"
-                      aria-label={pinned ? "Unpin chat" : "Pin chat"}
-                      title={pinned ? "Unpin" : "Pin"}
+                      aria-label={pinned ? t("chat.unpinChat") : t("chat.pinChat")}
+                      title={pinned ? t("chat.unpin") : t("chat.pin")}
                     >
                       {pinned ? <PinOff size={14} /> : <Pin size={14} />}
                     </button>
@@ -1289,7 +1291,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       type="button"
                       onClick={() => void handleDelete(chat.id)}
                       className="rounded-md p-1.5 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]"
-                      aria-label="Delete chat"
+                      aria-label={t("chat.deleteChat")}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -1301,37 +1303,17 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         )}
       </div>
 
-      <div className="border-t border-[var(--sidebar-border)] p-3">
-        <div className="mb-2 rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-3 py-2">
-          <p className="truncate text-sm text-[var(--sidebar-fg)]">
-            {user.username}
-            {user.role === "admin" ? (
-              <span className="ml-1 text-[11px] text-[var(--accent)]">
-                · admin
-              </span>
-            ) : null}
-          </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[var(--chip-ok-text)]">
-            <InfinityIcon size={11} />
-            Unlimited messages
-          </p>
-        </div>
-        {user.role === "admin" ? (
-          <Link
-            href="/admin"
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-active-ring)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm text-[var(--chip-info-text)] transition hover:opacity-90"
-          >
-            <Shield size={15} />
-            Admin panel
-          </Link>
-        ) : null}
+      <div className="flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
+        <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
+          {user.username}
+        </p>
         <button
           type="button"
           onClick={() => void handleLogout()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-border)] px-3 py-2 text-sm text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
         >
-          <LogOut size={15} />
-          Sign out
+          <LogOut size={14} />
+          {t("chat.signOut")}
         </button>
       </div>
     </aside>
@@ -1346,7 +1328,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           <button
             type="button"
             className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
-            aria-label="Close menu"
+            aria-label={t("chat.closeMenu")}
             onClick={() => setMobileSidebar(false)}
           />
           <div className="relative z-10 h-full shadow-2xl">{Sidebar}</div>
@@ -1360,7 +1342,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               type="button"
               className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
               onClick={() => setMobileSidebar(true)}
-              aria-label="Open sidebar"
+              aria-label={t("chat.openSidebar")}
             >
               <Menu size={18} />
             </button>
@@ -1370,7 +1352,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 type="button"
                 className="hidden rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:inline-flex"
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar"
+                aria-label={t("chat.openSidebar")}
               >
                 <PanelLeftOpen size={18} />
               </button>
@@ -1378,7 +1360,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-sm font-semibold text-[var(--text)] md:text-base">
-                {activeConversation?.title ?? "New chat"}
+                {activeConversation?.title ?? t("chat.newChat")}
                 {!activeConversation && activeProjectName ? (
                   <span className="ml-1.5 font-normal text-[var(--text-muted)]">
                     · {activeProjectName}
@@ -1387,10 +1369,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <span className="chip chip-ok">
-                  <InfinityIcon size={11} /> Unlimited
+                  <InfinityIcon size={11} /> {t("chat.unlimited")}
                 </span>
                 <span className="chip chip-info hidden sm:inline-flex">
-                  <Sparkles size={11} /> History saved
+                  <Sparkles size={11} /> {t("chat.historySaved")}
                 </span>
                 {activeConversation ? (
                   <label className="chip chip-info inline-flex items-center gap-1">
@@ -1402,10 +1384,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       }
                       disabled={isSending}
                       className="max-w-[8rem] bg-transparent text-[11px] outline-none"
-                      aria-label="Move chat to project"
-                      title="Move to project"
+                      aria-label={t("chat.moveChatAria")}
+                      title={t("chat.moveToProject")}
                     >
-                      <option value="">No project</option>
+                      <option value="">{t("chat.noProject")}</option>
                       {projects.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
@@ -1434,19 +1416,40 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     ? "border-[var(--accent)]/40 bg-[var(--chip-info-bg)] text-[var(--chip-info-text)]"
                     : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                 }`}
-                title="Share with colleagues"
+                title={t("chat.shareWithColleagues")}
                 aria-label={
-                  shareToken ? "Manage share link" : "Share this chat"
+                  shareToken ? t("chat.manageShare") : t("chat.shareThisChat")
                 }
                 aria-expanded={shareOpen}
                 aria-haspopup="dialog"
               >
                 <Link2 size={14} />
                 <span className="hidden sm:inline">
-                  {shareToken ? "Shared" : "Share"}
+                  {shareToken ? t("chat.shared") : t("chat.share")}
                 </span>
               </button>
             ) : null}
+            {user.role === "admin" ? (
+              <>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  title={t("chat.adminPanel")}
+                >
+                  <Shield size={14} />
+                  <span className="hidden sm:inline">{t("chat.adminPanel")}</span>
+                </Link>
+                <Link
+                  href="/lab"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  title={t("chat.modelLab")}
+                >
+                  <FlaskConical size={14} />
+                  <span className="hidden sm:inline">{t("chat.modelLab")}</span>
+                </Link>
+              </>
+            ) : null}
+            <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
           </div>
 
@@ -1454,7 +1457,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             <div
               className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
               role="group"
-              aria-label="Reply speed"
+              aria-label={t("chat.replySpeed")}
             >
               <button
                 type="button"
@@ -1465,9 +1468,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     ? "bg-[var(--accent)] text-white"
                     : "text-[var(--text-muted)] hover:text-[var(--text)]"
                 }`}
-                title={fastModel ? `Fast · ${fastModel}` : "Fast"}
+                title={fastModel ? `${t("chat.fast")} · ${fastModel}` : t("chat.fast")}
               >
-                Fast
+                {t("chat.fast")}
               </button>
               <button
                 type="button"
@@ -1478,36 +1481,24 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     ? "bg-[var(--accent)] text-white"
                     : "text-[var(--text-muted)] hover:text-[var(--text)]"
                 }`}
-                title={smartModel ? `Smart · ${smartModel}` : "Smart"}
+                title={smartModel ? `${t("chat.smart")} · ${smartModel}` : t("chat.smart")}
               >
-                Smart
+                {t("chat.smart")}
               </button>
             </div>
 
-            <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
-              <span className="hidden sm:inline">Model</span>
-              <select
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
+              <span className="hidden sm:inline">{t("chat.model")}</span>
+              <ModelPicker
+                models={models}
                 value={model}
-                onChange={(e) => handleModelSelect(e.target.value)}
-                disabled={ready && (isSending || models.length === 0)}
-                className="w-full max-w-full rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[16rem]"
-              >
-                {models.length === 0 ? (
-                  <option value="">No models</option>
-                ) : (
-                  models.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.display_name || item.name}
-                      {item.backend === "vllm"
-                        ? " · vLLM"
-                        : item.backend === "ollama"
-                          ? " · Ollama"
-                          : ""}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+                onChange={handleModelSelect}
+                disabled={ready && isSending}
+                emptyLabel={t("chat.noModels")}
+                ariaLabel={t("chat.model")}
+                className="w-full max-w-full sm:max-w-[16rem]"
+              />
+            </div>
           </div>
 
           {activeId ? (
@@ -1518,7 +1509,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       ref={shareMenuRef}
                       role="dialog"
                       aria-modal="true"
-                      aria-label="Share chat"
+                      aria-label={t("chat.shareChat")}
                       className="fixed z-[200] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-xl"
                       style={{
                         top: shareMenuPos.top,
@@ -1526,11 +1517,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       }}
                     >
                       <p className="text-xs font-medium text-[var(--text)]">
-                        Share with a colleague
+                        {t("chat.shareColleagueTitle")}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                        Logged-in users on this server can open the link
-                        (read-only).
+                        {t("chat.shareColleagueSub")}
                       </p>
                       <input
                         readOnly
@@ -1550,7 +1540,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           ) : (
                             <Link2 size={12} />
                           )}
-                          {shareCopied ? "Copied" : "Copy link"}
+                          {shareCopied ? t("common.copied") : t("chat.copyLink")}
                         </button>
                         <button
                           type="button"
@@ -1558,7 +1548,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           disabled={shareBusy}
                           className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)]"
                         >
-                          New link
+                          {t("chat.newLink")}
                         </button>
                         <button
                           type="button"
@@ -1567,7 +1557,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                           className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--danger)] hover:bg-[var(--hover)]"
                         >
                           <Link2Off size={12} />
-                          Revoke
+                          {t("chat.revoke")}
                         </button>
                       </div>
                     </div>,
@@ -1590,7 +1580,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   void loadModels();
                 }}
                 className="shrink-0 rounded-md p-1 hover:bg-amber-500/15"
-                aria-label="Dismiss"
+                aria-label={t("common.dismiss")}
               >
                 <X size={14} />
               </button>
@@ -1603,7 +1593,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 text-center">
               <Image
                 src={sinamLogo}
-                alt="SINAMGPT"
+                alt={t("common.brand")}
                 width={84}
                 height={84}
                 className="soft-rise h-[84px] w-[84px] rounded-full shadow-[0_12px_40px_rgba(37,99,235,0.18)]"
@@ -1611,10 +1601,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 priority
               />
               <p className="mt-5 text-4xl font-semibold tracking-tight text-[var(--text)]">
-                Hello, {user.username}
+                {t("chat.helloUser", { name: user.username })}
               </p>
               <p className="mt-3 max-w-md text-[var(--text-muted)]">
-                You&apos;re signed in — unlimited local chat with saved history.
+                {t("chat.signedInSub")}
               </p>
               <div className="mt-8 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
                 {suggestions.map((item, index) => (
@@ -1629,7 +1619,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                     <span className="block text-sm font-medium text-[var(--text)]">
                       {item.title}
                     </span>
-                    <span className="mt-1 line-clamp-2 block text-xs text-[var(--text-muted)]">
+                    <span className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">
                       {item.prompt}
                     </span>
                   </button>
@@ -1668,10 +1658,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             style={{ width: "auto", height: "auto" }}
                           />
                         ) : null}
-                        <span>{isUser ? "You" : "SINAMGPT"}</span>
+                        <span>{isUser ? t("chat.you") : t("common.brand")}</span>
                         {message.created_at ? (
                           <span className="opacity-70">
-                            · {formatChatTime(message.created_at)}
+                            · {formatChatTime(message.created_at, locale)}
                           </span>
                         ) : null}
                       </div>
@@ -1698,7 +1688,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                                 onClick={() => void handleSaveEdit()}
                                 className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 disabled:opacity-40"
                               >
-                                Save & regenerate
+                                {t("chat.saveRegenerate")}
                               </button>
                               <button
                                 type="button"
@@ -1706,7 +1696,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                                 onClick={handleCancelEdit}
                                 className="rounded-lg border border-white/30 px-3 py-1.5 text-xs text-white/90"
                               >
-                                Cancel
+                                {t("common.cancel")}
                               </button>
                             </div>
                           </div>
@@ -1746,7 +1736,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                             >
                               <Pencil size={12} />
-                              Edit
+                              {t("chat.edit")}
                             </button>
                           ) : null}
                           {!isUser && isLastAssistant && message.content ? (
@@ -1756,21 +1746,21 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                                 onClick={() => void handleRewrite("shorter")}
                                 className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                               >
-                                Shorter
+                                {t("chat.shorter")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("formal")}
                                 className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                               >
-                                More formal
+                                {t("chat.moreFormal")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("continue")}
                                 className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                               >
-                                Continue
+                                {t("chat.continue")}
                               </button>
                               <button
                                 type="button"
@@ -1778,7 +1768,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                                 className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                               >
                                 <RefreshCw size={12} />
-                                Regenerate
+                                {t("chat.regenerate")}
                               </button>
                             </>
                           ) : null}
@@ -1804,7 +1794,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Message SINAMGPT…"
+              placeholder={t("chat.messagePlaceholder")}
               className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
             />
             {isSending ? (
@@ -1812,7 +1802,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 type="button"
                 onClick={handleStop}
                 className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
-                aria-label="Stop generating"
+                aria-label={t("chat.stopGenerating")}
               >
                 <Square size={14} fill="currentColor" />
               </button>
@@ -1822,15 +1812,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 onClick={() => void handleSend()}
                 disabled={ready && (!input.trim() || !model)}
                 className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Send message"
+                aria-label={t("chat.sendMessage")}
               >
                 <SendHorizonal size={16} />
               </button>
             )}
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-[var(--text-muted)]">
-            Enter to send · Shift+Enter for new line · Unlimited · Saved on this
-            PC
+            {t("chat.footerHint")}
           </p>
         </div>
       </main>

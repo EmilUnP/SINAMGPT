@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
+import {
+  DEFAULT_GUARDRAILS,
+  DEFAULT_POLICY_SUGGESTIONS,
+} from "@/lib/seeds/guardrails";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "owngpt.db");
@@ -19,6 +23,7 @@ const hasColumn = (database: Database.Database, table: string, column: string) =
 const ensureSchema = (database: Database.Database) => {
   database.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA wal_autocheckpoint = 1;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS users (
@@ -169,29 +174,30 @@ const ensureSchema = (database: Database.Database) => {
       ON audit_events(category, created_at DESC);
   `);
 
-  // Seed guest defaults once (admin can change later)
-  const guestLimit = database
-    .prepare(`SELECT value FROM app_settings WHERE key = 'guest_daily_limit'`)
-    .get() as { value: string } | undefined;
-  if (!guestLimit) {
+  // Seed defaults once (admin can change later in Admin → Settings / Guardrails)
+  const insertSettingIfMissing = (key: string, value: string) => {
+    const row = database
+      .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+      .get(key) as { value: string } | undefined;
+    if (row) return;
     database
-      .prepare(
-        `INSERT INTO app_settings (key, value) VALUES ('guest_daily_limit', ?)`,
-      )
-      .run(process.env.GUEST_DAILY_LIMIT || "5");
-  }
-  const guestChars = database
-    .prepare(
-      `SELECT value FROM app_settings WHERE key = 'guest_max_message_chars'`,
-    )
-    .get() as { value: string } | undefined;
-  if (!guestChars) {
-    database
-      .prepare(
-        `INSERT INTO app_settings (key, value) VALUES ('guest_max_message_chars', ?)`,
-      )
-      .run(process.env.GUEST_MAX_MESSAGE_CHARS || "2000");
-  }
+      .prepare(`INSERT INTO app_settings (key, value) VALUES (?, ?)`)
+      .run(key, value);
+  };
+
+  insertSettingIfMissing(
+    "guest_daily_limit",
+    process.env.GUEST_DAILY_LIMIT || "5",
+  );
+  insertSettingIfMissing(
+    "guest_max_message_chars",
+    process.env.GUEST_MAX_MESSAGE_CHARS || "2000",
+  );
+  insertSettingIfMissing("guardrails", JSON.stringify(DEFAULT_GUARDRAILS));
+  insertSettingIfMissing(
+    "guardrail_policy_suggestions",
+    JSON.stringify(DEFAULT_POLICY_SUGGESTIONS),
+  );
 
   // Migrate older DBs created before admin fields existed
   if (!hasColumn(database, "users", "role")) {
@@ -291,6 +297,11 @@ export const getDb = (): Database.Database => {
     db = new Database(DB_PATH);
     ensureSchema(db);
     ensureAdminUser(db);
+    try {
+      db.pragma("wal_checkpoint(TRUNCATE)");
+    } catch {
+      // another process may be reading the WAL
+    }
     return db;
   }
 
