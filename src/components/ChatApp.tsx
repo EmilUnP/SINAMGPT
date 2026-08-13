@@ -43,6 +43,7 @@ import { KnowledgeCitations } from "./KnowledgeCitations";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { ModelPicker } from "./ModelPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
@@ -1485,30 +1486,18 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               </button>
             </div>
 
-            <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
               <span className="hidden sm:inline">{t("chat.model")}</span>
-              <select
+              <ModelPicker
+                models={models}
                 value={model}
-                onChange={(e) => handleModelSelect(e.target.value)}
-                disabled={ready && (isSending || models.length === 0)}
-                className="w-full max-w-full rounded-full border border-[var(--border)] bg-[var(--select-bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--ring)] sm:max-w-[16rem]"
-              >
-                {models.length === 0 ? (
-                  <option value="">{t("chat.noModels")}</option>
-                ) : (
-                  models.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.display_name || item.name}
-                      {item.backend === "vllm"
-                        ? " · vLLM"
-                        : item.backend === "ollama"
-                          ? " · Ollama"
-                          : ""}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+                onChange={handleModelSelect}
+                disabled={ready && isSending}
+                emptyLabel={t("chat.noModels")}
+                ariaLabel={t("chat.model")}
+                className="w-full max-w-full sm:max-w-[16rem]"
+              />
+            </div>
           </div>
 
           {activeId ? (

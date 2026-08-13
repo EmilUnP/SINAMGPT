@@ -7,31 +7,19 @@ import {
   AdminPanelCard,
   adminBtnGhost,
 } from "@/components/AdminChrome";
+import { useLocale } from "@/components/LocaleProvider";
 import type { AuditEventRow } from "@/lib/audit";
 
 type AdminAuditPanelProps = {
   onError: (message: string) => void;
 };
 
-const FILTERS: Array<{ id: string; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "admin", label: "Admin" },
-  { id: "auth", label: "Auth" },
-  { id: "share", label: "Share" },
-  { id: "project", label: "Projects" },
-  { id: "knowledge", label: "Knowledge" },
-  { id: "settings", label: "Settings" },
-  { id: "models", label: "Models" },
-  { id: "guardrails", label: "Guardrails cfg" },
-  { id: "guardrail", label: "Guardrail hits" },
-];
-
-const formatDate = (value: string) => {
+const formatDate = (value: string, locale: string) => {
   if (!value) return "—";
   const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleString(locale === "az" ? "az-AZ" : "en-US");
 };
 
 const categoryTone = (category: string) => {
@@ -60,10 +48,24 @@ const categoryTone = (category: string) => {
 };
 
 export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
+  const { locale, t } = useLocale();
   const [events, setEvents] = useState<AuditEventRow[]>([]);
   const [category, setCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const FILTERS: Array<{ id: string; label: string }> = [
+    { id: "all", label: t("admin.audit.all") },
+    { id: "admin", label: t("admin.audit.admin") },
+    { id: "auth", label: t("admin.audit.auth") },
+    { id: "share", label: t("admin.audit.share") },
+    { id: "project", label: t("admin.audit.projects") },
+    { id: "knowledge", label: t("admin.audit.knowledge") },
+    { id: "settings", label: t("admin.audit.settings") },
+    { id: "models", label: t("admin.audit.models") },
+    { id: "guardrails", label: t("admin.audit.guardrailsCfg") },
+    { id: "guardrail", label: t("admin.audit.guardrailHits") },
+  ];
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -76,16 +78,16 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
         error?: string;
       };
       if (!res.ok) {
-        onError(data.error || "Failed to load audit trail");
+        onError(data.error || t("admin.audit.failedLoad"));
         return;
       }
       setEvents(data.events || []);
     } catch {
-      onError("Network error loading audit trail");
+      onError(t("admin.audit.networkLoad"));
     } finally {
       setIsLoading(false);
     }
-  }, [category, onError]);
+  }, [category, onError, t]);
 
   useEffect(() => {
     void (async () => {
@@ -98,12 +100,12 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
       <div className="space-y-4 px-4 py-4">
         <AdminPageHeader
           icon={ScrollText}
-          title="Audit trail"
-          description="Admin changes, auth outcomes, share/project ops, and guardrail hits — not every chat message (see Live usage for generations)."
+          title={t("admin.audit.title")}
+          description={t("admin.audit.description")}
           actions={
             <button type="button" onClick={() => void load()} className={adminBtnGhost}>
               <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
-              Refresh
+              {t("admin.chrome.refresh")}
             </button>
           }
         />
@@ -129,11 +131,11 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
       <div className="max-h-[36rem] overflow-y-auto border-t border-[var(--admin-border)]">
         {isLoading && events.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-            Loading audit events…
+            {t("admin.audit.loading")}
           </p>
         ) : events.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-            No events yet for this filter.
+            {t("admin.audit.empty")}
           </p>
         ) : (
           <ul className="divide-y divide-[var(--admin-border)]">
@@ -163,7 +165,7 @@ export const AdminAuditPanel = ({ onError }: AdminAuditPanelProps) => {
                       {ev.actor_username || "—"}
                     </span>
                     <span className="text-[var(--admin-muted)]">
-                      {formatDate(ev.created_at)}
+                      {formatDate(ev.created_at, locale)}
                     </span>
                     {ev.ip ? (
                       <span className="text-[var(--admin-muted)]">· {ev.ip}</span>

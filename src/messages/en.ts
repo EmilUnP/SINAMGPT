@@ -1,3 +1,5 @@
+import { adminEn } from "./admin";
+
 export const en = {
   common: {
     brand: "SINAMGPT",
@@ -214,6 +216,7 @@ export const en = {
       "This link was revoked or never existed. Ask your colleague for a new share link.",
     backToChat: "Back to chat",
   },
+  admin: adminEn,
 } as const;
 
 /*

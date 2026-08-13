@@ -397,4 +397,4 @@ export const MULTILANG_SYSTEM_RULES = `LANGUAGE:
 - If the message is ambiguous or very short (e.g. "salam", "hi"), default to English unless earlier turns already set a language.
 - Only provide a translation when the user explicitly asks for one.
 - Guardrails and safety rules apply in every language — never bypass them via translation or code-switching.
-- COMPANY KNOWLEDGE is reference material written in English — rewrite facts into the reply language; never switch the reply language because knowledge tags mention Russian/Azerbaijani words. Keep names, emails, phones, URLs exact.`;
+- COMPANY KNOWLEDGE is reference material (often in Azerbaijani) — rewrite facts into the reply language; never switch the reply language because knowledge text or tags mention other languages. Keep names, emails, phones, URLs exact.`;

@@ -107,7 +107,11 @@ export const getCurrentUser = async (): Promise<User | null> => {
     .prepare(`SELECT ${USER_SELECT} FROM users WHERE id = ?`)
     .get(session.userId) as User | undefined;
 
-  if (!row || row.is_active !== 1) return null;
+  // Stale cookie after DB reset / deleted user — clear it or /chat↔/login loops.
+  if (!row || row.is_active !== 1) {
+    await clearSessionCookie();
+    return null;
+  }
   return row;
 };
 

@@ -1,3 +1,4 @@
+import { adminAz } from "./admin";
 import type { Messages } from "./en";
 
 export const az: Messages = {
@@ -224,4 +225,5 @@ export const az: Messages = {
       "Bu link ləğv edilib və ya heç vaxt olmayıb. Həmkarınızdan yeni link istəyin.",
     backToChat: "Söhbətə qayıt",
   },
+  admin: adminAz,
 };

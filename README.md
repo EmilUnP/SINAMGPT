@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.4.2](./CHANGELOG.md#142--2026-08-12) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.5.0](./CHANGELOG.md#150--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -11,6 +11,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
+- **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
 - **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), **Audit** trail, theme-aware UI
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 

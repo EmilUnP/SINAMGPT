@@ -26,12 +26,14 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "@/components/AdminChrome";
+import { useTranslations } from "@/components/LocaleProvider";
 import type {
   KnowledgeCategory,
   KnowledgeDoc,
   KnowledgeSettings,
 } from "@/lib/knowledge";
 import type { Project } from "@/lib/types";
+import type { MessageKey } from "@/messages";
 
 type Props = {
   onNotice: (message: string) => void;
@@ -50,6 +52,14 @@ const categories: KnowledgeCategory[] = [
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
+const CATEGORY_KEYS: Record<KnowledgeCategory, MessageKey> = {
+  company: "admin.knowledge.catCompany",
+  project: "admin.knowledge.catProject",
+  product: "admin.knowledge.catProduct",
+  faq: "admin.knowledge.catFaq",
+  other: "admin.knowledge.catOther",
+};
+
 const emptyForm = {
   title: "",
   category: "company" as KnowledgeCategory,
@@ -67,6 +77,7 @@ const formatChars = (n: number) => {
 };
 
 export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
+  const t = useTranslations();
   const [tab, setTab] = useState<KnowledgeTab>("overview");
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -99,7 +110,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         error?: string;
       };
       if (!knowledgeRes.ok) {
-        onError(data.error || "Failed to load knowledge");
+        onError(data.error || t("admin.knowledge.couldNotSave"));
         return;
       }
       setDocs(data.docs ?? []);
@@ -109,11 +120,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         setProjects(pdata.projects ?? []);
       }
     } catch {
-      onError("Network error loading knowledge");
+      onError(t("admin.chrome.networkError"));
     } finally {
       setIsLoading(false);
     }
-  }, [onError]);
+  }, [onError, t]);
 
   useEffect(() => {
     void (async () => {
@@ -246,11 +257,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   };
 
   const projectName = (id: string | null) =>
-    id ? projects.find((p) => p.id === id)?.name ?? "Project" : null;
+    id ? projects.find((p) => p.id === id)?.name ?? t("admin.knowledge.project") : null;
 
   const handleSaveDoc = async () => {
     if (!form.title.trim() || form.content.trim().length < 10) {
-      onError("Title and content (min 10 chars) are required");
+      onError(t("admin.knowledge.factsHint"));
       return;
     }
     setIsSaving(true);
@@ -269,21 +280,25 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
       );
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        onError(data.error || "Could not save document");
+        onError(data.error || t("admin.knowledge.couldNotSave"));
         return;
       }
-      onNotice(editingId ? "Knowledge entry updated" : "Knowledge entry added");
+      onNotice(
+        editingId
+          ? t("admin.knowledge.editEntry")
+          : t("admin.knowledge.addEntryTitle"),
+      );
       closeModal();
       await load();
     } catch {
-      onError("Network error");
+      onError(t("admin.chrome.networkError"));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (doc: KnowledgeDoc) => {
-    if (!window.confirm(`Delete "${doc.title}"?`)) return;
+    if (!window.confirm(`${t("admin.chrome.delete")} “${doc.title}”?`)) return;
     setIsSaving(true);
     try {
       const res = await fetch(`/api/admin/knowledge/${doc.id}`, {
@@ -291,14 +306,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        onError(data.error || "Delete failed");
+        onError(data.error || t("admin.chrome.delete"));
         return;
       }
-      onNotice(`Deleted ${doc.title}`);
+      onNotice(`${t("admin.chrome.delete")} ${doc.title}`);
       if (editingId === doc.id) closeModal();
       await load();
     } catch {
-      onError("Network error");
+      onError(t("admin.chrome.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -311,7 +326,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
       body: JSON.stringify({ is_enabled: doc.is_enabled !== 1 }),
     });
     if (!res.ok) {
-      onError("Could not update entry");
+      onError(t("admin.knowledge.couldNotSave"));
       return;
     }
     await load();
@@ -331,13 +346,13 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         error?: string;
       };
       if (!res.ok) {
-        onError(data.error || "Could not save settings");
+        onError(data.error || t("admin.knowledge.couldNotSave"));
         return;
       }
       if (data.settings) setSettings(data.settings);
-      onNotice("Knowledge settings saved");
+      onNotice(t("admin.knowledge.settingsSaved"));
     } catch {
-      onError("Network error");
+      onError(t("admin.chrome.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -345,19 +360,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
   const handleSeed = async (mode: "add" | "refresh" | "replace") => {
     if (mode === "replace") {
-      if (
-        !window.confirm(
-          "Delete ALL knowledge docs and load the official SINAM starter pack? Your custom entries will be removed.",
-        )
-      ) {
+      if (!window.confirm(t("admin.knowledge.replaceConfirm"))) {
         return;
       }
     } else if (mode === "refresh") {
-      if (
-        !window.confirm(
-          "Overwrite matching pack titles with the template text? Admin edits on those titles will be lost. Custom titles are kept.",
-        )
-      ) {
+      if (!window.confirm(t("admin.knowledge.refreshConfirm"))) {
         return;
       }
     }
@@ -380,24 +387,25 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         error?: string;
       };
       if (!res.ok) {
-        onError(data.error || "Seed failed");
+        onError(data.error || t("admin.knowledge.seedFailed"));
         return;
       }
       setDocs(data.docs ?? []);
       if (mode === "replace") {
-        onNotice(`Replaced library with ${data.count ?? 0} SINAM entries`);
+        onNotice(t("admin.knowledge.replaced", { n: data.count ?? 0 }));
       } else if (mode === "refresh") {
         onNotice(
-          `Pack refreshed — ${data.count ?? 0} added, ${data.updated ?? 0} overwritten`,
+          t("admin.knowledge.refreshed", {
+            added: data.count ?? 0,
+            updated: data.updated ?? 0,
+          }),
         );
       } else {
-        onNotice(
-          `Missing pack titles added — ${data.count ?? 0} new (existing left untouched)`,
-        );
+        onNotice(t("admin.knowledge.addedMissing", { n: data.count ?? 0 }));
       }
       setTab("library");
     } catch {
-      onError("Network error");
+      onError(t("admin.chrome.networkError"));
     } finally {
       setIsSaving(false);
     }
@@ -406,7 +414,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   if (isLoading) {
     return (
       <AdminPanelCard className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-        Loading company knowledge…
+        {t("admin.knowledge.loading")}
       </AdminPanelCard>
     );
   }
@@ -417,12 +425,12 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
         <div className="space-y-4 px-4 py-4">
           <AdminPageHeader
             icon={BookOpen}
-            title="Company knowledge"
-            description="Living library — edit every entry here. Chat pulls matching docs (keyword RAG, EN / AZ / RU / TR). The SINAM pack is only a starter template; day-to-day updates belong in Admin, not a code deploy."
+            title={t("admin.knowledge.title")}
+            description={t("admin.knowledge.description")}
             actions={
               <button type="button" onClick={openCreate} className={adminBtnPrimary}>
                 <Plus size={14} />
-                Add entry
+                {t("admin.knowledge.addEntry")}
               </button>
             }
           />
@@ -430,14 +438,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             active={tab}
             onChange={setTab}
             tabs={[
-              { id: "overview", label: "Overview", icon: Sparkles },
+              { id: "overview", label: t("admin.knowledge.tabOverview"), icon: Sparkles },
               {
                 id: "library",
-                label: "Library",
+                label: t("admin.knowledge.tabLibrary"),
                 icon: Library,
                 count: docs.length,
               },
-              { id: "settings", label: "Settings", icon: Settings2 },
+              { id: "settings", label: t("admin.knowledge.tabSettings"), icon: Settings2 },
             ]}
           />
         </div>
@@ -446,25 +454,31 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
           <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
             <AdminStatGrid>
               <AdminStatCard
-                label="Documents"
+                label={t("admin.knowledge.documents")}
                 value={docs.length}
-                hint={`${stats.enabled} enabled · ${stats.disabled} off`}
+                hint={t("admin.knowledge.enabledOff", {
+                  enabled: stats.enabled,
+                  disabled: stats.disabled,
+                })}
                 tone="info"
               />
               <AdminStatCard
-                label="Corpus size"
+                label={t("admin.knowledge.corpusSize")}
                 value={formatChars(stats.totalChars)}
-                hint={`Cap per reply: ${settings?.maxChars ?? "—"} chars · max ${settings?.maxDocs ?? "—"} docs`}
+                hint={t("admin.knowledge.capHint", {
+                  chars: settings?.maxChars ?? "—",
+                  docs: settings?.maxDocs ?? "—",
+                })}
               />
               <AdminStatCard
-                label="Project-scoped"
+                label={t("admin.knowledge.projectScoped")}
                 value={stats.projectScoped}
-                hint="Boosted when chat is in that project folder"
+                hint={t("admin.knowledge.projectHint")}
               />
               <AdminStatCard
-                label="Always-include"
+                label={t("admin.knowledge.alwaysInclude")}
                 value={stats.always}
-                hint="Only injected on company-intent questions"
+                hint={t("admin.knowledge.alwaysHint")}
                 tone={stats.always > 0 ? "warn" : "default"}
               />
             </AdminStatGrid>
@@ -472,10 +486,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-                  Coverage by category
+                  {t("admin.knowledge.coverage")}
                 </h3>
                 <p className="mt-0.5 text-xs text-[var(--admin-muted)]">
-                  Enabled vs total per bucket
+                  {t("admin.knowledge.coverageHint")}
                 </p>
                 <ul className="mt-3 space-y-2">
                   {stats.byCategory.map((row) => {
@@ -492,9 +506,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                               changeCategoryFilter(row.category);
                               setTab("library");
                             }}
-                            className="font-medium capitalize text-[var(--admin-fg)] hover:text-[var(--accent)]"
+                            className="font-medium text-[var(--admin-fg)] hover:text-[var(--accent)]"
                           >
-                            {row.category}
+                            {t(CATEGORY_KEYS[row.category])}
                           </button>
                           <span className="tabular-nums text-[var(--admin-muted)]">
                             {row.enabled}/{row.total}
@@ -514,14 +528,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
               <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-                  Highest priority
+                  {t("admin.knowledge.highestPriority")}
                 </h3>
                 <p className="mt-0.5 text-xs text-[var(--admin-muted)]">
-                  Avg priority {stats.avgPriority} · click to edit
+                  {t("admin.knowledge.avgPriority", { n: stats.avgPriority })}
                 </p>
                 {stats.topPriority.length === 0 ? (
                   <p className="mt-4 text-sm text-[var(--admin-muted)]">
-                    No documents yet. Seed the SINAM pack or add an entry.
+                    {t("admin.knowledge.noDocs")}
                   </p>
                 ) : (
                   <ul className="mt-3 divide-y divide-[var(--admin-border)]">
@@ -536,9 +550,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                             <span className="block truncate text-sm font-medium text-[var(--admin-fg)]">
                               {doc.title}
                             </span>
-                            <span className="text-[11px] capitalize text-[var(--admin-muted)]">
-                              {doc.category}
-                              {doc.is_enabled !== 1 ? " · disabled" : ""}
+                            <span className="text-[11px] text-[var(--admin-muted)]">
+                              {t(CATEGORY_KEYS[doc.category])}
+                              {doc.is_enabled !== 1
+                                ? t("admin.knowledge.disabledSuffix")
+                                : ""}
                             </span>
                           </span>
                           <span className="shrink-0 rounded-md bg-[var(--chip-info-bg)] px-2 py-0.5 text-xs tabular-nums text-[var(--admin-muted)]">
@@ -553,11 +569,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             </div>
 
             <AdminHint>
-              <strong className="text-[var(--admin-fg)]">Editable here:</strong>{" "}
-              every document title, body, tags, priority, and enable flag.
-              Retrieval scores by keywords/tags (not embeddings). Greetings skip
-              injection. Project-tagged docs boost in that folder. Citations in
-              Settings show <em>From: …</em> sources.
+              <strong className="text-[var(--admin-fg)]">
+                {t("admin.knowledge.editableLabel")}
+              </strong>{" "}
+              {t("admin.knowledge.editableHere")}
             </AdminHint>
           </div>
         ) : null}
@@ -567,14 +582,20 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
                 <h3 className="text-sm font-semibold">
-                  Library ({filteredDocs.length}
-                  {filteredDocs.length !== docs.length ? ` / ${docs.length}` : ""}
-                  )
+                  {t("admin.knowledge.libraryTitle", {
+                    n:
+                      filteredDocs.length !== docs.length
+                        ? `${filteredDocs.length} / ${docs.length}`
+                        : filteredDocs.length,
+                  })}
                 </h3>
                 <p className="text-xs text-[var(--admin-muted)]">
                   {filteredDocs.length
-                    ? `Showing ${rangeStart}–${rangeEnd}`
-                    : "No matches"}
+                    ? t("admin.knowledge.showing", {
+                        start: rangeStart,
+                        end: rangeEnd,
+                      })
+                    : t("admin.knowledge.noMatches")}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -586,7 +607,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   <input
                     value={query}
                     onChange={(e) => changeQuery(e.target.value)}
-                    placeholder="Search…"
+                    placeholder={t("admin.knowledge.search")}
                     className="w-48 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--accent)]/50"
                   />
                 </div>
@@ -599,10 +620,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   }
                   className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2.5 py-1.5 text-sm outline-none"
                 >
-                  <option value="all">All categories</option>
+                  <option value="all">{t("admin.knowledge.allCategories")}</option>
                   {categories.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {t(CATEGORY_KEYS[c])}
                     </option>
                   ))}
                 </select>
@@ -615,9 +636,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   }
                   className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2.5 py-1.5 text-sm outline-none"
                 >
-                  <option value="all">All status</option>
-                  <option value="enabled">Enabled</option>
-                  <option value="disabled">Disabled</option>
+                  <option value="all">{t("admin.knowledge.allStatus")}</option>
+                  <option value="enabled">{t("admin.knowledge.enabled")}</option>
+                  <option value="disabled">{t("admin.knowledge.disabled")}</option>
                 </select>
                 <select
                   value={pageSize}
@@ -630,7 +651,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
                     <option key={size} value={size}>
-                      {size}/page
+                      {size} {t("admin.chrome.rows")}
                     </option>
                   ))}
                 </select>
@@ -641,12 +662,12 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Priority</th>
-                    <th className="min-w-[220px]">Preview</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t("admin.knowledge.colTitle")}</th>
+                    <th>{t("admin.knowledge.colCategory")}</th>
+                    <th>{t("admin.knowledge.colPriority")}</th>
+                    <th className="min-w-[220px]">{t("admin.knowledge.colPreview")}</th>
+                    <th>{t("admin.knowledge.colStatus")}</th>
+                    <th>{t("admin.knowledge.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -657,8 +678,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                         className="px-4 py-10 text-center text-[var(--admin-muted)]"
                       >
                         {docs.length === 0
-                          ? "No docs yet. Add an entry or seed the SINAM pack."
-                          : "No entries match this search/filter."}
+                          ? t("admin.knowledge.noDocs")
+                          : t("admin.knowledge.noMatches")}
                       </td>
                     </tr>
                   ) : (
@@ -674,7 +695,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                           <div className="mt-0.5 flex flex-wrap gap-1">
                             {doc.always_include === 1 ? (
                               <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-[var(--status-warn-fg)]">
-                                always
+                                {t("admin.knowledge.alwaysInclude")}
                               </span>
                             ) : null}
                             {doc.project_id ? (
@@ -684,8 +705,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-xs capitalize text-[var(--admin-muted)]">
-                          {doc.category}
+                        <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
+                          {t(CATEGORY_KEYS[doc.category])}
                         </td>
                         <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--admin-muted)]">
                           {doc.priority}
@@ -701,7 +722,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                               doc.is_enabled === 1 ? "status-ok" : "status-bad"
                             }`}
                           >
-                            {doc.is_enabled === 1 ? "on" : "off"}
+                            {doc.is_enabled === 1
+                              ? t("admin.chrome.on")
+                              : t("admin.chrome.off")}
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
@@ -712,20 +735,22 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--admin-fg)] hover:bg-[var(--hover)]"
                             >
                               <Pencil size={12} />
-                              Edit
+                              {t("admin.knowledge.editEntry")}
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleToggle(doc)}
                               className="rounded-lg px-2 py-1 text-xs text-[var(--admin-muted)] hover:bg-[var(--hover)]"
                             >
-                              {doc.is_enabled === 1 ? "Disable" : "Enable"}
+                              {doc.is_enabled === 1
+                                ? t("admin.chrome.disable")
+                                : t("admin.chrome.enable")}
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDelete(doc)}
                               className="rounded-lg p-1 text-[var(--status-bad-fg)] hover:bg-red-500/10"
-                              aria-label="Delete"
+                              aria-label={t("admin.chrome.delete")}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -740,7 +765,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
               <p className="text-xs text-[var(--admin-muted)]">
-                Page {safePage} of {totalPages}
+                {safePage} / {totalPages}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -750,7 +775,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   className={adminBtnGhost}
                 >
                   <ChevronLeft size={14} />
-                  Prev
+                  {t("admin.chrome.prev")}
                 </button>
                 <button
                   type="button"
@@ -758,7 +783,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   onClick={() => setPage(safePage + 1)}
                   className={adminBtnGhost}
                 >
-                  Next
+                  {t("admin.chrome.next")}
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -773,32 +798,32 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 emphasize
                 checked={settings.enabled}
                 onChange={(v) => setSettings({ ...settings, enabled: v })}
-                label="Knowledge retrieval on"
-                hint="Master switch — when off, no docs are injected into chats"
+                label={t("admin.knowledge.knowledgeEnabled")}
+                hint={t("admin.knowledge.factsHint")}
               />
               <AdminToggleCard
                 checked={settings.showCitations}
                 onChange={(v) => setSettings({ ...settings, showCitations: v })}
-                label="Show citations"
-                hint="Assistant answers can show From: doc titles when sources matched"
+                label={t("admin.knowledge.showCitations")}
+                hint={t("admin.knowledge.showCitations")}
               />
               <AdminToggleCard
                 checked={settings.applyToUsers}
                 onChange={(v) => setSettings({ ...settings, applyToUsers: v })}
-                label="Apply to logged-in users"
-                hint="Saved /chat conversations"
+                label={t("admin.knowledge.applyToUsers")}
+                hint={t("admin.knowledge.applyToUsers")}
               />
               <AdminToggleCard
                 checked={settings.applyToGuests}
                 onChange={(v) => setSettings({ ...settings, applyToGuests: v })}
-                label="Apply to guests"
-                hint="Home page try-chat (still respects daily limits)"
+                label={t("admin.knowledge.applyToGuests")}
+                hint={t("admin.knowledge.applyToGuests")}
               />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm text-[var(--admin-fg)]">
-                Max documents per reply
+                {t("admin.knowledge.maxDocs")}
                 <input
                   type="number"
                   min={1}
@@ -813,11 +838,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   className={adminFieldClass}
                 />
                 <span className="mt-1 block text-xs text-[var(--admin-muted)]">
-                  How many top-scoring docs can enter the prompt (1–10)
+                  {t("admin.knowledge.maxDocsHint")}
                 </span>
               </label>
               <label className="block text-sm text-[var(--admin-fg)]">
-                Max characters injected
+                {t("admin.knowledge.maxChars")}
                 <input
                   type="number"
                   min={500}
@@ -832,13 +857,15 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   className={adminFieldClass}
                 />
                 <span className="mt-1 block text-xs text-[var(--admin-muted)]">
-                  Total context budget for knowledge text (500–12000)
+                  {t("admin.knowledge.maxCharsHint")}
                 </span>
               </label>
             </div>
 
             <AdminHint>
-              <strong className="text-[var(--admin-fg)]">Starter pack</strong>{" "}
+              <strong className="text-[var(--admin-fg)]">
+                {t("admin.knowledge.starterPack")}
+              </strong>{" "}
               (from{" "}
               <a
                 href="https://sinam.net"
@@ -848,9 +875,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               >
                 sinam.net
               </a>
-              ) is a template only. After first load, keep the library current
-              by editing entries — you should not need a code deploy for product
-              facts. “Add missing” never overwrites admin edits.
+              ) {t("admin.knowledge.starterHint")}
             </AdminHint>
 
             <div className="flex flex-wrap gap-2">
@@ -860,7 +885,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 onClick={() => void handleSaveSettings()}
                 className={adminBtnPrimary}
               >
-                {isSaving ? "Saving…" : "Save settings"}
+                {isSaving ? t("admin.chrome.saving") : t("admin.chrome.saveSettings")}
               </button>
               <button
                 type="button"
@@ -868,7 +893,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 onClick={() => void handleSeed("add")}
                 className={adminBtnGhost}
               >
-                Add missing titles
+                {t("admin.knowledge.addMissing")}
               </button>
               <button
                 type="button"
@@ -876,7 +901,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 onClick={() => void handleSeed("refresh")}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 px-3.5 py-2 text-sm text-[var(--status-warn-fg)] transition hover:bg-amber-500/10 disabled:opacity-60"
               >
-                Refresh pack titles
+                {t("admin.knowledge.refreshPack")}
               </button>
               <button
                 type="button"
@@ -884,7 +909,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 onClick={() => void handleSeed("replace")}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--status-bad-border)] px-3.5 py-2 text-sm text-[var(--status-bad-fg)] transition hover:bg-[var(--status-bad-bg)] disabled:opacity-60"
               >
-                Replace entire library
+                {t("admin.knowledge.replaceAll")}
               </button>
             </div>
           </div>
@@ -910,17 +935,19 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   id="knowledge-modal-title"
                   className="text-sm font-semibold"
                 >
-                  {editingId ? "Edit knowledge entry" : "Add knowledge entry"}
+                  {editingId
+                    ? t("admin.knowledge.editEntry")
+                    : t("admin.knowledge.addEntryTitle")}
                 </h3>
                 <p className="text-xs text-[var(--admin-muted)]">
-                  Facts the model can pull into answers
+                  {t("admin.knowledge.factsHint")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
                 className="rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-                aria-label="Close"
+                aria-label={t("admin.chrome.close")}
               >
                 <X size={16} />
               </button>
@@ -929,19 +956,19 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             <div className="space-y-3 px-4 py-4">
               <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
                 <label className="block text-sm text-[var(--admin-fg)]">
-                  Title
+                  {t("admin.knowledge.titleField")}
                   <input
                     value={form.title}
                     onChange={(e) =>
                       setForm({ ...form, title: e.target.value })
                     }
                     className={adminFieldClass}
-                    placeholder="e.g. HR leave policy"
+                    placeholder={t("admin.knowledge.titlePlaceholder")}
                     autoFocus
                   />
                 </label>
                 <label className="block text-sm text-[var(--admin-fg)]">
-                  Category
+                  {t("admin.knowledge.category")}
                   <select
                     value={form.category}
                     onChange={(e) =>
@@ -954,7 +981,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>
-                        {c}
+                        {t(CATEGORY_KEYS[c])}
                       </option>
                     ))}
                   </select>
@@ -962,7 +989,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               </div>
 
               <label className="block text-sm text-[var(--admin-fg)]">
-                Content
+                {t("admin.knowledge.content")}
                 <textarea
                   value={form.content}
                   onChange={(e) =>
@@ -970,24 +997,24 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   }
                   rows={9}
                   className={`${adminFieldClass} resize-y`}
-                  placeholder="Facts the model should know…"
+                  placeholder={t("admin.knowledge.contentPlaceholder")}
                 />
               </label>
 
               <div className="grid gap-3 sm:grid-cols-[1fr_1fr_120px]">
                 <label className="block text-sm text-[var(--admin-fg)]">
-                  Tags
+                  {t("admin.knowledge.tags")}
                   <input
                     value={form.tags}
                     onChange={(e) =>
                       setForm({ ...form, tags: e.target.value })
                     }
                     className={adminFieldClass}
-                    placeholder="sinam, hr, leave"
+                    placeholder={t("admin.knowledge.tagsPlaceholder")}
                   />
                 </label>
                 <label className="block text-sm text-[var(--admin-fg)]">
-                  Project
+                  {t("admin.knowledge.project")}
                   <select
                     value={form.project_id}
                     onChange={(e) =>
@@ -995,7 +1022,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     }
                     className={adminFieldClass}
                   >
-                    <option value="">All chats (global)</option>
+                    <option value="">{t("admin.knowledge.allChats")}</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -1004,7 +1031,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   </select>
                 </label>
                 <label className="block text-sm text-[var(--admin-fg)]">
-                  Priority
+                  {t("admin.knowledge.priority")}
                   <input
                     type="number"
                     min={0}
@@ -1027,7 +1054,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                       setForm({ ...form, always_include: e.target.checked })
                     }
                   />
-                  Always include (on company questions)
+                  {t("admin.knowledge.alwaysIncludeFlag")}
                 </label>
                 <label className="inline-flex items-center gap-2">
                   <input
@@ -1037,14 +1064,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                       setForm({ ...form, is_enabled: e.target.checked })
                     }
                   />
-                  Enabled
+                  {t("admin.knowledge.enabledFlag")}
                 </label>
               </div>
             </div>
 
             <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
               <button type="button" onClick={closeModal} className={adminBtnGhost}>
-                Cancel
+                {t("admin.chrome.close")}
               </button>
               <button
                 type="button"
@@ -1054,10 +1081,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               >
                 <Plus size={14} />
                 {isSaving
-                  ? "Saving…"
+                  ? t("admin.chrome.saving")
                   : editingId
-                    ? "Save changes"
-                    : "Add entry"}
+                    ? t("admin.chrome.saveChanges")
+                    : t("admin.knowledge.addEntry")}
               </button>
             </div>
           </div>

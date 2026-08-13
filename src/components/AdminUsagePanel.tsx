@@ -16,6 +16,7 @@ import {
   adminBtnGhost,
   adminFieldClass,
 } from "@/components/AdminChrome";
+import { useLocale } from "@/components/LocaleProvider";
 
 type LiveRow = {
   id: string;
@@ -109,11 +110,11 @@ const fmtNum = (value: number | null | undefined) => {
   return String(value);
 };
 
-const fmtTime = (value: string) => {
+const fmtTime = (value: string, locale: string) => {
   const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleString(locale === "az" ? "az-AZ" : "en-US");
 };
 
 const statusTone = (status: string) => {
@@ -125,6 +126,7 @@ const statusTone = (status: string) => {
 };
 
 export const AdminUsagePanel = () => {
+  const { locale, t } = useLocale();
   const [data, setData] = useState<UsagePayload | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +134,18 @@ export const AdminUsagePanel = () => {
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
     25,
   );
+
+  const sourceLabel = (source: "user" | "guest") =>
+    source === "guest"
+      ? t("admin.usage.sourceGuest")
+      : t("admin.usage.sourceUser");
+
+  const statusLabel = (status: string) => {
+    if (status === "ok") return t("admin.usage.statusOk");
+    if (status === "error") return t("admin.usage.statusError");
+    if (status === "aborted") return t("admin.usage.statusAborted");
+    return t("admin.usage.streaming");
+  };
 
   const load = useCallback(async () => {
     try {
@@ -144,7 +158,7 @@ export const AdminUsagePanel = () => {
       });
       const json = (await res.json()) as UsagePayload & { error?: string };
       if (!res.ok) {
-        setError(json.error || "Failed to load usage");
+        setError(json.error || t("admin.usage.failedLoad"));
         return;
       }
       setData(json);
@@ -153,11 +167,11 @@ export const AdminUsagePanel = () => {
       }
       setError("");
     } catch {
-      setError("Network error loading usage");
+      setError(t("admin.usage.networkLoad"));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, t]);
 
   useEffect(() => {
     void (async () => {
@@ -196,8 +210,8 @@ export const AdminUsagePanel = () => {
         <div className="space-y-4 px-4 py-4">
           <AdminPageHeader
             icon={Activity}
-            title="Live usage"
-            description="Auto-refreshes every 3s — speed, load, and request history across backends."
+            title={t("admin.usage.title")}
+            description={t("admin.usage.description")}
             actions={
               <div className="flex flex-wrap items-center gap-1.5">
                 {(data?.backends?.length
@@ -219,7 +233,8 @@ export const AdminUsagePanel = () => {
                   >
                     <Server size={12} />
                     {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
-                    {b.ok ? "online" : "down"} · {fmtMs(b.latencyMs)}
+                    {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")} ·{" "}
+                    {fmtMs(b.latencyMs)}
                   </span>
                 ))}
                 <span className="status-pill status-info">
@@ -227,7 +242,7 @@ export const AdminUsagePanel = () => {
                     size={12}
                     className={data?.live.length ? "animate-pulse" : ""}
                   />
-                  {data?.live.length ?? 0} live
+                  {t("admin.usage.liveCount", { n: data?.live.length ?? 0 })}
                 </span>
               </div>
             }
@@ -235,22 +250,26 @@ export const AdminUsagePanel = () => {
 
           <AdminStatGrid>
             <AdminStatCard
-              label="Requests today"
+              label={t("admin.usage.requestsToday")}
               value={isLoading && !data ? "…" : fmtNum(summary?.requests_today)}
-              hint={`${fmtNum(summary?.requests_24h)} last 24h`}
+              hint={t("admin.usage.last24h", {
+                n: fmtNum(summary?.requests_24h),
+              })}
               tone="info"
             />
             <AdminStatCard
-              label="Avg response"
+              label={t("admin.usage.avgResponse")}
               value={
                 isLoading && !data
                   ? "…"
                   : fmtMs(summary?.avg_duration_ms ?? null)
               }
-              hint={`First token ${fmtMs(summary?.avg_ttft_ms ?? null)}`}
+              hint={t("admin.usage.firstToken", {
+                value: fmtMs(summary?.avg_ttft_ms ?? null),
+              })}
             />
             <AdminStatCard
-              label="Avg speed"
+              label={t("admin.usage.avgSpeed")}
               value={
                 isLoading && !data
                   ? "…"
@@ -258,12 +277,17 @@ export const AdminUsagePanel = () => {
                     ? `${summary.avg_tokens_per_sec} t/s`
                     : "—"
               }
-              hint={`${fmtNum(summary?.total_requests)} all-time`}
+              hint={t("admin.usage.allTime", {
+                n: fmtNum(summary?.total_requests),
+              })}
             />
             <AdminStatCard
-              label="Errors"
+              label={t("admin.usage.errors")}
               value={isLoading && !data ? "…" : fmtNum(summary?.error_requests)}
-              hint={`Guest ${fmtNum(summary?.guest_requests)} · User ${fmtNum(summary?.user_requests)}`}
+              hint={t("admin.usage.guestUser", {
+                g: fmtNum(summary?.guest_requests),
+                u: fmtNum(summary?.user_requests),
+              })}
               tone={
                 (summary?.error_requests ?? 0) > 0 ? "bad" : "default"
               }
@@ -275,10 +299,10 @@ export const AdminUsagePanel = () => {
       <AdminPanelCard>
         <div className="border-b border-[var(--admin-border)] px-4 py-3">
           <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            Live process
+            {t("admin.usage.liveProcess")}
           </h3>
           <p className="text-xs text-[var(--admin-muted)]">
-            Generations streaming right now
+            {t("admin.usage.streamingNow")}
           </p>
         </div>
         {data?.live.length ? (
@@ -286,13 +310,13 @@ export const AdminUsagePanel = () => {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Who</th>
-                  <th>Model</th>
-                  <th>Prompt</th>
-                  <th>Elapsed</th>
-                  <th>TTFT</th>
-                  <th>Out chars</th>
-                  <th>Status</th>
+                  <th>{t("admin.usage.colWho")}</th>
+                  <th>{t("admin.usage.colModel")}</th>
+                  <th>{t("admin.usage.colPrompt")}</th>
+                  <th>{t("admin.usage.colElapsed")}</th>
+                  <th>{t("admin.usage.colTtft")}</th>
+                  <th>{t("admin.usage.colOutChars")}</th>
+                  <th>{t("admin.usage.colStatus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -303,7 +327,7 @@ export const AdminUsagePanel = () => {
                         {row.username}
                       </span>
                       <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
-                        {row.source}
+                        {sourceLabel(row.source)}
                       </span>
                     </td>
                     <td className="text-[var(--admin-fg)]">{row.model}</td>
@@ -320,7 +344,9 @@ export const AdminUsagePanel = () => {
                       {row.responseChars}
                     </td>
                     <td>
-                      <span className={statusTone(row.status)}>streaming</span>
+                      <span className={statusTone(row.status)}>
+                        {t("admin.usage.streaming")}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -329,7 +355,7 @@ export const AdminUsagePanel = () => {
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-sm text-[var(--admin-muted)]">
-            No active generations right now. Send a chat to see live process.
+            {t("admin.usage.noLive")}
           </p>
         )}
       </AdminPanelCard>
@@ -337,10 +363,10 @@ export const AdminUsagePanel = () => {
       <div className="grid gap-4 lg:grid-cols-2">
         <AdminPanelCard className="p-4">
           <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            Last 24 hours
+            {t("admin.usage.last24hours")}
           </h3>
           <p className="mb-4 text-xs text-[var(--admin-muted)]">
-            Requests per hour
+            {t("admin.usage.requestsPerHour")}
           </p>
           {data?.analytics.byHour.length ? (
             <div className="flex h-36 items-end gap-1">
@@ -351,23 +377,26 @@ export const AdminUsagePanel = () => {
                   style={{
                     height: `${Math.max(8, (bucket.requests / maxHour) * 100)}%`,
                   }}
-                  title={`${bucket.hour}: ${bucket.requests} req · avg ${fmtMs(bucket.avg_duration_ms)}`}
+                  title={`${bucket.hour}: ${t("admin.usage.reqAvg", {
+                    n: bucket.requests,
+                    avg: fmtMs(bucket.avg_duration_ms),
+                  })}`}
                 />
               ))}
             </div>
           ) : (
             <p className="py-10 text-center text-sm text-[var(--admin-muted)]">
-              No usage in the last 24 hours yet.
+              {t("admin.usage.noUsage24h")}
             </p>
           )}
         </AdminPanelCard>
 
         <AdminPanelCard className="p-4">
           <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            By model
+            {t("admin.usage.byModel")}
           </h3>
           <p className="mb-3 text-xs text-[var(--admin-muted)]">
-            Volume and average speed
+            {t("admin.usage.volumeSpeed")}
           </p>
           <div className="space-y-2">
             {(data?.analytics.byModel ?? []).length ? (
@@ -381,7 +410,10 @@ export const AdminUsagePanel = () => {
                       {row.model}
                     </p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
-                      {row.requests} req · avg {fmtMs(row.avg_duration_ms)}
+                      {t("admin.usage.reqAvg", {
+                        n: row.requests,
+                        avg: fmtMs(row.avg_duration_ms),
+                      })}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm tabular-nums text-[var(--admin-fg)]">
@@ -393,7 +425,7 @@ export const AdminUsagePanel = () => {
               ))
             ) : (
               <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
-                Model stats appear after the first chats.
+                {t("admin.usage.modelStatsLater")}
               </p>
             )}
           </div>
@@ -403,7 +435,7 @@ export const AdminUsagePanel = () => {
       <div className="grid gap-4 lg:grid-cols-2">
         <AdminPanelCard className="p-4">
           <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            Top users
+            {t("admin.usage.topUsers")}
           </h3>
           <div className="mt-3 space-y-2">
             {(data?.analytics.topUsers ?? []).length ? (
@@ -417,20 +449,24 @@ export const AdminUsagePanel = () => {
                       {row.username}
                     </p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
-                      {row.source}
+                      {sourceLabel(row.source)}
                     </p>
                   </div>
                   <div className="text-right text-sm text-[var(--admin-fg)]">
-                    <p className="tabular-nums">{row.requests} req</p>
+                    <p className="tabular-nums">
+                      {t("admin.usage.reqs", { n: row.requests })}
+                    </p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
-                      avg {fmtMs(row.avg_duration_ms)}
+                      {t("admin.usage.avg", {
+                        value: fmtMs(row.avg_duration_ms),
+                      })}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
               <p className="py-8 text-center text-sm text-[var(--admin-muted)]">
-                No user usage yet.
+                {t("admin.usage.noUserUsage")}
               </p>
             )}
           </div>
@@ -438,26 +474,26 @@ export const AdminUsagePanel = () => {
 
         <AdminPanelCard className="p-4">
           <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            Throughput totals
+            {t("admin.usage.throughput")}
           </h3>
           <div className="mt-3 grid grid-cols-2 gap-3">
             {[
               {
-                label: "Prompt chars",
+                label: t("admin.usage.promptChars"),
                 value: fmtNum(summary?.total_prompt_chars),
               },
               {
-                label: "Response chars",
+                label: t("admin.usage.responseChars"),
                 value: fmtNum(summary?.total_response_chars),
               },
               {
-                label: "Success rate",
+                label: t("admin.usage.successRate"),
                 value: summary?.total_requests
                   ? `${Math.round(((summary.ok_requests ?? 0) / summary.total_requests) * 100)}%`
                   : "—",
               },
               {
-                label: "7-day volume",
+                label: t("admin.usage.volume7d"),
                 value: fmtNum(summary?.requests_7d),
               },
             ].map((cell) => (
@@ -479,17 +515,21 @@ export const AdminUsagePanel = () => {
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-              Past usage
+              {t("admin.usage.pastUsage")}
             </h3>
             <p className="text-xs text-[var(--admin-muted)]">
-              AI calls with duration and speed
+              {t("admin.usage.pastSubtitle")}
               {totalRows
-                ? ` · showing ${rangeStart}–${rangeEnd} of ${totalRows}`
+                ? t("admin.usage.showing", {
+                    start: rangeStart,
+                    end: rangeEnd,
+                    total: totalRows,
+                  })
                 : ""}
             </p>
           </div>
           <label className="flex items-center gap-2 text-xs text-[var(--admin-muted)]">
-            Rows
+            {t("admin.chrome.rows")}
             <select
               value={pageSize}
               onChange={(e) =>
@@ -511,15 +551,15 @@ export const AdminUsagePanel = () => {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>Who</th>
-                <th>Model</th>
-                <th>Prompt</th>
-                <th>TTFT</th>
-                <th>Total</th>
-                <th>Speed</th>
-                <th>Tokens</th>
-                <th>Status</th>
+                <th>{t("admin.usage.colWhen")}</th>
+                <th>{t("admin.usage.colWho")}</th>
+                <th>{t("admin.usage.colModel")}</th>
+                <th>{t("admin.usage.colPrompt")}</th>
+                <th>{t("admin.usage.colTtft")}</th>
+                <th>{t("admin.usage.colTotal")}</th>
+                <th>{t("admin.usage.colSpeed")}</th>
+                <th>{t("admin.usage.colTokens")}</th>
+                <th>{t("admin.usage.colStatus")}</th>
               </tr>
             </thead>
             <tbody>
@@ -527,14 +567,14 @@ export const AdminUsagePanel = () => {
                 data?.recent.map((row) => (
                   <tr key={row.id}>
                     <td className="whitespace-nowrap text-[var(--admin-muted)]">
-                      {fmtTime(row.created_at)}
+                      {fmtTime(row.created_at, locale)}
                     </td>
                     <td>
                       <span className="font-medium text-[var(--admin-fg)]">
                         {row.username}
                       </span>
                       <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
-                        {row.source}
+                        {sourceLabel(row.source)}
                       </span>
                     </td>
                     <td className="text-[var(--admin-fg)]">{row.model}</td>
@@ -559,7 +599,7 @@ export const AdminUsagePanel = () => {
                     </td>
                     <td>
                       <span className={statusTone(row.status)}>
-                        {row.status}
+                        {statusLabel(row.status)}
                       </span>
                     </td>
                   </tr>
@@ -571,7 +611,7 @@ export const AdminUsagePanel = () => {
                     className="!border-0 px-4 py-10 text-center text-[var(--admin-muted)]"
                   >
                     {isLoading
-                      ? "Loading usage…"
+                      ? t("admin.chrome.loading")
                       : "No past usage yet. Chat once, then refresh this tab."}
                   </td>
                 </tr>
@@ -581,7 +621,10 @@ export const AdminUsagePanel = () => {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
           <p className="text-xs text-[var(--admin-muted)]">
-            Page {Math.min(page, totalPages)} of {totalPages}
+            {t("admin.users.pageOf", {
+              page: Math.min(page, totalPages),
+              total: totalPages,
+            })}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -591,7 +634,7 @@ export const AdminUsagePanel = () => {
               className={adminBtnGhost}
             >
               <ChevronLeft size={14} />
-              Prev
+              {t("admin.chrome.prev")}
             </button>
             <button
               type="button"
@@ -599,7 +642,7 @@ export const AdminUsagePanel = () => {
               onClick={() => setPage((p) => p + 1)}
               className={adminBtnGhost}
             >
-              Next
+              {t("admin.chrome.next")}
               <ChevronRight size={14} />
             </button>
           </div>

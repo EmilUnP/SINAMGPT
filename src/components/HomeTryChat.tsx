@@ -22,6 +22,7 @@ import { KnowledgeCitations } from "@/components/KnowledgeCitations";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { ModelPicker } from "@/components/ModelPicker";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
@@ -322,27 +323,17 @@ export const HomeTryChat = () => {
 
         <div className="flex items-center gap-2">
           {models.length > 0 && guestEnabled ? (
-            <select
+            <ModelPicker
+              models={models}
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={setModel}
               disabled={isSending}
-              className="max-w-[9.5rem] rounded-full border border-[var(--home-chip-border)] bg-[var(--home-chip-bg)] px-3 py-1.5 text-xs text-[var(--home-chip-fg)] outline-none sm:max-w-[12rem]"
-            >
-              {models.map((item) => (
-                <option
-                  key={item.name}
-                  value={item.name}
-                  className="bg-[var(--home-option-bg)]"
-                >
-                  {item.display_name || item.name}
-                  {item.backend === "vllm"
-                    ? " · vLLM"
-                    : item.backend === "ollama"
-                      ? " · Ollama"
-                      : ""}
-                </option>
-              ))}
-            </select>
+              size="sm"
+              variant="glass"
+              emptyLabel={t("chat.noModels")}
+              ariaLabel={t("chat.model")}
+              className="max-w-[9.5rem] sm:max-w-[12rem]"
+            />
           ) : null}
           <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />

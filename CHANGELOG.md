@@ -10,6 +10,24 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.5.0] — 2026-08-13
+
+Language release: the product UI is English / Azərbaycan, and company seeds (knowledge + guardrails policy) ship in Azerbaijani.
+
+### Added
+- **EN / AZ interface** — language toggle with flag icons on chat, auth, share, and Admin; remembered in the browser (`owngpt-locale`)
+- **Full Admin i18n** — Overview, Usage, Users, Models, Knowledge, Guardrails (including Policy / Detectors / Inspector), Audit, and Settings
+- **Azerbaijani knowledge seed pack** — SINAM starter docs live in `src/lib/seeds/knowledge.ts`
+- **Azerbaijani guardrails policy seed** — persona, topics, extra rules, and quick-add chips in `src/lib/seeds/guardrails.ts`
+
+### Changed
+- **Seeds live in their own files** — knowledge and guardrails defaults are no longer hardcoded inside the library modules
+- **Guardrails persist on first init** — policy JSON and quick-add chips are written to `app_settings` like other settings (no empty Admin until you click Save)
+
+### Fixed
+- **DB wipe login loop** — a leftover session cookie after deleting `data/` no longer 307-loops `/chat`
+- **Unmodified English policy** — existing DBs still on the old English persona/topics/chips are migrated to the Azerbaijani defaults (custom edits are left as-is)
+
 ## [1.4.2] — 2026-08-12
 
 Patch: repair the release pipeline. The production build was failing and the lint gate was red, so neither could vouch for a release.
@@ -121,7 +139,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.3.0...v1.4.0

@@ -5,16 +5,17 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.4.2](../CHANGELOG.md#142--2026-08-12) (see [README](../README.md)).
+**Current release:** [v1.5.0](../CHANGELOG.md#150--2026-08-13) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.4.2)
+## Product today (v1.5.0)
 
 What operators and users can rely on right now:
 
 | Area | Reality |
 |------|---------|
+| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani |
 | **Chat** | Streaming replies, model picker, Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system) |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
@@ -110,6 +111,16 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
 | Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
 | Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
+
+### v1.5.0 — EN / AZ product language (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| EN / AZ UI | `done` | Flag toggle; chat, auth, share, Admin |
+| AZ knowledge seed | `done` | SINAM pack in `src/lib/seeds/knowledge.ts` |
+| AZ guardrails policy seed | `done` | Persona/topics/chips in `src/lib/seeds/guardrails.ts`; unmodified EN DB rows migrate |
+| Guardrails auto-seed | `done` | Policy JSON written to `app_settings` on first init |
+| Stale session after DB wipe | `done` | Cookie cleared so `/chat` no longer 307-loops |
 
 ### v1.4.2 — Release pipeline repair (2026-08-12)
 

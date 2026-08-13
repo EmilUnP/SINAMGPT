@@ -2,12 +2,11 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Languages } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
+import { LocaleFlag } from "@/components/LocaleFlag";
 import {
   LOCALES,
   LOCALE_LABELS,
-  LOCALE_SHORT,
   type AppLocale,
 } from "@/lib/locale";
 import { useIsMounted } from "@/lib/use-mounted";
@@ -71,7 +70,7 @@ export const LanguageToggle = ({
   }, [open]);
 
   const buttonPad = size === "sm" ? "p-1.5" : "p-2";
-  const iconSize = size === "sm" ? 15 : 16;
+  const flagClass = size === "sm" ? "h-[14px] w-[21px]" : "h-4 w-6";
 
   const handleSelect = (next: AppLocale) => {
     setLocale(next);
@@ -85,7 +84,7 @@ export const LanguageToggle = ({
             ref={menuRef}
             id={menuId}
             role="menu"
-            className="theme-toggle-menu fixed z-[200] min-w-[10.5rem] overflow-hidden rounded-xl p-1"
+            className="theme-toggle-menu fixed z-[200] min-w-[11rem] overflow-hidden rounded-xl p-1"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             {LOCALES.map((id) => {
@@ -101,9 +100,7 @@ export const LanguageToggle = ({
                     active ? "is-active" : ""
                   }`}
                 >
-                  <span className="w-7 shrink-0 text-[11px] font-semibold tracking-wide opacity-80">
-                    {LOCALE_SHORT[id]}
-                  </span>
+                  <LocaleFlag locale={id} className="h-3.5 w-[21px]" />
                   <span className="flex-1">{LOCALE_LABELS[id]}</span>
                   {active ? (
                     <span className="theme-toggle-dot" aria-hidden />
@@ -121,17 +118,14 @@ export const LanguageToggle = ({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`theme-toggle-btn inline-flex items-center justify-center gap-1 rounded-full ${buttonPad}`}
+        className={`theme-toggle-btn inline-flex items-center justify-center rounded-full ${buttonPad}`}
         aria-label={t("common.chooseLanguage")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         title={t("common.languageTitle", { label: LOCALE_LABELS[locale] })}
       >
-        <Languages size={iconSize} strokeWidth={1.85} />
-        <span className="pr-0.5 text-[10px] font-semibold tracking-wide">
-          {LOCALE_SHORT[locale]}
-        </span>
+        <LocaleFlag locale={locale} className={flagClass} />
       </button>
       {menu}
     </div>
