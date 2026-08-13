@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.7.0](../CHANGELOG.md#170--2026-08-13) (see [README](../README.md)).
+**Current release:** [v1.8.0](../CHANGELOG.md#180--2026-08-13) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.7.0)
+## Product today (v1.8.0)
 
 What operators and users can rely on right now:
 
@@ -20,11 +20,11 @@ What operators and users can rely on right now:
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
-| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); pack seed add-missing / refresh / replace; citations; corpus stats |
+| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
-| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` (Quick / Workplace / Stress) |
+| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
 
 ---
 
@@ -64,6 +64,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.8.0 — Lab console (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Lab Live / Results / Charts | `done` | Streaming chat of the run; scored facts/language/speed; accuracy, tok/s, latency charts |
+| Lab suites | `done` | Quick 40, Assist 42, Guardrails 31; Stress dropped |
+| Keyword RAG | `done` | AZ inflections, product/year synonyms, specific-doc ranking |
 
 ### v1.1.0 — Company productivity (2026-08-09)
 
@@ -115,7 +123,7 @@ Closed tracks — keep for context; do not re-open unless regressing.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Model lab `/lab` | `done` | Admin-only; real `/api/chat` suites (Quick, Workplace, Stress) |
+| Model lab `/lab` | `done` | Admin-only; real `/api/chat` suites (Quick, Assist, Guardrails) |
 | UI folder split | `done` | Admin, lab, chat, auth, share components separated |
 
 ### v1.6.0 — Policy switches & slimmer Admin (2026-08-13)

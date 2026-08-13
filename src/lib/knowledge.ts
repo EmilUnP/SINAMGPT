@@ -4,6 +4,7 @@ import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
   tokenizeMultilang,
+  tokensAlign,
 } from "@/lib/multilang";
 import {
   DEPRECATED_KNOWLEDGE_TITLES,
@@ -232,35 +233,53 @@ export const retrieveKnowledge = (
   const companyIntent = looksLikeCompanyQuestion(query);
   const activeProject = projectId?.trim() || null;
 
+  const tokenHit = (haystack: Set<string>, token: string) => {
+    if (haystack.has(token)) return true;
+    if (token.length < 4) return false;
+    for (const item of haystack) {
+      if (tokensAlign(token, item)) return true;
+    }
+    return false;
+  };
+
   const scored = docs.map((doc) => {
-    // Whole-token match only (avoid "help" matching "helped")
     const titleTokens = new Set(tokenizeMultilang(doc.title));
     const tagTokens = new Set(tokenizeMultilang(doc.tags));
     const contentTokens = new Set(tokenizeMultilang(doc.content));
+    const titleNorm = ` ${[...titleTokens].join(" ")} `;
     let matchScore = 0;
     let strongHits = 0;
 
     for (const token of queryTokens) {
       if (token.length < 3) continue;
-      if (titleTokens.has(token)) {
+      if (tokenHit(titleTokens, token)) {
+        matchScore += 6;
+        strongHits += 1;
+      }
+      if (tokenHit(tagTokens, token)) {
         matchScore += 4;
         strongHits += 1;
       }
-      if (tagTokens.has(token)) {
-        matchScore += 3;
+      if (tokenHit(contentTokens, token)) matchScore += 2;
+    }
+
+    // Phrase in title (e.g. "iş saatları", "həllər kataloqu")
+    const queryWords = [...queryTokens].filter((t) => t.length >= 4);
+    for (let i = 0; i < queryWords.length - 1; i += 1) {
+      const phrase = ` ${queryWords[i]} ${queryWords[i + 1]} `;
+      if (titleNorm.includes(phrase)) {
+        matchScore += 8;
         strongHits += 1;
       }
-      if (contentTokens.has(token)) matchScore += 1;
     }
 
     if (
       companyIntent &&
       (doc.category === "company" || doc.category === "product")
     ) {
-      matchScore += 5;
+      matchScore += 3;
     }
 
-    // Prefer project-scoped docs when chatting inside a project
     if (activeProject) {
       if (doc.project_id === activeProject) matchScore += 12;
       else if (doc.project_id && doc.project_id !== activeProject) {
@@ -268,34 +287,41 @@ export const retrieveKnowledge = (
       }
     }
 
-    // Pin always_include docs only for real company questions
     const alwaysEligible = doc.always_include === 1 && companyIntent;
-    const hasMatch = strongHits > 0 || matchScore >= 4;
+    const hasMatch = strongHits > 0 || matchScore >= 6;
+    // Small pin only — specific stats/catalog hits must still outrank generic always-include.
+    const score = matchScore + doc.priority / 1000 + (alwaysEligible ? 2 : 0);
 
-    // Priority is a tiny tiebreaker only (never enough to pass the threshold alone)
-    let score = matchScore + doc.priority / 1000;
-    if (alwaysEligible) score += 1000;
-
-    return { doc, score, hasMatch, alwaysEligible };
+    return { doc, score, hasMatch, alwaysEligible, strongHits };
   });
+
+  const specific = scored
+    .filter((s) => s.hasMatch && s.strongHits > 0)
+    .sort((a, b) => b.score - a.score || b.strongHits - a.strongHits);
 
   const always = scored
     .filter((s) => s.alwaysEligible)
     .sort((a, b) => b.score - a.score);
 
-  const rest = scored
-    .filter((s) => !s.alwaysEligible && s.hasMatch && s.score >= 4)
+  const weak = scored
+    .filter((s) => s.hasMatch && s.strongHits === 0 && s.score >= 6)
     .sort((a, b) => b.score - a.score);
 
   const picked: KnowledgeDoc[] = [];
   const seen = new Set<string>();
+  const take = (rows: typeof scored) => {
+    for (const row of rows) {
+      if (seen.has(row.doc.id)) continue;
+      seen.add(row.doc.id);
+      picked.push(row.doc);
+      if (picked.length >= settings.maxDocs) return;
+    }
+  };
 
-  for (const row of [...always, ...rest]) {
-    if (seen.has(row.doc.id)) continue;
-    seen.add(row.doc.id);
-    picked.push(row.doc);
-    if (picked.length >= settings.maxDocs) break;
-  }
+  // Specific matches first so "employees / products" beat About + Contact.
+  take(specific);
+  take(always);
+  take(weak);
 
   // Fallback company doc only for real company questions
   if (!picked.length && companyIntent) {
@@ -330,8 +356,13 @@ export const resolveKnowledgeContext = (
   }
 
   const chunks: string[] = [
-    "COMPANY KNOWLEDGE (trusted local facts — use when answering about SINAM / company / projects; do not invent facts beyond this):",
-    "These notes are in English for storage only. Rewrite them into the REPLY LANGUAGE. Do not switch language because tags list Russian/Azerbaijani keywords. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "COMPANY KNOWLEDGE (trusted local facts — the sections below are ordered by relevance to this question):",
+    "HOW TO USE THEM:",
+    "- Answer from these notes. Prefer the first / most specific section over generic About/Contact.",
+    "- Put concrete facts in the reply: years, headcount, phones, emails, product names (SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM).",
+    "- Never answer with only a URL or a single markdown link.",
+    "- Rewrite into the REPLY LANGUAGE. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "- Do not invent numbers or products that are not in the notes.",
     "If the user is not asking about the company, ignore this block and answer normally.",
   ];
 

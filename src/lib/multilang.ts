@@ -261,8 +261,28 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ["gonav", "gonav.az", "гонав", "navigator", "naviqator"],
   ["yurdum", "yurd", "юрдум", "smart village"],
   ["price", "qiymət", "qiymet", "цена", "тариф", "pricing", "paket", "package"],
-  ["employee", "işçi", "isci", "сотрудник", "staff", "workers"],
+  ["employee", "işçi", "isci", "əməkdaş", "emekdas", "сотрудник", "staff", "workers", "headcount"],
+  [
+    "year",
+    "years",
+    "ildir",
+    "fəaliyyət",
+    "fealiyyet",
+    "history",
+    "tarix",
+    "statistika",
+    "stats",
+    "founded",
+  ],
 ];
+
+/** AZ/RU inflections: əməkdaşı ↔ əməkdaş, məhsulları ↔ məhsul. */
+export const tokensAlign = (a: string, b: string): boolean => {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4) return false;
+  return a.startsWith(b) || b.startsWith(a);
+};
 
 export const expandQueryTokens = (query: string): string[] => {
   const base = tokenizeMultilang(query, 2);
@@ -274,10 +294,9 @@ export const expandQueryTokens = (query: string): string[] => {
     const hit = group.some((term) => {
       const t = normalizeMultilangText(term);
       if (t.length < 2) return false;
-      // Exact token match — never substring ("hell" must not match "hello")
-      if (!t.includes(" ")) return baseSet.has(t);
-      // Multi-word phrases: whole-phrase only
-      return normalized.includes(` ${t} `);
+      if (t.includes(" ")) return normalized.includes(` ${t} `);
+      if (baseSet.has(t)) return true;
+      return base.some((tok) => tokensAlign(tok, t));
     });
     if (hit) {
       for (const term of group) {
@@ -307,7 +326,8 @@ export const looksLikeCompanyQuestion = (query: string): boolean => {
     /\b(project|layihə|layihe|проект|product|məhsul|mehsul|продукт)\b/i.test(q) ||
     /\b(who are you|kimsiniz|кто вы|nə edirsiniz|ne edirsiniz|чем занимаетесь)\b/i.test(
       q,
-    )
+    ) ||
+    /(əməkdaş|emekdas|ildir|fəaliyyət|statistika|məhsul|mehsul|kataloq)/i.test(q)
   );
 };
 

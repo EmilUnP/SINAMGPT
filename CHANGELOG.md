@@ -10,6 +10,21 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.8.0] — 2026-08-13
+
+Model lab is a real test console: live chat of the run, scored results, and charts. Suites and RAG matching are sharper against the SINAM pack.
+
+### Added
+- **Lab Live tab** — prompts and replies stream in like chat while a suite runs
+- **Lab Results tab** — pass rate, facts, citations, language/tone, latency min/median/max, fail reasons, cite/answer/refuse scores
+- **Lab Charts tab** — accuracy, token (or char) speed, first-token vs total latency, and cumulative pass rate, filling in as cases finish
+
+### Changed
+- **Lab suites** — Quick (40), Assist (42), Guardrails (31). Workplace/Stress dropped; cases cover EN/AZ knowledge, writing tasks, and more refuse vectors
+- **Lab scoring** — each case scores expected facts (hit/miss), accuracy %, language/tone, first-token time, and chars or tokens per second
+- **`test:chat`** — hits the SINAM knowledge pack (about, contact, SESDA, Farabi, products) and guardrail refusals (salary, AZ passwords, jailbreak, secrets)
+- **Keyword RAG** — AZ inflections (əməkdaşı↔əməkdaş), year/employee/product synonyms, specific docs ranked above always-include About/Contact, stronger “use these facts” inject (no URL-only answers)
+
 ## [1.7.0] — 2026-08-13
 
 Admin Model lab plus a cleaner split of the app UI.
@@ -163,7 +178,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...v1.5.0

@@ -41,7 +41,7 @@ Vebsayt: https://sinam.net`,
 - 150+ əməkdaş
 - Sayt 95+ ölkə üzrə əhatə və böyük xidmət olunan əhali rəqəmini vurğulayır
 Bunları təxmini marketinq göstəriciləri kimi istifadə edin; dəqiq hüquqi/maliyyə rəqəmləri üçün rəsmi materiallara və ya office@sinam.net ünvanına yönləndirin.`,
-    tags: "stats, history, employees, years, countries, işçilər, isciler, сотрудники, tarix, statistika",
+    tags: "stats, history, employees, years, countries, işçilər, isciler, əməkdaş, emekdas, ildir, fəaliyyət, сотрудники, tarix, statistika",
     priority: 70,
     always_include: false,
   },

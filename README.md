@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.7.0](./CHANGELOG.md#170--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.8.0](./CHANGELOG.md#180--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -13,7 +13,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
 - **Admin** — users, models, live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
-- **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Workplace, Stress)
+- **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -80,7 +80,7 @@ There you can:
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
-- **Model lab** (`/lab`) — run Quick / Workplace / Stress suites against the same `/api/chat` path employees use
+- **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 
 ## Config
 
@@ -119,9 +119,9 @@ npm run test:chat -- --quick
 
 Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` / `TEST_PASSWORD`). Optional: `BASE_URL=http://127.0.0.1:3055`.
 
-Checks login, models, streaming chat, English language drift, citations on company questions, projects, share links, and rewrite.
+Checks login, models, streaming chat, English language drift, citations on SINAM knowledge (about, SESDA, Farabi, contact), guardrail refusals (salary, jailbreak, secrets), projects, share links, and rewrite.
 
-Admins can also run live model checks in the UI at `/lab` (Model lab).
+Admins can also run live model checks in the UI at `/lab` (Quick / Assist / Guardrails — Live, Results, and Charts tabs).
 
 ## Releases & changelog
 
