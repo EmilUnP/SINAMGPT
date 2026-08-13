@@ -17,7 +17,7 @@ import {
   AdminToggleCard,
   adminBtnPrimary,
   adminFieldClass,
-} from "@/components/AdminChrome";
+} from "./AdminChrome";
 import { useTranslations } from "@/components/LocaleProvider";
 
 export type SettingsDraft = {

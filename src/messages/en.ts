@@ -1,4 +1,5 @@
 import { adminEn } from "./admin";
+import { labEn } from "./lab";
 
 export const en = {
   common: {
@@ -134,6 +135,7 @@ export const en = {
     adminBadge: "admin",
     unlimitedMessages: "Unlimited messages",
     adminPanel: "Admin panel",
+    modelLab: "Model lab",
     signOut: "Sign out",
     unlimited: "Unlimited",
     historySaved: "History saved",
@@ -216,6 +218,7 @@ export const en = {
       "This link was revoked or never existed. Ask your colleague for a new share link.",
     backToChat: "Back to chat",
   },
+  lab: labEn,
   admin: adminEn,
 } as const;
 

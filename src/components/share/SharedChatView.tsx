@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Lock, UserRound } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
-import { KnowledgeCitations } from "@/components/KnowledgeCitations";
+import { KnowledgeCitations } from "@/components/chat/KnowledgeCitations";
+import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Message } from "@/lib/types";
 

@@ -2,6 +2,7 @@
 
 import {
   Check,
+  FlaskConical,
   Folder,
   FolderPlus,
   Infinity as InfinityIcon,
@@ -44,7 +45,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { ModelPicker } from "./ModelPicker";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
@@ -1302,36 +1303,16 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         )}
       </div>
 
-      <div className="border-t border-[var(--sidebar-border)] p-3">
-        <div className="mb-2 rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-3 py-2">
-          <p className="truncate text-sm text-[var(--sidebar-fg)]">
-            {user.username}
-            {user.role === "admin" ? (
-              <span className="ml-1 text-[11px] text-[var(--accent)]">
-                · {t("chat.adminBadge")}
-              </span>
-            ) : null}
-          </p>
-          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[var(--chip-ok-text)]">
-            <InfinityIcon size={11} />
-            {t("chat.unlimitedMessages")}
-          </p>
-        </div>
-        {user.role === "admin" ? (
-          <Link
-            href="/admin"
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-active-ring)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm text-[var(--chip-info-text)] transition hover:opacity-90"
-          >
-            <Shield size={15} />
-            {t("chat.adminPanel")}
-          </Link>
-        ) : null}
+      <div className="flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
+        <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
+          {user.username}
+        </p>
         <button
           type="button"
           onClick={() => void handleLogout()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--sidebar-border)] px-3 py-2 text-sm text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
         >
-          <LogOut size={15} />
+          <LogOut size={14} />
           {t("chat.signOut")}
         </button>
       </div>
@@ -1447,6 +1428,26 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   {shareToken ? t("chat.shared") : t("chat.share")}
                 </span>
               </button>
+            ) : null}
+            {user.role === "admin" ? (
+              <>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  title={t("chat.adminPanel")}
+                >
+                  <Shield size={14} />
+                  <span className="hidden sm:inline">{t("chat.adminPanel")}</span>
+                </Link>
+                <Link
+                  href="/lab"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  title={t("chat.modelLab")}
+                >
+                  <FlaskConical size={14} />
+                  <span className="hidden sm:inline">{t("chat.modelLab")}</span>
+                </Link>
+              </>
             ) : null}
             <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />

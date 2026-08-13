@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.6.0](../CHANGELOG.md#160--2026-08-13) (see [README](../README.md)).
+**Current release:** [v1.7.0](../CHANGELOG.md#170--2026-08-13) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.6.0)
+## Product today (v1.7.0)
 
 What operators and users can rely on right now:
 
@@ -24,7 +24,7 @@ What operators and users can rely on right now:
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
-| **Quality check** | `npm run test:chat` smoke suite against a running server |
+| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` (Quick / Workplace / Stress) |
 
 ---
 
@@ -110,6 +110,13 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
 | Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
 | Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
+
+### v1.7.0 — Model lab (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Model lab `/lab` | `done` | Admin-only; real `/api/chat` suites (Quick, Workplace, Stress) |
+| UI folder split | `done` | Admin, lab, chat, auth, share components separated |
 
 ### v1.6.0 — Policy switches & slimmer Admin (2026-08-13)
 

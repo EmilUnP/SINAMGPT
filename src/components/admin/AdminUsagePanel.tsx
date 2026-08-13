@@ -15,7 +15,7 @@ import {
   AdminStatGrid,
   adminBtnGhost,
   adminFieldClass,
-} from "@/components/AdminChrome";
+} from "./AdminChrome";
 import { useLocale } from "@/components/LocaleProvider";
 
 type LiveRow = {

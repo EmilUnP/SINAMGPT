@@ -10,6 +10,16 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.7.0] — 2026-08-13
+
+Admin Model lab plus a cleaner split of the app UI.
+
+### Added
+- **Model lab (`/lab`)** — admin-only test page (not an Admin tab) that runs real `/api/chat` suites: Quick, Workplace, and Stress (latency + refuse checks)
+
+### Changed
+- **App UI layout** — Admin, Model lab, chat, auth, and share screens live in their own component folders (same idea as the existing `/api/admin` split)
+
 ## [1.6.0] — 2026-08-13
 
 Admin policy UX: Guardrails items are explicit On/Off switches, and unused Admin surfaces are gone.
@@ -153,7 +163,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...v1.4.2

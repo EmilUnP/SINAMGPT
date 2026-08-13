@@ -17,13 +17,13 @@ import {
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { CopyButton } from "@/components/CopyButton";
-import { KnowledgeCitations } from "@/components/KnowledgeCitations";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
-import { ModelPicker } from "@/components/ModelPicker";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CopyButton } from "./CopyButton";
+import { KnowledgeCitations } from "./KnowledgeCitations";
+import { MarkdownMessage } from "./MarkdownMessage";
+import { ModelPicker } from "./ModelPicker";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";

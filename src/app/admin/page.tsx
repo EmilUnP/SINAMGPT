@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AdminPanel } from "@/components/AdminPanel";
+import { AdminPanel } from "@/components/admin";
 import { getPageUser } from "@/lib/auth";
 
 export default async function AdminPage() {

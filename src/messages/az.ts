@@ -1,4 +1,5 @@
 import { adminAz } from "./admin";
+import { labAz } from "./lab";
 import type { Messages } from "./en";
 
 export const az: Messages = {
@@ -141,6 +142,7 @@ export const az: Messages = {
     adminBadge: "admin",
     unlimitedMessages: "Limitsiz mesajlar",
     adminPanel: "Admin paneli",
+    modelLab: "Model laboratoriyası",
     signOut: "Çıxış",
     unlimited: "Limitsiz",
     historySaved: "Tarixçə saxlanılır",
@@ -225,5 +227,6 @@ export const az: Messages = {
       "Bu link ləğv edilib və ya heç vaxt olmayıb. Həmkarınızdan yeni link istəyin.",
     backToChat: "Söhbətə qayıt",
   },
+  lab: labAz,
   admin: adminAz,
 };

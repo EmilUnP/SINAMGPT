@@ -22,7 +22,7 @@ import {
   adminBtnGhost,
   adminBtnPrimary,
   adminFieldClass,
-} from "@/components/AdminChrome";
+} from "./AdminChrome";
 import { useTranslations } from "@/components/LocaleProvider";
 import type {
   GuardrailsConfig,

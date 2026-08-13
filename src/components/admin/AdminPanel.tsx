@@ -10,6 +10,7 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
   Gauge,
   LayoutDashboard,
   Radio,
@@ -27,10 +28,10 @@ import {
   Zap,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
-import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
-import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
-import { AdminSettingsPanel } from "@/components/AdminSettingsPanel";
-import { AdminUsagePanel } from "@/components/AdminUsagePanel";
+import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
+import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
+import { AdminSettingsPanel } from "./AdminSettingsPanel";
+import { AdminUsagePanel } from "./AdminUsagePanel";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -756,6 +757,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           <div className="flex items-center gap-2">
             <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
+            <Link
+              href="/lab"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
+            >
+              <FlaskConical size={14} />
+              {t("chat.modelLab")}
+            </Link>
             <button
               type="button"
               onClick={() => void load()}
