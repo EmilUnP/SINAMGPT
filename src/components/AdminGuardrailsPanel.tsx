@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  X,
 } from "lucide-react";
 import {
   AdminHint,
@@ -131,32 +132,18 @@ const toggleListItem = (
   return next.join("\n");
 };
 
-const snippetIsOn = (text: string, snippet: string) => {
-  const needle = snippet.trim().toLowerCase();
-  if (!needle) return false;
-  return text.toLowerCase().includes(needle);
+const removeListItem = (
+  current: string,
+  item: string,
+  kind: "topic" | "keyword",
+) => {
+  const trimmed = item.trim();
+  if (!trimmed) return current;
+  const parse = kind === "keyword" ? keywordItems : topicItems;
+  return parse(current)
+    .filter((entry) => entry.toLowerCase() !== trimmed.toLowerCase())
+    .join("\n");
 };
-
-const toggleSnippet = (text: string, snippet: string) => {
-  const trimmed = snippet.trim();
-  if (!trimmed) return text;
-  if (!snippetIsOn(text, trimmed)) {
-    return text.trim() ? `${text.trim()} ${trimmed}` : trimmed;
-  }
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text
-    .replace(new RegExp(escaped, "gi"), " ")
-    .replace(/\s+/g, " ")
-    .trim();
-};
-
-const linesToList = (value: string) =>
-  value
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-const listToLines = (items: string[]) => items.join("\n");
 
 const emptySuggestions = (): PolicySuggestions => ({
   allowedTopics: [],
@@ -182,26 +169,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   const [suggestions, setSuggestions] = useState<PolicySuggestions>(
     emptySuggestions,
   );
-  const [chipEditorOpen, setChipEditorOpen] = useState(false);
-  const [chipDraft, setChipDraft] = useState({
-    allowedTopics: "",
-    blockedTopics: "",
-    keywords: "",
-    personaSnippets: "",
-    extraRuleSnippets: "",
-  });
   const [builtinKeywordCount, setBuiltinKeywordCount] = useState(0);
-  const [isSavingChips, setIsSavingChips] = useState(false);
-
-  const syncChipDraft = (next: PolicySuggestions) => {
-    setChipDraft({
-      allowedTopics: listToLines(next.allowedTopics),
-      blockedTopics: listToLines(next.blockedTopics),
-      keywords: listToLines(next.keywords),
-      personaSnippets: listToLines(next.personaSnippets),
-      extraRuleSnippets: listToLines(next.extraRuleSnippets),
-    });
-  };
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -224,10 +192,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
         setSaved(data.guardrails);
       }
       if (data.defaults) setDefaults(data.defaults);
-      if (data.suggestions) {
-        setSuggestions(data.suggestions);
-        syncChipDraft(data.suggestions);
-      }
+      if (data.suggestions) setSuggestions(data.suggestions);
       if (typeof data.builtinKeywordCount === "number") {
         setBuiltinKeywordCount(data.builtinKeywordCount);
       }
@@ -365,17 +330,23 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   }, [draft, defaults, events, t]);
 
   const persistPolicy = useCallback(
-    async (next: GuardrailsConfig, silent = false) => {
+    async (
+      next: GuardrailsConfig,
+      silent = false,
+      nextSuggestions: PolicySuggestions = suggestions,
+    ) => {
       setDraft(next);
+      setSuggestions(nextSuggestions);
       setIsSaving(true);
       try {
         const res = await fetch("/api/admin/guardrails", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(next),
+          body: JSON.stringify({ ...next, suggestions: nextSuggestions }),
         });
         const data = (await res.json()) as {
           guardrails?: GuardrailsConfig;
+          suggestions?: PolicySuggestions;
           error?: string;
         };
         if (!res.ok) {
@@ -386,6 +357,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
           setDraft(data.guardrails);
           setSaved(data.guardrails);
         }
+        if (data.suggestions) setSuggestions(data.suggestions);
         if (!silent) onNotice(t("admin.guardrails.saved"));
         return true;
       } catch {
@@ -395,36 +367,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
         setIsSaving(false);
       }
     },
-    [onError, onNotice, t],
-  );
-
-  const ensureInCatalog = useCallback(
-    async (field: keyof PolicySuggestions, item: string) => {
-      const trimmed = item.trim();
-      if (!trimmed) return;
-      if (itemInList(suggestions[field], trimmed)) return;
-      const payload: PolicySuggestions = {
-        ...suggestions,
-        [field]: uniqueItems([...suggestions[field], trimmed]),
-      };
-      try {
-        const res = await fetch("/api/admin/guardrails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "suggestions", suggestions: payload }),
-        });
-        const data = (await res.json()) as {
-          suggestions?: PolicySuggestions;
-          error?: string;
-        };
-        if (!res.ok || !data.suggestions) return;
-        setSuggestions(data.suggestions);
-        syncChipDraft(data.suggestions);
-      } catch {
-        // Catalog sync is secondary to the live policy save.
-      }
-    },
-    [suggestions],
+    [onError, onNotice, suggestions, t],
   );
 
   const handleSave = async () => {
@@ -457,17 +400,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
     );
   };
 
-  const applySnippetToggle = (
-    field: "persona" | "extraRules",
-    snippet: string,
-  ) => {
-    if (!draft) return;
-    void persistPolicy(
-      { ...draft, [field]: toggleSnippet(draft[field], snippet) },
-      true,
-    );
-  };
-
   const addListItem = (
     field: "allowedTopics" | "blockedTopics" | "blockedKeywords",
     catalogField: keyof PolicySuggestions,
@@ -484,14 +416,41 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
     )
       ? current
       : toggleListItem(current, item, kind);
-    void persistPolicy({ ...draft, [field]: nextText }, true);
-    void ensureInCatalog(catalogField, item);
+    void persistPolicy(
+      { ...draft, [field]: nextText },
+      true,
+      {
+        ...suggestions,
+        [catalogField]: uniqueItems([...suggestions[catalogField], item]),
+      },
+    );
+  };
+
+  const removePaletteItem = (
+    field: "allowedTopics" | "blockedTopics" | "blockedKeywords",
+    catalogField: keyof PolicySuggestions,
+    item: string,
+  ) => {
+    if (!draft) return;
+    const kind = field === "blockedKeywords" ? "keyword" : "topic";
+    const trimmed = item.trim();
+    void persistPolicy(
+      { ...draft, [field]: removeListItem(draft[field], item, kind) },
+      true,
+      {
+        ...suggestions,
+        [catalogField]: suggestions[catalogField].filter(
+          (entry) => entry.toLowerCase() !== trimmed.toLowerCase(),
+        ),
+      },
+    );
   };
 
   const renderToggles = (
     catalog: string[],
     active: string[],
     onToggle: (item: string) => void,
+    onRemove: (item: string) => void,
     tone: "ok" | "bad" | "warn",
   ) => {
     const items = uniqueItems([...catalog, ...active]);
@@ -513,29 +472,43 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
         {items.map((item) => {
           const on = itemInList(active, item);
           return (
-            <button
+            <span
               key={item}
-              type="button"
-              disabled={isSaving}
-              onClick={() => onToggle(item)}
-              title={
-                on
-                  ? t("admin.guardrails.turnOff")
-                  : t("admin.guardrails.turnOn")
-              }
-              className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-left text-[11px] transition hover:opacity-90 disabled:opacity-50 ${
+              className={`inline-flex max-w-full items-center rounded-lg border text-[11px] ${
                 on
                   ? onClass
                   : "border-[var(--admin-border)] bg-[var(--admin-surface-soft)] text-[var(--admin-muted)]"
               }`}
             >
-              <span className="shrink-0 font-semibold">
-                {on
-                  ? t("admin.guardrails.activeOn")
-                  : t("admin.guardrails.activeOff")}
-              </span>
-              <span className="min-w-0 truncate">{item}</span>
-            </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => onToggle(item)}
+                title={
+                  on
+                    ? t("admin.guardrails.turnOff")
+                    : t("admin.guardrails.turnOn")
+                }
+                className="inline-flex min-w-0 items-center gap-1.5 px-2 py-1 text-left transition hover:opacity-90 disabled:opacity-50"
+              >
+                <span className="shrink-0 font-semibold">
+                  {on
+                    ? t("admin.guardrails.activeOn")
+                    : t("admin.guardrails.activeOff")}
+                </span>
+                <span className="min-w-0 truncate">{item}</span>
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => onRemove(item)}
+                title={t("admin.guardrails.remove")}
+                aria-label={t("admin.guardrails.remove")}
+                className="shrink-0 rounded-r-lg px-1.5 py-1 text-[var(--admin-muted)] transition hover:bg-[var(--status-bad-bg)] hover:text-[var(--status-bad-fg)] disabled:opacity-50"
+              >
+                <X size={12} />
+              </button>
+            </span>
           );
         })}
       </div>
@@ -570,70 +543,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
       onError(t("admin.chrome.networkError"));
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleSaveChips = async () => {
-    setIsSavingChips(true);
-    try {
-      const payload: PolicySuggestions = {
-        allowedTopics: linesToList(chipDraft.allowedTopics),
-        blockedTopics: linesToList(chipDraft.blockedTopics),
-        keywords: linesToList(chipDraft.keywords),
-        personaSnippets: linesToList(chipDraft.personaSnippets),
-        extraRuleSnippets: linesToList(chipDraft.extraRuleSnippets),
-      };
-      const res = await fetch("/api/admin/guardrails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "suggestions", suggestions: payload }),
-      });
-      const data = (await res.json()) as {
-        suggestions?: PolicySuggestions;
-        error?: string;
-      };
-      if (!res.ok || !data.suggestions) {
-        onError(data.error || t("admin.guardrails.couldNotSaveChips"));
-        return;
-      }
-      setSuggestions(data.suggestions);
-      syncChipDraft(data.suggestions);
-      onNotice(t("admin.guardrails.chipsSaved"));
-    } catch {
-      onError(t("admin.guardrails.networkSaveChips"));
-    } finally {
-      setIsSavingChips(false);
-    }
-  };
-
-  const handleResetChips = async () => {
-    if (
-      !window.confirm(t("admin.guardrails.resetChipsConfirm"))
-    ) {
-      return;
-    }
-    setIsSavingChips(true);
-    try {
-      const res = await fetch("/api/admin/guardrails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset_suggestions" }),
-      });
-      const data = (await res.json()) as {
-        suggestions?: PolicySuggestions;
-        error?: string;
-      };
-      if (!res.ok || !data.suggestions) {
-        onError(data.error || t("admin.guardrails.couldNotResetChips"));
-        return;
-      }
-      setSuggestions(data.suggestions);
-      syncChipDraft(data.suggestions);
-      onNotice(t("admin.guardrails.chipsReset"));
-    } catch {
-      onError(t("admin.chrome.networkError"));
-    } finally {
-      setIsSavingChips(false);
     }
   };
 
@@ -940,19 +849,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 />
               </AdminStatGrid>
 
-              <AdminHint>
-                <strong className="text-[var(--admin-fg)]">
-                  {t("admin.guardrails.editableLabel")}
-                </strong>{" "}
-                {t("admin.guardrails.editableHint")}{" "}
-                <strong className="text-[var(--admin-fg)]">
-                  {t("admin.guardrails.builtinLabel")}
-                </strong>{" "}
-                {t("admin.guardrails.builtinHint", {
-                  n: builtinKeywordCount || "—",
-                })}
-              </AdminHint>
-
               <div className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)]/60 p-4">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -980,34 +876,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                   className={`${adminFieldClass} resize-y`}
                   placeholder={t("admin.guardrails.personaPlaceholder")}
                 />
-                <p className="mt-2 text-[11px] text-[var(--admin-muted)]">
-                  {t("admin.guardrails.snippetLegend")}
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {suggestions.personaSnippets.map((s) => {
-                    const on = snippetIsOn(draft.persona, s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() => applySnippetToggle("persona", s)}
-                        className={`rounded-lg border px-2 py-1 text-left text-[11px] disabled:opacity-50 ${
-                          on
-                            ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
-                            : "border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-fg)]"
-                        }`}
-                      >
-                        <span className="font-semibold">
-                          {on
-                            ? t("admin.guardrails.activeOn")
-                            : t("admin.guardrails.activeOff")}
-                        </span>{" "}
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               <p className="text-xs text-[var(--admin-muted)]">
@@ -1037,6 +905,12 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     suggestions.allowedTopics,
                     insight.allowedList,
                     (item) => applyTopicToggle("allowedTopics", item),
+                    (item) =>
+                      removePaletteItem(
+                        "allowedTopics",
+                        "allowedTopics",
+                        item,
+                      ),
                     "ok",
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1073,18 +947,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                       {t("admin.guardrails.add")}
                     </button>
                   </div>
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs text-[var(--accent)] hover:underline">
-                      {t("admin.guardrails.editAsText")}
-                    </summary>
-                    <textarea
-                      value={draft.allowedTopics}
-                      onChange={(e) => update("allowedTopics", e.target.value)}
-                      rows={5}
-                      className={`${adminFieldClass} mt-2 resize-y`}
-                      placeholder={t("admin.guardrails.topicsPlaceholder")}
-                    />
-                  </details>
                 </div>
 
                 <div className="rounded-xl border border-[var(--admin-border)] p-4">
@@ -1109,6 +971,12 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     suggestions.blockedTopics,
                     insight.blockedList,
                     (item) => applyTopicToggle("blockedTopics", item),
+                    (item) =>
+                      removePaletteItem(
+                        "blockedTopics",
+                        "blockedTopics",
+                        item,
+                      ),
                     "bad",
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1145,18 +1013,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                       {t("admin.guardrails.add")}
                     </button>
                   </div>
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs text-[var(--accent)] hover:underline">
-                      {t("admin.guardrails.editAsText")}
-                    </summary>
-                    <textarea
-                      value={draft.blockedTopics}
-                      onChange={(e) => update("blockedTopics", e.target.value)}
-                      rows={5}
-                      className={`${adminFieldClass} mt-2 resize-y`}
-                      placeholder={t("admin.guardrails.topicsPlaceholder")}
-                    />
-                  </details>
                 </div>
               </div>
 
@@ -1195,6 +1051,8 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                   suggestions.keywords,
                   insight.keywordList,
                   applyKeywordToggle,
+                  (item) =>
+                    removePaletteItem("blockedKeywords", "keywords", item),
                   "warn",
                 )}
 
@@ -1232,18 +1090,6 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     {t("admin.guardrails.add")}
                   </button>
                 </div>
-
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-xs text-[var(--accent)] hover:underline">
-                    {t("admin.guardrails.editRawList")}
-                  </summary>
-                  <textarea
-                    value={draft.blockedKeywords}
-                    onChange={(e) => update("blockedKeywords", e.target.value)}
-                    rows={5}
-                    className={`${adminFieldClass} mt-2 resize-y`}
-                  />
-                </details>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -1274,111 +1120,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     rows={4}
                     className={`${adminFieldClass} resize-y`}
                   />
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {suggestions.extraRuleSnippets.map((s) => {
-                      const on = snippetIsOn(draft.extraRules, s);
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          disabled={isSaving}
-                          onClick={() => applySnippetToggle("extraRules", s)}
-                          className={`rounded-lg border px-2 py-1 text-left text-[11px] disabled:opacity-50 ${
-                            on
-                              ? "border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] text-[var(--status-ok-fg)]"
-                              : "border-[var(--admin-border)] bg-[var(--admin-surface-soft)] text-[var(--admin-fg)]"
-                          }`}
-                        >
-                          <span className="font-semibold">
-                            {on
-                              ? t("admin.guardrails.activeOn")
-                              : t("admin.guardrails.activeOff")}
-                          </span>{" "}
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
-              </div>
-
-              <div className="rounded-xl border border-[var(--admin-border)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-                      {t("admin.guardrails.catalogTitle")}
-                    </h3>
-                    <p className="text-xs text-[var(--admin-muted)]">
-                      {t("admin.guardrails.catalogHint")}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setChipEditorOpen((v) => !v)}
-                    className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline"
-                  >
-                    {chipEditorOpen ? (
-                      <ChevronDown size={14} />
-                    ) : (
-                      <ChevronRight size={14} />
-                    )}
-                    {chipEditorOpen
-                      ? t("admin.guardrails.hideEditor")
-                      : t("admin.guardrails.editChipLists")}
-                  </button>
-                </div>
-                {chipEditorOpen ? (
-                  <div className="mt-3 space-y-3">
-                    {(
-                      [
-                        ["allowedTopics", t("admin.guardrails.chipsAllowed")],
-                        ["blockedTopics", t("admin.guardrails.chipsRefuse")],
-                        ["keywords", t("admin.guardrails.chipsKeywords")],
-                        ["personaSnippets", t("admin.guardrails.chipsPersona")],
-                        ["extraRuleSnippets", t("admin.guardrails.chipsExtra")],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label
-                        key={key}
-                        className="block text-xs text-[var(--admin-muted)]"
-                      >
-                        {label}
-                        <textarea
-                          value={chipDraft[key]}
-                          onChange={(e) =>
-                            setChipDraft((prev) => ({
-                              ...prev,
-                              [key]: e.target.value,
-                            }))
-                          }
-                          rows={3}
-                          className={`${adminFieldClass} mt-1 resize-y text-sm`}
-                          placeholder={t("admin.guardrails.oneItemPerLine")}
-                        />
-                      </label>
-                    ))}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={isSavingChips}
-                        onClick={() => void handleSaveChips()}
-                        className={adminBtnPrimary}
-                      >
-                        {isSavingChips
-                          ? t("admin.chrome.saving")
-                          : t("admin.guardrails.saveChipLists")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSavingChips}
-                        onClick={() => void handleResetChips()}
-                        className={adminBtnGhost}
-                      >
-                        {t("admin.guardrails.resetChips")}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               <div className="rounded-xl border border-[var(--admin-border)]">

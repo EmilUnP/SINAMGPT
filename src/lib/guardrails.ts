@@ -69,13 +69,21 @@ const insertSettingIfMissing = (key: string, value: string) => {
   return true;
 };
 
-const clampSuggestionList = (value: unknown, max = 40): string[] => {
+const clampSuggestionList = (value: unknown, max = 100): string[] => {
   if (!Array.isArray(value)) return [];
-  return value
-    .filter((v): v is string => typeof v === "string")
-    .map((v) => v.trim().slice(0, 200))
-    .filter(Boolean)
-    .slice(0, max);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of value) {
+    if (typeof raw !== "string") continue;
+    const item = raw.trim().slice(0, 200);
+    if (!item) continue;
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
 };
 
 const sameStringList = (value: unknown, expected: string[]) =>
@@ -112,6 +120,26 @@ const persistSetting = (key: string, value: unknown) => {
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     )
     .run(key, JSON.stringify(value));
+  try {
+    getDb().pragma("wal_checkpoint(TRUNCATE)");
+  } catch {
+    // DB browser holding the file open can block a full truncate
+  }
+};
+
+const policyLines = (value: string) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+const catalogFromLive = (
+  catalog: string[],
+  live: string[],
+  legacy: string[],
+) => {
+  if (sameStringList(catalog, legacy)) return clampSuggestionList(live);
+  return clampSuggestionList([...catalog, ...live]);
 };
 
 /** Replace unmodified English seed text with the Azerbaijani defaults. */
@@ -191,6 +219,8 @@ const migrateLegacyEnglishPolicySeed = () => {
   }
 };
 
+let didMigrateLegacyPolicy = false;
+
 /** Persist seed defaults into SQLite if this DB never saved Guardrails. */
 export const seedGuardrailsIfEmpty = () => {
   const wrotePolicy = insertSettingIfMissing(
@@ -201,7 +231,10 @@ export const seedGuardrailsIfEmpty = () => {
     SUGGESTIONS_KEY,
     JSON.stringify(DEFAULT_POLICY_SUGGESTIONS),
   );
-  migrateLegacyEnglishPolicySeed();
+  if (!didMigrateLegacyPolicy) {
+    migrateLegacyEnglishPolicySeed();
+    didMigrateLegacyPolicy = true;
+  }
   return { seeded: wrotePolicy || wroteChips };
 };
 
@@ -283,13 +316,7 @@ export const setPolicySuggestions = (
         : current.extraRuleSnippets,
   };
 
-  getDb()
-    .prepare(
-      `INSERT INTO app_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    )
-    .run(SUGGESTIONS_KEY, JSON.stringify(merged));
-
+  persistSetting(SUGGESTIONS_KEY, merged);
   return merged;
 };
 
@@ -351,12 +378,26 @@ export const setGuardrails = (
     extraRules: (next.extraRules ?? current.extraRules).slice(0, 8000),
   };
 
-  getDb()
-    .prepare(
-      `INSERT INTO app_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    )
-    .run(KEY, JSON.stringify(merged));
+  persistSetting(KEY, merged);
+
+  const chips = getPolicySuggestions();
+  setPolicySuggestions({
+    allowedTopics: catalogFromLive(
+      chips.allowedTopics,
+      policyLines(merged.allowedTopics),
+      LEGACY_EN_POLICY_SUGGESTIONS.allowedTopics,
+    ),
+    blockedTopics: catalogFromLive(
+      chips.blockedTopics,
+      policyLines(merged.blockedTopics),
+      LEGACY_EN_POLICY_SUGGESTIONS.blockedTopics,
+    ),
+    keywords: catalogFromLive(
+      chips.keywords,
+      policyLines(merged.blockedKeywords),
+      LEGACY_EN_POLICY_SUGGESTIONS.keywords,
+    ),
+  });
 
   return merged;
 };

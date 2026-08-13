@@ -35,6 +35,16 @@ export async function GET(request: Request) {
   });
 }
 
+const suggestionListSchema = z.array(z.string().max(200)).max(100);
+
+const suggestionsSchema = z.object({
+  allowedTopics: suggestionListSchema.optional(),
+  blockedTopics: suggestionListSchema.optional(),
+  keywords: suggestionListSchema.optional(),
+  personaSnippets: suggestionListSchema.optional(),
+  extraRuleSnippets: suggestionListSchema.optional(),
+});
+
 const patchSchema = z.object({
   enabled: z.boolean().optional(),
   applyToGuests: z.boolean().optional(),
@@ -50,6 +60,7 @@ const patchSchema = z.object({
   detectPiiPatterns: z.boolean().optional(),
   strictPii: z.boolean().optional(),
   logEvents: z.boolean().optional(),
+  suggestions: suggestionsSchema.optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -67,8 +78,28 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const guardrails = setGuardrails(parsed.data);
-  return NextResponse.json({ guardrails });
+  const { suggestions: nextSuggestions, ...policy } = parsed.data;
+  const guardrails = setGuardrails(policy);
+  const stored = getPolicySuggestions();
+  const suggestions = setPolicySuggestions({
+    allowedTopics: [
+      ...(nextSuggestions?.allowedTopics ?? stored.allowedTopics),
+      ...guardrails.allowedTopics.split("\n"),
+    ],
+    blockedTopics: [
+      ...(nextSuggestions?.blockedTopics ?? stored.blockedTopics),
+      ...guardrails.blockedTopics.split("\n"),
+    ],
+    keywords: [
+      ...(nextSuggestions?.keywords ?? stored.keywords),
+      ...guardrails.blockedKeywords.split("\n"),
+    ],
+    personaSnippets:
+      nextSuggestions?.personaSnippets ?? stored.personaSnippets,
+    extraRuleSnippets:
+      nextSuggestions?.extraRuleSnippets ?? stored.extraRuleSnippets,
+  });
+  return NextResponse.json({ guardrails, suggestions });
 }
 
 export async function POST(request: Request) {
@@ -92,13 +123,6 @@ export async function POST(request: Request) {
   }
 
   if (body?.action === "suggestions") {
-    const suggestionsSchema = z.object({
-      allowedTopics: z.array(z.string().max(200)).max(40).optional(),
-      blockedTopics: z.array(z.string().max(200)).max(40).optional(),
-      keywords: z.array(z.string().max(200)).max(40).optional(),
-      personaSnippets: z.array(z.string().max(200)).max(40).optional(),
-      extraRuleSnippets: z.array(z.string().max(200)).max(40).optional(),
-    });
     const parsed = suggestionsSchema.safeParse(body.suggestions ?? body);
     if (!parsed.success) {
       return NextResponse.json(

@@ -23,6 +23,7 @@ const hasColumn = (database: Database.Database, table: string, column: string) =
 const ensureSchema = (database: Database.Database) => {
   database.exec(`
     PRAGMA journal_mode = WAL;
+    PRAGMA wal_autocheckpoint = 1;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS users (
@@ -296,6 +297,11 @@ export const getDb = (): Database.Database => {
     db = new Database(DB_PATH);
     ensureSchema(db);
     ensureAdminUser(db);
+    try {
+      db.pragma("wal_checkpoint(TRUNCATE)");
+    } catch {
+      // another process may be reading the WAL
+    }
     return db;
   }
 
