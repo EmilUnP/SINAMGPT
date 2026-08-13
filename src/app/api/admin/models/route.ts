@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
-import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   setModelDisplayName,
   setModelEnabled,
@@ -56,24 +55,6 @@ export async function PATCH(request: Request) {
   if (parsed.data.display_name !== undefined) {
     setModelDisplayName(parsed.data.name, parsed.data.display_name);
   }
-
-  recordAuditEvent({
-    category: "models",
-    action:
-      parsed.data.is_enabled === undefined
-        ? "model.rename"
-        : parsed.data.is_enabled
-          ? "model.enable"
-          : "model.disable",
-    actor: { id: admin.id, username: admin.username },
-    target: { type: "model", id: parsed.data.name },
-    summary: `${admin.username} updated model ${parsed.data.name}`,
-    meta: {
-      is_enabled: parsed.data.is_enabled,
-      display_name: parsed.data.display_name,
-    },
-    ip: clientIp(request),
-  });
 
   try {
     const models = await syncModelsFromOllama();

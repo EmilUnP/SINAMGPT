@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { ShareUnavailable } from "@/components/ShareUnavailable";
 import { SharedChatView } from "@/components/SharedChatView";
-import { getCurrentUser } from "@/lib/auth";
+import { getPageUser } from "@/lib/auth";
 import { getSharedConversation, getSharedMessages } from "@/lib/share";
 
 type Props = { params: Promise<{ token: string }> };
 
 export default async function SharePage({ params }: Props) {
   const { token } = await params;
-  const user = await getCurrentUser();
+  const user = await getPageUser();
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(`/share/${token}`)}`);
   }

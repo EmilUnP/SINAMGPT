@@ -10,6 +10,20 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.6.0] — 2026-08-13
+
+Admin policy UX: Guardrails items are explicit On/Off switches, and unused Admin surfaces are gone.
+
+### Added
+- **Policy item switches** — allowed topics, refuse topics, keywords, and persona/extra snippets show **On / Off**. Clicking saves immediately and applies to new chats. Save changes is only for the text boxes (persona, refusal, extra rules)
+
+### Fixed
+- **Stale session on Admin/chat pages** — a leftover cookie after a DB wipe no longer 500s the page (`Cookies can only be modified in a Server Action or Route Handler`); the page now clears it via logout and sends you to login
+
+### Removed
+- **Guardrails Inspector** — the dry-run test tab and its admin inspect API (live chat blocking is unchanged)
+- **Admin Audit** — the Audit tab, `/api/admin/audit`, and audit event logging
+
 ## [1.5.0] — 2026-08-13
 
 Language release: the product UI is English / Azərbaycan, and company seeds (knowledge + guardrails policy) ship in Azerbaijani.
@@ -139,7 +153,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.4.0...v1.4.1

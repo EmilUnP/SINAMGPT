@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
-import { clientIp, recordAuditEvent } from "@/lib/audit";
 import {
   createKnowledgeDoc,
   getKnowledgeSettings,
@@ -42,20 +41,10 @@ export async function POST(request: Request) {
 
   const body = await request.json();
 
-  const ip = clientIp(request);
-
   if (body?.action === "seed_sinam") {
     const replaceAll = Boolean(body.replaceAll);
     const overwriteExisting = Boolean(body.overwriteExisting);
     const result = reseedSinamKnowledge(replaceAll, overwriteExisting);
-    recordAuditEvent({
-      category: "knowledge",
-      action: "knowledge.seed",
-      actor: { id: admin.id, username: admin.username },
-      summary: `${admin.username} reseeded SINAM knowledge`,
-      meta: { replaceAll, overwriteExisting, ...result },
-      ip,
-    });
     return NextResponse.json({
       ...result,
       docs: listKnowledgeDocs(),
@@ -80,14 +69,6 @@ export async function POST(request: Request) {
       );
     }
     const settings = setKnowledgeSettings(parsed.data);
-    recordAuditEvent({
-      category: "knowledge",
-      action: "knowledge.settings",
-      actor: { id: admin.id, username: admin.username },
-      summary: `${admin.username} updated knowledge settings`,
-      meta: { keys: Object.keys(parsed.data) },
-      ip,
-    });
     return NextResponse.json({ settings, docs: listKnowledgeDocs() });
   }
 
@@ -102,16 +83,6 @@ export async function POST(request: Request) {
   const doc = createKnowledgeDoc({
     ...parsed.data,
     category: parsed.data.category as KnowledgeCategory,
-  });
-
-  recordAuditEvent({
-    category: "knowledge",
-    action: "knowledge.create",
-    actor: { id: admin.id, username: admin.username },
-    target: { type: "knowledge_doc", id: doc.id },
-    summary: `${admin.username} created knowledge "${doc.title}"`,
-    meta: { category: doc.category },
-    ip,
   });
 
   return NextResponse.json({ doc }, { status: 201 });

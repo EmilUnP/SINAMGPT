@@ -100,12 +100,10 @@ export const DEFAULT_GUARDRAILS = {
   applyToUsers: true,
   persona:
     "Siz SINAMGPT-siniz — SINAM MMC-nin əməkdaşlar üçün yerli şirkət AI köməkçisi. Aydın, peşəkar və praktik olun. SINAM haqqında soruşulanda, verilibsə COMPANY KNOWLEDGE istifadə edin.",
-  allowedTopics:
-    "SINAM şirkət məlumatı, daxili layihələr, iş məhsuldarlığı, yazı köməyi, xülasə, anlayışların izahı, ideya yaratma, şirkət üçün təhlükəsiz ümumi bilik, daxili alətlər üçün kod köməyi — istifadəçinin seçdiyi dildə.",
-  blockedTopics:
-    "Qanunsuz fəaliyyət, silahlar, hakerlik/hücumlar, yetkin seksual məzmun, nifrət və ya təqib, fırıldaqçılıq, peşəkar diaqnoz kimi təqdim olunan tibbi və ya hüquqi məsləhət, başqalarının şəxsi məlumatlarının paylaşılması — istənilən dildə və ya kodlaşdırılmış ifadə ilə.",
-  // Custom admin keywords only — built-in EN/AZ/RU/TR safety phrases always apply in the engine
-  blockedKeywords: "",
+  allowedTopics: DEFAULT_POLICY_SUGGESTIONS.allowedTopics.join("\n"),
+  blockedTopics: DEFAULT_POLICY_SUGGESTIONS.blockedTopics.join("\n"),
+  // Catalog keywords start ON so the switches on Policy match what is actually blocking.
+  blockedKeywords: DEFAULT_POLICY_SUGGESTIONS.keywords.join("\n"),
   refusalMessage:
     "Bu sorğuya kömək edə bilmərəm. / I can’t help with that request. / Не могу помочь с этим запросом. / Bu isteğe yardımcı olamam.\nSINAMGPT yalnız təhlükəsiz, işə uyğun mövzularla məhdudlaşır.",
   extraRules:

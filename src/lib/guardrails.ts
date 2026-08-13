@@ -91,10 +91,16 @@ const isLegacyPolicyText = (
   if (value === LEGACY_EN_GUARDRAILS[field]) return true;
   if (field === "persona") return value.startsWith("You are SINAMGPT, SINAM Ltd");
   if (field === "allowedTopics") {
-    return value.startsWith("SINAM company information, internal projects");
+    return (
+      value.startsWith("SINAM company information, internal projects") ||
+      value.startsWith("SINAM şirkət məlumatı")
+    );
   }
   if (field === "blockedTopics") {
-    return value.startsWith("Illegal activity, weapons, hacking/attacks");
+    return (
+      value.startsWith("Illegal activity, weapons, hacking/attacks") ||
+      value.startsWith("Qanunsuz fəaliyyət")
+    );
   }
   return false;
 };
@@ -132,6 +138,14 @@ const migrateLegacyEnglishPolicySeed = () => {
           changed = true;
         }
       });
+      if (
+        changed &&
+        !(parsed.blockedKeywords ?? "").trim() &&
+        (isLegacyPolicyText("allowedTopics", parsed.allowedTopics) ||
+          isLegacyPolicyText("blockedTopics", parsed.blockedTopics))
+      ) {
+        next.blockedKeywords = DEFAULT_GUARDRAILS.blockedKeywords;
+      }
       if (changed) persistSetting(KEY, next);
     } catch {
       // keep stored JSON

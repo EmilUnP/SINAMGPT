@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.5.0](./CHANGELOG.md#150--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.6.0](./CHANGELOG.md#160--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -12,7 +12,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
-- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (live inspector + event log), **Audit** trail, theme-aware UI
+- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -75,8 +75,7 @@ There you can:
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
 - **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
-- **Guardrails** — living policy (persona/topics/custom keywords + DB quick-add chips); built-in harm phrases; live inspector; event log
-- **Audit** — admin changes, logins, share/project actions, plus guardrail hits in one view
+- **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; event log
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
@@ -102,7 +101,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events, audit events
+- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events
 - Delete `data/owngpt.db` to wipe all accounts and chats
 - Never commit `.env.local` or `data/` (already gitignored)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)

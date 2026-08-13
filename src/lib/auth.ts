@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import type { SessionPayload, User } from "./types";
 import { getDb, touchUserActivity } from "./db";
@@ -107,12 +108,20 @@ export const getCurrentUser = async (): Promise<User | null> => {
     .prepare(`SELECT ${USER_SELECT} FROM users WHERE id = ?`)
     .get(session.userId) as User | undefined;
 
-  // Stale cookie after DB reset / deleted user — clear it or /chat↔/login loops.
-  if (!row || row.is_active !== 1) {
-    await clearSessionCookie();
-    return null;
-  }
+  // Stale cookie after DB reset / deleted user. Do not delete the cookie here —
+  // pages cannot mutate cookies; use getPageUser() so render can bounce through logout.
+  if (!row || row.is_active !== 1) return null;
   return row;
+};
+
+/** Server Components only. Clears a leftover cookie via the logout route. */
+export const getPageUser = async (): Promise<User | null> => {
+  const session = await getSession();
+  const user = await getCurrentUser();
+  if (session && !user) {
+    redirect("/api/auth/logout?next=/login");
+  }
+  return user;
 };
 
 export const requireAdmin = async (): Promise<User | null> => {

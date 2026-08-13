@@ -29,7 +29,6 @@ export const adminEn = {
     models: "Models",
     knowledge: "Knowledge",
     guardrails: "Guardrails",
-    audit: "Audit",
     settings: "Settings",
   },
   overview: {
@@ -266,25 +265,6 @@ export const adminEn = {
     sourceUser: "user",
     sourceGuest: "guest",
   },
-  audit: {
-    title: "Audit trail",
-    description:
-      "Admin changes, auth outcomes, share/project ops, and guardrail hits — not every chat message (see Live usage for generations).",
-    all: "All",
-    admin: "Admin",
-    auth: "Auth",
-    share: "Share",
-    projects: "Projects",
-    knowledge: "Knowledge",
-    settings: "Settings",
-    models: "Models",
-    guardrailsCfg: "Guardrails cfg",
-    guardrailHits: "Guardrail hits",
-    loading: "Loading audit events…",
-    empty: "No events yet for this filter.",
-    failedLoad: "Failed to load audit trail",
-    networkLoad: "Network error loading audit trail",
-  },
   knowledge: {
     title: "Company knowledge",
     description:
@@ -404,7 +384,7 @@ export const adminEn = {
     topMatched: "Top matched rules",
     fromRecent: "From recent logged events · {allowed} allowed / {blocked} blocked topic lines in policy",
     noBlocksYet:
-      "No blocks or warnings yet. Try the inspector with a jailbreak sample.",
+      "No blocks or warnings yet. They appear here after a chat is blocked.",
     policySnapshot: "Policy snapshot",
     editPolicy: "Edit policy",
     noPersona: "No persona set",
@@ -431,7 +411,7 @@ export const adminEn = {
       "Hard detectors stop the request before the model. Persona, topics, and extra rules are soft guidance. Custom keywords + {n} built-in phrases hard-block with light de-obfuscation (e.g. b0mb). Company policy text is meant to stay Admin-editable.",
     editableLabel: "Editable:",
     editableHint:
-      "persona, allowed/refuse topics, custom keywords, refusal text, extra rules, and quick-add chips (saved separately below).",
+      "Click an item to turn it On or Off — that saves immediately and applies to new chats. Persona / refusal / extra-rule text still needs Save changes.",
     builtinLabel: "Built-in:",
     builtinHint:
       "{n} EN/AZ/RU/TR harm phrases always apply with your custom keywords. Soft fields guide the model; keywords + detectors hard-block before generation.",
@@ -441,6 +421,23 @@ export const adminEn = {
     voiceHint: "Who SINAMGPT is for employees — tone and role",
     personaPlaceholder: "You are SINAMGPT…",
     quickAdd: "Quick add",
+    toggleLegend:
+      "On = in the live policy (new chats). Off = listed here but not applied. Click to switch — it saves immediately.",
+    snippetLegend:
+      "On = this line is in the text above. Click to add or remove — it saves immediately.",
+    activeOn: "On",
+    activeOff: "Off",
+    activeCount: "{on} on · {off} off",
+    turnOn: "Turn on — include in live policy",
+    turnOff: "Turn off — remove from live policy",
+    addTopic: "Add topic + Enter",
+    noItems: "Nothing here yet. Add a line below.",
+    editAsText: "Edit as text",
+    unsavedHint: "Text edits are a draft until you Save changes.",
+    liveHint: "Item switches are live. Save is only needed for text fields.",
+    catalogTitle: "Available items (menu)",
+    catalogHint:
+      "This is only the menu of items you can switch On/Off above. Editing this list does not turn items on. Use the switches for the live policy.",
     canHelp: "What it CAN help with",
     softTopics: "Soft guidance · {n} topics",
     moreCount: "+{n} more",
@@ -463,11 +460,11 @@ export const adminEn = {
     refusalHint: "Shown when a hard block fires (prefer multilingual)",
     extraRules: "Extra rules",
     extraRulesHint: "Soft add-ons in the system prompt",
-    quickAddChips: "Quick-add chips",
+    quickAddChips: "Available items (menu)",
     quickAddChipsHint:
-      "Saved in the database — edit company shortcuts without shipping code. Does not change the live policy until you click a chip (or Save changes for policy text).",
+      "This is only the menu of items you can switch On/Off above. Editing this list does not turn items on.",
     hideEditor: "Hide editor",
-    editChipLists: "Edit chip lists",
+    editChipLists: "Edit menu lists",
     chipsAllowed: "Allowed-topic chips",
     chipsRefuse: "Refuse-topic chips",
     chipsKeywords: "Keyword chips",
@@ -506,7 +503,7 @@ export const adminEn = {
     strictPii: "Strict PII (hard block)",
     strictPiiHint: "When on, PII hits block instead of only warning",
     logBlocks: "Log blocks & warnings",
-    logBlocksHint: "Saves events for Overview / Inspector history",
+    logBlocksHint: "Saves events for Overview history",
     inspectorHint:
       "Dry-run a message through every layer — no model call, no event log pollution.",
     audience: "Audience",
@@ -528,7 +525,7 @@ export const adminEn = {
     couldNotReset: "Could not reset",
     resetDone: "Guardrails reset to defaults",
     couldNotSaveChips: "Could not save quick-add chips",
-    chipsSaved: "Quick-add chips saved — available immediately in this Policy tab",
+    chipsSaved: "Item menu saved. Turn items On above to put them in the live policy.",
     networkSaveChips: "Network error saving chips",
     resetChipsConfirm:
       "Reset quick-add chips to the built-in starter list? This does not change your saved policy text.",
@@ -577,7 +574,6 @@ export const adminAz: AdminMessages = {
     models: "Modellər",
     knowledge: "Bilik",
     guardrails: "Qoruyucular",
-    audit: "Audit",
     settings: "Parametrlər",
   },
   overview: {
@@ -813,25 +809,6 @@ export const adminAz: AdminMessages = {
     sourceUser: "istifadəçi",
     sourceGuest: "qonaq",
   },
-  audit: {
-    title: "Audit izi",
-    description:
-      "Admin dəyişiklikləri, auth nəticələri, paylaşım/layihə əməliyyatları və qoruyucu hadisələr — hər söhbət mesajı deyil (generasiyalar üçün Canlı istifadəyə baxın).",
-    all: "Hamısı",
-    admin: "Admin",
-    auth: "Auth",
-    share: "Paylaşım",
-    projects: "Layihələr",
-    knowledge: "Bilik",
-    settings: "Parametrlər",
-    models: "Modellər",
-    guardrailsCfg: "Qoruyucu konfiq",
-    guardrailHits: "Qoruyucu hadisələr",
-    loading: "Audit hadisələri yüklənir…",
-    empty: "Bu filtr üçün hələ hadisə yoxdur.",
-    failedLoad: "Audit izini yükləmək alınmadı",
-    networkLoad: "Audit izini yükləmək mümkün olmadı",
-  },
   knowledge: {
     title: "Şirkət bilikləri",
     description:
@@ -952,7 +929,7 @@ export const adminAz: AdminMessages = {
     fromRecent:
       "Son jurnal hadisələrindən · siyasətdə {allowed} icazəli / {blocked} rədd mövzu sətri",
     noBlocksYet:
-      "Hələ blok və ya xəbərdarlıq yoxdur. İnspektorda jailbreak nümunəsi yoxlayın.",
+      "Hələ blok və ya xəbərdarlıq yoxdur. Söhbət bloklananda burada görünəcək.",
     policySnapshot: "Siyasət anlıq görünüşü",
     editPolicy: "Siyasəti redaktə et",
     noPersona: "Rol təyin edilməyib",
@@ -979,7 +956,7 @@ export const adminAz: AdminMessages = {
       "Sərt detektorlar sorğunu modeldən əvvəl dayandırır. Rol, mövzular və əlavə qaydalar yumşaq yönləndirmədir. Xüsusi açar sözlər + {n} daxili ifadə gizlədilmiş yazılışı da tanıyır (məs. b0mb). Şirkət siyasəti Admin-də redaktə olunmalıdır.",
     editableLabel: "Redaktə olunan:",
     editableHint:
-      "rol, icazəli/rədd mövzuları, xüsusi açar sözlər, rədd mətni, əlavə qaydalar və sürətli çiplər (aşağıda ayrıca saxlanılır).",
+      "Elementə klikləyib Açın/Söndürün — dərhal saxlanılır və yeni söhbətlərə tətbiq olunur. Rol / rədd / əlavə qayda mətni üçün hələ Dəyişiklikləri saxla lazımdır.",
     builtinLabel: "Daxili:",
     builtinHint:
       "{n} AZ/EN/RU/TR zərər ifadəsi sizin xüsusi açar sözlərinizlə həmişə tətbiq olunur. Yumşaq sahələr modeli yönləndirir; açar sözlər + detektorlar generasiyadan əvvəl sərt blok edir.",
@@ -989,6 +966,23 @@ export const adminAz: AdminMessages = {
     voiceHint: "SINAMGPT işçilər üçün kimdir — ton və rol",
     personaPlaceholder: "Siz SINAMGPT-siniz…",
     quickAdd: "Sürətli əlavə",
+    toggleLegend:
+      "Açıq = canlı siyasətdədir (yeni söhbətlər). Sönülü = siyahıdadır, amma tətbiq olunmur. Kliklə keçid edin — dərhal saxlanılır.",
+    snippetLegend:
+      "Açıq = bu sətir yuxarıdakı mətndədir. Kliklə əlavə edin və ya çıxarın — dərhal saxlanılır.",
+    activeOn: "Açıq",
+    activeOff: "Sönülü",
+    activeCount: "{on} açıq · {off} sönülü",
+    turnOn: "Aç — canlı siyasətə daxil et",
+    turnOff: "Söndür — canlı siyasətdən çıxar",
+    addTopic: "Mövzu əlavə et + Enter",
+    noItems: "Hələ heç nə yoxdur. Aşağıdan sətir əlavə edin.",
+    editAsText: "Mətn kimi redaktə et",
+    unsavedHint: "Mətn dəyişiklikləri Dəyişiklikləri saxla basılana qədər qaralamadır.",
+    liveHint: "Element açarları canlıdır. Saxla yalnız mətn sahələri üçündür.",
+    catalogTitle: "Mövcud elementlər (menyü)",
+    catalogHint:
+      "Bu yalnız yuxarıda Açıq/Sönülü edə biləcəyiniz menyüdür. Bu siyahını redaktə etmək elementləri açmır. Canlı siyasət üçün açarlardan istifadə edin.",
     canHelp: "Nəyə KÖMƏK edə bilər",
     softTopics: "Yumşaq yönləndirmə · {n} mövzu",
     moreCount: "+{n} daha",
@@ -1011,11 +1005,11 @@ export const adminAz: AdminMessages = {
     refusalHint: "Sərt blok olanda göstərilir (çoxdilli olması daha yaxşıdır)",
     extraRules: "Əlavə qaydalar",
     extraRulesHint: "Sistem promptuna yumşaq əlavələr",
-    quickAddChips: "Sürətli əlavə çipləri",
+    quickAddChips: "Mövcud elementlər (menyü)",
     quickAddChipsHint:
-      "Verilənlər bazasında saxlanılır — kod göndərmədən şirkət qısa yollarını redaktə edin. Çipə klikləməyənə qədər (və ya siyasət mətni üçün Dəyişiklikləri saxla) canlı siyasəti dəyişmir.",
+      "Bu yalnız yuxarıda Açıq/Sönülü edə biləcəyiniz menyüdür. Bu siyahını redaktə etmək elementləri açmır.",
     hideEditor: "Redaktoru gizlət",
-    editChipLists: "Çip siyahılarını redaktə et",
+    editChipLists: "Menyu siyahılarını redaktə et",
     chipsAllowed: "İcazəli mövzu çipləri",
     chipsRefuse: "Rədd mövzu çipləri",
     chipsKeywords: "Açar söz çipləri",
@@ -1054,7 +1048,7 @@ export const adminAz: AdminMessages = {
     strictPii: "Sərt PII (tam blok)",
     strictPiiHint: "Açıq olanda PII yalnız xəbərdarlıq yox, blok edir",
     logBlocks: "Blok və xəbərdarlıqları jurnal et",
-    logBlocksHint: "Ümumi baxış / İnspektor tarixçəsi üçün hadisələri saxlayır",
+    logBlocksHint: "Ümumi baxış tarixçəsi üçün hadisələri saxlayır",
     inspectorHint:
       "Mesajı bütün laylardan quru işləd — model çağırışı yox, jurnal çirklənməsi yox.",
     audience: "Auditoriya",
@@ -1076,7 +1070,7 @@ export const adminAz: AdminMessages = {
     couldNotReset: "Sıfırlamaq alınmadı",
     resetDone: "Qoruyucular standartlara sıfırlandı",
     couldNotSaveChips: "Sürətli çipləri saxlamaq alınmadı",
-    chipsSaved: "Sürətli çiplər saxlanıldı — bu Siyasət tabında dərhal əlçatandır",
+    chipsSaved: "Element menyusu saxlanıldı. Canlı siyasətə salmaq üçün yuxarıda Açın.",
     networkSaveChips: "Çipləri saxlamaq mümkün olmadı",
     resetChipsConfirm:
       "Sürətli çiplər daxili başlanğıc siyahısına sıfırlansın? Saxlanılmış siyasət mətni dəyişməyəcək.",

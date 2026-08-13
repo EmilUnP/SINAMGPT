@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.5.0](../CHANGELOG.md#150--2026-08-13) (see [README](../README.md)).
+**Current release:** [v1.6.0](../CHANGELOG.md#160--2026-08-13) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.5.0)
+## Product today (v1.6.0)
 
 What operators and users can rely on right now:
 
@@ -21,8 +21,7 @@ What operators and users can rely on right now:
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); pack seed add-missing / refresh / replace; citations; corpus stats |
-| **Guardrails** | Living policy + layered detectors; DB-backed quick-add chips; built-in harm phrases stay in code; Admin Overview / Policy / Detectors / Inspector |
-| **Audit** | Admin → **Audit** trail for admin mutations, auth outcomes, share/project ops; merges recent guardrail hits |
+| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
 | **Quality check** | `npm run test:chat` smoke suite against a running server |
@@ -111,6 +110,15 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Safe knowledge seed | `done` | Add-missing by default; optional refresh/replace |
 | Editable policy chips | `done` | Quick-add suggestions stored in DB + Admin editor |
 | Editable vs built-in clarity | `done` | Company content stays Admin-owned; built-in harm phrases stay in code |
+
+### v1.6.0 — Policy switches & slimmer Admin (2026-08-13)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Policy On/Off switches | `done` | Topics, keywords, snippets apply to new chats on click |
+| Inspector removed | `done` | Dry-run tab and inspect API gone; chat blocking unchanged |
+| Audit removed | `done` | Admin tab, API, and event logging gone |
+| Stale cookie page 500 | `done` | Pages bounce through logout instead of deleting cookies while rendering |
 
 ### v1.5.0 — EN / AZ product language (2026-08-13)
 

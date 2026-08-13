@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   Radio,
   RefreshCw,
-  ScrollText,
   Search,
   Server,
   Settings2,
@@ -28,7 +27,6 @@ import {
   Zap,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
-import { AdminAuditPanel } from "@/components/AdminAuditPanel";
 import { AdminGuardrailsPanel } from "@/components/AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "@/components/AdminKnowledgePanel";
 import { AdminSettingsPanel } from "@/components/AdminSettingsPanel";
@@ -125,7 +123,6 @@ type TabId =
   | "models"
   | "knowledge"
   | "guardrails"
-  | "audit"
   | "settings";
 
 type AdminPanelProps = {
@@ -179,7 +176,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         label: t("admin.tabs.guardrails"),
         icon: ShieldAlert,
       },
-      { id: "audit", label: t("admin.tabs.audit"), icon: ScrollText },
       { id: "settings", label: t("admin.tabs.settings"), icon: Settings2 },
     ];
 
@@ -1184,15 +1180,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               setError("");
               setNotice(message);
             }}
-            onError={(message) => {
-              setNotice("");
-              setError(message);
-            }}
-          />
-        ) : null}
-
-        {tab === "audit" ? (
-          <AdminAuditPanel
             onError={(message) => {
               setNotice("");
               setError(message);

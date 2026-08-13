@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { hashPassword, markActive, newId, setSessionCookie } from "@/lib/auth";
-import { recordAuditEvent } from "@/lib/audit";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import { getRegistrationEnabledSetting } from "@/lib/settings";
 
@@ -31,13 +30,6 @@ export async function POST(request: Request) {
     }
 
     if (!getRegistrationEnabledSetting()) {
-      recordAuditEvent({
-        category: "auth",
-        action: "register.fail",
-        summary: "Registration blocked (closed)",
-        meta: { reason: "closed" },
-        ip,
-      });
       return NextResponse.json(
         {
           error:
@@ -61,14 +53,6 @@ export async function POST(request: Request) {
     const adminName = (process.env.ADMIN_USERNAME || "admin").trim();
 
     if (username.toLowerCase() === adminName.toLowerCase()) {
-      recordAuditEvent({
-        category: "auth",
-        action: "register.fail",
-        actor: { username },
-        summary: `Registration failed for "${username}"`,
-        meta: { reason: "reserved" },
-        ip,
-      });
       return NextResponse.json(
         { error: "This username is reserved" },
         { status: 400 },
@@ -82,14 +66,6 @@ export async function POST(request: Request) {
       .get(username);
 
     if (existing) {
-      recordAuditEvent({
-        category: "auth",
-        action: "register.fail",
-        actor: { username },
-        summary: `Registration failed for "${username}"`,
-        meta: { reason: "taken" },
-        ip,
-      });
       return NextResponse.json(
         { error: "Username already taken" },
         { status: 409 },
@@ -106,15 +82,6 @@ export async function POST(request: Request) {
 
     markActive(id);
     await setSessionCookie(id, username, "user");
-
-    recordAuditEvent({
-      category: "auth",
-      action: "register.ok",
-      actor: { id, username },
-      target: { type: "user", id },
-      summary: `New account "${username}" registered`,
-      ip,
-    });
 
     return NextResponse.json({
       user: { id, username, role: "user" },
