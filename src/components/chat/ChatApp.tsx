@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
 import { KnowledgeCitations } from "./KnowledgeCitations";
+import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
@@ -218,6 +219,29 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     };
   }, [shareOpen]);
 
+  useEffect(() => {
+    if (!mobileSidebar) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileSidebar]);
+
+  const extraNav = useMemo((): OverflowNavItem[] => {
+    const items: OverflowNavItem[] = [
+      { href: "/developer", label: t("chat.developer"), icon: KeyRound },
+    ];
+    if (user.role === "admin") {
+      items.push(
+        { href: "/admin", label: t("chat.adminPanel"), icon: Shield },
+        { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
+        { href: "/devlab", label: t("chat.devLab"), icon: Cable },
+      );
+    }
+    return items;
+  }, [t, user.role]);
+
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
     [conversations, activeId],
@@ -369,7 +393,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       }
     };
     void boot();
-  }, [loadConversations, loadModels, loadProjects]);
+  }, [loadConversations, loadModels, loadProjects, t]);
 
   useEffect(() => {
     if (searchTimerRef.current) {
@@ -1016,7 +1040,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const Sidebar = (
-    <aside className="flex h-full w-80 shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
+    <aside className="flex h-full w-[min(20rem,86vw)] shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-4 py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Image
@@ -1194,7 +1218,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   className={`rounded-md p-1 ${
                     isActive
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--sidebar-fg)]"
-                      : "opacity-0 group-hover:opacity-100"
+                      : "opacity-0 group-hover:opacity-100 touch-reveal"
                   } hover:bg-[var(--sidebar-hover)]`}
                   aria-label={t("chat.renameProjectAria", { name: project.name })}
                   title={t("common.rename")}
@@ -1207,7 +1231,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   className={`mr-0.5 rounded-md p-1 ${
                     isActive
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--danger)]"
-                      : "opacity-0 group-hover:opacity-100"
+                      : "opacity-0 group-hover:opacity-100 touch-reveal"
                   } hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]`}
                   aria-label={t("chat.deleteProjectAria", { name: project.name })}
                   title={t("common.delete")}
@@ -1279,7 +1303,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       </span>
                     </span>
                   </button>
-                  <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                  <div className="touch-reveal absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => void handleTogglePin(chat)}
@@ -1338,7 +1362,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+        <header className="page-chrome relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -1370,7 +1394,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 ) : null}
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="chip chip-ok">
+                <span className="chip chip-ok hidden min-[400px]:inline-flex">
                   <InfinityIcon size={11} /> {t("chat.unlimited")}
                 </span>
                 <span className="chip chip-info hidden sm:inline-flex">
@@ -1431,42 +1455,18 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 </span>
               </button>
             ) : null}
-            <Link
-              href="/developer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-              title={t("chat.developer")}
-            >
-              <KeyRound size={14} />
-              <span className="hidden sm:inline">{t("chat.developer")}</span>
-            </Link>
-            {user.role === "admin" ? (
-              <>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  title={t("chat.adminPanel")}
-                >
-                  <Shield size={14} />
-                  <span className="hidden sm:inline">{t("chat.adminPanel")}</span>
-                </Link>
-                <Link
-                  href="/lab"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  title={t("chat.modelLab")}
-                >
-                  <FlaskConical size={14} />
-                  <span className="hidden sm:inline">{t("chat.modelLab")}</span>
-                </Link>
-                <Link
-                  href="/devlab"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  title={t("chat.devLab")}
-                >
-                  <Cable size={14} />
-                  <span className="hidden sm:inline">{t("chat.devLab")}</span>
-                </Link>
-              </>
-            ) : null}
+            {extraNav.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="hidden items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] lg:inline-flex"
+                title={label}
+              >
+                <Icon size={14} />
+                <span className="hidden xl:inline">{label}</span>
+              </Link>
+            ))}
+            <OverflowNav items={extraNav} className="lg:hidden" />
             <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
           </div>
@@ -1618,7 +1618,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 style={{ width: "auto", height: "auto" }}
                 priority
               />
-              <p className="mt-5 text-4xl font-semibold tracking-tight text-[var(--text)]">
+              <p className="mt-5 text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
                 {t("chat.helloUser", { name: user.username })}
               </p>
               <p className="mt-3 max-w-md text-[var(--text-muted)]">
@@ -1737,7 +1737,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       ) : null}
                       {!isSending && !isEditing ? (
                         <div
-                          className={`mt-1 flex items-center gap-1 ${
+                          className={`mt-1 flex flex-wrap items-center gap-1 ${
                             isUser ? "justify-end" : ""
                           }`}
                         >
@@ -1801,7 +1801,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           )}
         </div>
 
-        <div className="border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+        <div className="safe-bottom border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div
             className="composer-shell mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
             style={{ boxShadow: "var(--composer-shadow)" }}
@@ -1813,7 +1813,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               onKeyDown={handleKeyDown}
               rows={1}
               placeholder={t("chat.messagePlaceholder")}
-              className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
+              className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-[15px]"
             />
             {isSending ? (
               <button
@@ -1836,7 +1836,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               </button>
             )}
           </div>
-          <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-[var(--text-muted)]">
+          <p className="mx-auto mt-2 hidden max-w-3xl text-center text-[11px] text-[var(--text-muted)] sm:block">
             {t("chat.footerHint")}
           </p>
         </div>

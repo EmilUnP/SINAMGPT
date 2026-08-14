@@ -1,16 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Copy,
-  FlaskConical,
-  KeyRound,
-  Shield,
-} from "lucide-react";
-import sinamLogo from "@/assets/sinam_logo.png";
+import { Copy, FlaskConical, KeyRound, Shield } from "lucide-react";
 import {
   AdminHint,
   AdminPanelCard,
@@ -19,9 +10,9 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
-import { LanguageToggle } from "@/components/LanguageToggle";
-import { useTranslations } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PageHeader } from "@/components/PageHeader";
+import { useLocale } from "@/components/LocaleProvider";
+import { formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiKeyPublic } from "@/lib/api-keys";
 import type { ApiUsageEvent } from "@/lib/api-usage";
 import type { User } from "@/lib/types";
@@ -30,15 +21,8 @@ type Props = { user: User };
 
 type Tab = "keys" | "requests" | "howto";
 
-const formatWhen = (value: string | null | undefined) => {
-  if (!value) return "";
-  const d = new Date(value.includes("T") ? value : `${value}Z`);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString();
-};
-
 export const DeveloperConsole = ({ user }: Props) => {
-  const t = useTranslations();
+  const { locale, t } = useLocale();
   const [tab, setTab] = useState<Tab>("keys");
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
   const [maxKeys, setMaxKeys] = useState(5);
@@ -87,7 +71,9 @@ export const DeveloperConsole = ({ user }: Props) => {
   }, [t]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const activeCount = keys.filter((k) => !k.revokedAt).length;
@@ -168,72 +154,22 @@ export const DeveloperConsole = ({ user }: Props) => {
             "radial-gradient(ellipse 60% 40% at 10% 0%, rgba(37,99,235,0.16), transparent 55%), radial-gradient(ellipse 40% 30% at 90% 10%, rgba(14,165,233,0.1), transparent 50%)",
         }}
       />
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("developer.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <KeyRound size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("developer.title")}
-                  </h1>
-                  <span className="status-pill status-info">
-                    {t("developer.badge")}
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {user.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            {user.role === "admin" ? (
-              <>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-                >
-                  <Shield size={14} />
-                  {t("developer.admin")}
-                </Link>
-                <Link
-                  href="/lab"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-                >
-                  <FlaskConical size={14} />
-                  {t("developer.lab")}
-                </Link>
-                <Link
-                  href="/devlab"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-                >
-                  {t("developer.devLab")}
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        backLabel={t("developer.backToChat")}
+        icon={KeyRound}
+        title={t("developer.title")}
+        badge={t("developer.badge")}
+        subtitle={`${user.username} · ${t("common.brand")}`}
+        links={
+          user.role === "admin"
+            ? [
+                { href: "/admin", label: t("developer.admin"), icon: Shield },
+                { href: "/lab", label: t("developer.lab"), icon: FlaskConical },
+                { href: "/devlab", label: t("developer.devLab") },
+              ]
+            : []
+        }
+      />
 
       <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
         <AdminPanelCard>
@@ -287,7 +223,7 @@ export const DeveloperConsole = ({ user }: Props) => {
                 <p className="text-xs text-[var(--admin-muted)]">
                   {t("developer.limitHint", { used: activeCount, max: maxKeys })}
                   {" · "}
-                  {rpm}/min
+                  {t("common.rpmShort", { n: rpm })}
                 </p>
 
                 {secret ? (
@@ -368,11 +304,11 @@ export const DeveloperConsole = ({ user }: Props) => {
                             </td>
                             <td className="py-2.5 pr-3 text-xs text-[var(--admin-muted)]">
                               {key.lastUsedAt
-                                ? formatWhen(key.lastUsedAt)
+                                ? formatDateTime(key.lastUsedAt, locale)
                                 : t("developer.never")}
                             </td>
                             <td className="py-2.5 text-xs text-[var(--admin-muted)]">
-                              {formatWhen(key.createdAt)}
+                              {formatDateTime(key.createdAt, locale)}
                             </td>
                           </tr>
                         ))}
@@ -408,15 +344,17 @@ export const DeveloperConsole = ({ user }: Props) => {
                           className="border-t border-[var(--admin-border)]"
                         >
                           <td className="py-2 pr-3 text-xs text-[var(--admin-muted)]">
-                            {formatWhen(row.created_at)}
+                            {formatDateTime(row.created_at, locale)}
                           </td>
                           <td className="py-2 pr-3 font-mono text-xs">
                             {row.key_prefix ? `${row.key_prefix}…` : "—"}
                           </td>
                           <td className="py-2 pr-3">{row.model || "—"}</td>
-                          <td className="py-2 pr-3 text-xs">{row.status}</td>
+                          <td className="py-2 pr-3 text-xs">
+                            {usageStatusLabel(row.status, locale)}
+                          </td>
                           <td className="py-2 pr-3 tabular-nums text-xs">
-                            {row.duration_ms} ms
+                            {t("common.ms", { n: row.duration_ms })}
                           </td>
                           <td className="py-2 text-xs text-[var(--status-bad-fg)]">
                             {row.error_message || ""}

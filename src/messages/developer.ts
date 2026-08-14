@@ -61,7 +61,7 @@ type WidenStrings<T> = {
 export type DeveloperMessages = WidenStrings<typeof developerEn>;
 
 export const developerAz: DeveloperMessages = {
-  title: "Developer",
+  title: "Tərtibatçı",
   badge: "API açarları",
   description:
     "Digər SINAM tətbiqlərinin yerli modelləri SINAMGPT üzərindən çağırması üçün açar yaradın. Bu yol xam model proksisidir — bilik və qoruyucu yoxdur.",

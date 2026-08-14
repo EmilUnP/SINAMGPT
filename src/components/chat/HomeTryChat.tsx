@@ -300,8 +300,8 @@ export const HomeTryChat = () => {
     <div className="relative flex min-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
       <AnimatedBackground />
 
-      <header className="relative z-10 flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
-        <div className="flex items-center gap-3">
+      <header className="page-chrome relative z-10 flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-8 sm:py-4">
+        <div className="flex min-w-0 items-center gap-3">
           <Image
             src={sinamLogo}
             alt={t("common.brand")}
@@ -311,17 +311,17 @@ export const HomeTryChat = () => {
             style={{ width: "auto", height: "auto" }}
             priority
           />
-          <div>
+          <div className="min-w-0">
             <p className="text-[15px] font-semibold tracking-[0.04em] text-[var(--home-fg)]">
               {t("common.brand")}
             </p>
-            <p className="text-[11px] text-[var(--home-faint)]">
+            <p className="hidden text-[11px] text-[var(--home-faint)] sm:block">
               {t("home.tagline")}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {models.length > 0 && guestEnabled ? (
             <ModelPicker
               models={models}
@@ -332,27 +332,27 @@ export const HomeTryChat = () => {
               variant="glass"
               emptyLabel={t("chat.noModels")}
               ariaLabel={t("chat.model")}
-              className="max-w-[9.5rem] sm:max-w-[12rem]"
+              className="hidden max-w-[12rem] sm:block"
             />
           ) : null}
           <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />
           <Link
             href="/login"
-            className="rounded-full px-3 py-2 text-sm text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4"
+            className="rounded-full px-2.5 py-1.5 text-xs text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4 sm:py-2 sm:text-sm"
           >
             {t("home.signIn")}
           </Link>
           <Link
             href="/register"
-            className="rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_24px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400 sm:px-4"
+            className="rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_8px_24px_rgba(37,99,235,0.3)] transition hover:from-blue-500 hover:to-sky-400 sm:px-4 sm:py-2 sm:text-sm"
           >
             {t("home.signUp")}
           </Link>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 pb-7 pt-2 sm:px-8">
+      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-1 pb-4 text-center">
             <div className="hero-brand">
@@ -371,7 +371,7 @@ export const HomeTryChat = () => {
             </div>
 
             <div className="hero-copy mt-4">
-              <h1 className="text-[2.15rem] font-normal tracking-tight text-[var(--home-fg)] sm:text-[2.9rem]">
+              <h1 className="text-[1.85rem] font-normal tracking-tight text-[var(--home-fg)] sm:text-[2.9rem]">
                 {guestEnabled
                   ? t("home.heroAsk")
                   : t("home.heroSignIn")}
@@ -391,7 +391,7 @@ export const HomeTryChat = () => {
             </div>
 
             {guestEnabled ? (
-              <div className="hero-actions mt-8 grid w-full max-w-2xl grid-cols-2 gap-3 sm:mt-10">
+              <div className="hero-actions mt-8 grid w-full max-w-2xl grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:mt-10">
                 {suggestions.map((item, index) => (
                   <button
                     key={item.title}
@@ -610,6 +610,22 @@ export const HomeTryChat = () => {
           </p>
         ) : null}
 
+        {models.length > 0 && guestEnabled ? (
+          <div className="mb-2 flex justify-end sm:hidden">
+            <ModelPicker
+              models={models}
+              value={model}
+              onChange={setModel}
+              disabled={isSending}
+              size="sm"
+              variant="glass"
+              emptyLabel={t("chat.noModels")}
+              ariaLabel={t("chat.model")}
+              className="max-w-[12rem]"
+            />
+          </div>
+        ) : null}
+
         <div
           className="composer-shell rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
           style={{ boxShadow: "var(--home-card-shadow)" }}
@@ -656,7 +672,7 @@ export const HomeTryChat = () => {
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-[var(--home-faint)]">
+        <p className="mt-3 hidden text-center text-[11px] text-[var(--home-faint)] sm:block">
           {t("home.footerHint")}
         </p>
       </main>

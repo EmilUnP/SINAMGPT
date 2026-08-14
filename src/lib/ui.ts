@@ -68,3 +68,25 @@ export const formatChatTime = (
   });
   return `${day}, ${time}`;
 };
+
+export const formatDateTime = (
+  value: string | null | undefined,
+  locale: AppLocale = "en",
+): string => {
+  if (!value) return "";
+  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(bcp47(locale));
+};
+
+export const usageStatusLabel = (
+  status: string,
+  locale: AppLocale = "en",
+): string => {
+  if (status === "ok") return translate(locale, "common.statusOk");
+  if (status === "error") return translate(locale, "common.statusError");
+  if (status === "aborted") return translate(locale, "common.statusAborted");
+  if (status === "rejected") return translate(locale, "common.statusRejected");
+  return status;
+};

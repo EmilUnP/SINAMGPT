@@ -1,10 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   BarChart3,
   FlaskConical,
   KeyRound,
@@ -24,11 +22,10 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
+import { PageHeader } from "@/components/PageHeader";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { LabCharts } from "@/components/lab/LabCharts";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LAB_SUITES,
   citeHintPreview,
@@ -454,7 +451,9 @@ export const ModelLab = ({ admin }: Props) => {
   }, [t]);
 
   useEffect(() => {
-    void loadModels();
+    void (async () => {
+      await loadModels();
+    })();
   }, [loadModels]);
 
   const runOne = async (
@@ -857,60 +856,18 @@ export const ModelLab = ({ admin }: Props) => {
         }}
       />
 
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("lab.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <FlaskConical size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("lab.title")}
-                  </h1>
-                  <span className="status-pill status-info">{t("lab.badge")}</span>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {admin.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            <Link
-              href="/devlab"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <KeyRound size={14} />
-              {t("chat.devLab")}
-            </Link>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <Shield size={14} />
-              {t("lab.admin")}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        maxWidthClass="max-w-7xl"
+        backLabel={t("lab.backToChat")}
+        icon={FlaskConical}
+        title={t("lab.title")}
+        badge={t("lab.badge")}
+        subtitle={`${admin.username} · ${t("common.brand")}`}
+        links={[
+          { href: "/devlab", label: t("chat.devLab"), icon: KeyRound },
+          { href: "/admin", label: t("lab.admin"), icon: Shield },
+        ]}
+      />
 
       <main className="relative z-10 mx-auto max-w-7xl space-y-5 px-4 py-6">
         <AdminPanelCard>

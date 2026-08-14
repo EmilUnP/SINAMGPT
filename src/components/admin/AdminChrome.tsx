@@ -52,7 +52,7 @@ export const AdminSubtabs = <T extends string>({
 }) => (
   <div
     role="tablist"
-    className="flex flex-wrap gap-1 border-b border-[var(--admin-border)]"
+    className="flex gap-1 overflow-x-auto border-b border-[var(--admin-border)] [-webkit-overflow-scrolling:touch]"
   >
     {tabs.map(({ id, label, icon: Icon, count }) => {
       const isActive = active === id;
@@ -63,7 +63,7 @@ export const AdminSubtabs = <T extends string>({
           role="tab"
           aria-selected={isActive}
           onClick={() => onChange(id)}
-          className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+          className={`-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
             isActive
               ? "border-[var(--accent)] text-[var(--admin-fg)]"
               : "border-transparent text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"

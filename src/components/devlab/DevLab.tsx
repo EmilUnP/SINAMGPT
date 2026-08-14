@@ -1,10 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ArrowLeft,
   BarChart3,
   FlaskConical,
   KeyRound,
@@ -12,7 +9,6 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
-import sinamLogo from "@/assets/sinam_logo.png";
 import {
   AdminHint,
   AdminPageHeader,
@@ -25,9 +21,9 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
-import { LanguageToggle } from "@/components/LanguageToggle";
-import { useTranslations } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PageHeader } from "@/components/PageHeader";
+import { useLocale } from "@/components/LocaleProvider";
+import { formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiGatewaySettings, ApiKeyPublic } from "@/lib/api-keys";
 import type { ApiUsageEvent, ApiUsageStatus } from "@/lib/api-usage";
 import type { User } from "@/lib/types";
@@ -54,20 +50,13 @@ type LiveRow = {
   elapsedMs: number;
 };
 
-const formatWhen = (value: string | null | undefined) => {
-  if (!value) return "";
-  const d = new Date(value.includes("T") ? value : `${value}Z`);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString();
-};
-
 const num = (value: number | null | undefined) =>
   value == null || Number.isNaN(value) ? "—" : String(value);
 
 export const DevLab = ({ admin }: Props) => {
-  const t = useTranslations();
+  const { locale, t } = useLocale();
   const [tab, setTab] = useState<Tab>("overview");
-  const [settings, setSettings] = useState<ApiGatewaySettings | null>(null);
+  const [, setSettings] = useState<ApiGatewaySettings | null>(null);
   const [draft, setDraft] = useState<ApiGatewaySettings | null>(null);
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
   const [live, setLive] = useState<LiveRow[]>([]);
@@ -124,7 +113,9 @@ export const DevLab = ({ admin }: Props) => {
   }, [model, page, status, t, username]);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+    })();
   }, [load]);
 
   const handleKeyPatch = async (
@@ -194,68 +185,19 @@ export const DevLab = ({ admin }: Props) => {
             "radial-gradient(ellipse 60% 40% at 10% 0%, rgba(37,99,235,0.16), transparent 55%), radial-gradient(ellipse 40% 30% at 90% 10%, rgba(14,165,233,0.1), transparent 50%)",
         }}
       />
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("devlab.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <KeyRound size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("devlab.title")}
-                  </h1>
-                  <span className="status-pill status-info">
-                    {t("devlab.badge")}
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {admin.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            <Link
-              href="/developer"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              {t("devlab.developer")}
-            </Link>
-            <Link
-              href="/lab"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <FlaskConical size={14} />
-              {t("devlab.lab")}
-            </Link>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <Shield size={14} />
-              {t("devlab.admin")}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        maxWidthClass="max-w-7xl"
+        backLabel={t("devlab.backToChat")}
+        icon={KeyRound}
+        title={t("devlab.title")}
+        badge={t("devlab.badge")}
+        subtitle={`${admin.username} · ${t("common.brand")}`}
+        links={[
+          { href: "/developer", label: t("devlab.developer") },
+          { href: "/lab", label: t("devlab.lab"), icon: FlaskConical },
+          { href: "/admin", label: t("devlab.admin"), icon: Shield },
+        ]}
+      />
 
       <main className="relative z-10 mx-auto max-w-7xl space-y-5 px-4 py-6">
         <AdminPanelCard>
@@ -402,7 +344,7 @@ export const DevLab = ({ admin }: Props) => {
                           </td>
                           <td className="py-2.5 pr-3 text-xs text-[var(--admin-muted)]">
                             {key.lastUsedAt
-                              ? formatWhen(key.lastUsedAt)
+                              ? formatDateTime(key.lastUsedAt, locale)
                               : t("devlab.never")}
                           </td>
                           <td className="py-2.5">
@@ -473,10 +415,10 @@ export const DevLab = ({ admin }: Props) => {
                     className={`${adminFieldClass} mt-0 max-w-[10rem]`}
                   >
                     <option value="">{t("devlab.all")}</option>
-                    <option value="ok">ok</option>
-                    <option value="error">error</option>
-                    <option value="rejected">rejected</option>
-                    <option value="aborted">aborted</option>
+                    <option value="ok">{t("common.statusOk")}</option>
+                    <option value="error">{t("common.statusError")}</option>
+                    <option value="rejected">{t("common.statusRejected")}</option>
+                    <option value="aborted">{t("common.statusAborted")}</option>
                   </select>
                 </div>
                 {requests.length === 0 ? (
@@ -504,16 +446,18 @@ export const DevLab = ({ admin }: Props) => {
                             className="border-t border-[var(--admin-border)]"
                           >
                             <td className="py-2 pr-3 text-xs text-[var(--admin-muted)]">
-                              {formatWhen(row.created_at)}
+                              {formatDateTime(row.created_at, locale)}
                             </td>
                             <td className="py-2 pr-3">{row.username}</td>
                             <td className="py-2 pr-3 font-mono text-xs">
                               {row.key_prefix ? `${row.key_prefix}…` : "—"}
                             </td>
                             <td className="py-2 pr-3">{row.model || "—"}</td>
-                            <td className="py-2 pr-3 text-xs">{row.status}</td>
+                            <td className="py-2 pr-3 text-xs">
+                              {usageStatusLabel(row.status, locale)}
+                            </td>
                             <td className="py-2 pr-3 tabular-nums text-xs">
-                              {row.duration_ms} ms
+                              {t("common.ms", { n: row.duration_ms })}
                             </td>
                             <td className="py-2 text-xs text-[var(--status-bad-fg)]">
                               {row.error_message || ""}

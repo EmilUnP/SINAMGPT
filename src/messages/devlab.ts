@@ -78,7 +78,7 @@ export const devlabAz: DevlabMessages = {
   backToChat: "Söhbət",
   admin: "Admin",
   lab: "Model lab",
-  developer: "Developer",
+  developer: "Tərtibatçı",
   tabOverview: "İcmal",
   tabKeys: "Açarlar",
   tabRequests: "Sorğular",

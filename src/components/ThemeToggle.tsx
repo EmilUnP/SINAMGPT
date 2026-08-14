@@ -35,6 +35,12 @@ export const ThemeToggle = ({
     { id: "dark", label: t("common.themeDark"), icon: Moon },
     { id: "system", label: t("common.themeSystem"), icon: Monitor },
   ];
+  const preferenceLabel =
+    preference === "light"
+      ? t("common.themeLight")
+      : preference === "dark"
+        ? t("common.themeDark")
+        : t("common.themeSystem");
 
   const updateMenuPos = () => {
     const el = rootRef.current;
@@ -131,7 +137,7 @@ export const ThemeToggle = ({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        title={t("common.themeTitle", { preference })}
+        title={t("common.themeTitle", { preference: preferenceLabel })}
       >
         <ActiveIcon size={iconSize} strokeWidth={1.85} />
       </button>

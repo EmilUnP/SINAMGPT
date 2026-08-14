@@ -28,13 +28,14 @@ export const SharedChatView = ({
 
   return (
     <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--text)]">
-      <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-4 py-3 backdrop-blur">
+      <header className="page-chrome flex items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
         <Link
           href="/chat"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          aria-label={t("share.back")}
         >
           <ArrowLeft size={16} />
-          {t("share.back")}
+          <span className="hidden sm:inline">{t("share.back")}</span>
         </Link>
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Image
@@ -58,7 +59,7 @@ export const SharedChatView = ({
                 <UserRound size={11} />
                 {ownerUsername}
               </span>
-              <span className="truncate">{model}</span>
+              <span className="truncate hidden sm:inline">{model}</span>
             </p>
           </div>
         </div>

@@ -298,6 +298,22 @@ html[data-theme="dark"] ::selection {
     height: max(100%, 44px);
     transform: translate(-50%, -50%);
   }
+
+  /* Hover-only row actions (pin/delete, rename) stay visible on touch. */
+  .touch-reveal {
+    opacity: 1 !important;
+  }
+}
+
+.page-chrome::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
 /*

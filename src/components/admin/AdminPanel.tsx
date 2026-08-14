@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowLeft,
   BookOpen,
   Bot,
   ChevronLeft,
@@ -28,14 +25,12 @@ import {
   UserX,
   Zap,
 } from "lucide-react";
-import sinamLogo from "@/assets/sinam_logo.png";
 import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { PageHeader } from "@/components/PageHeader";
 import { useLocale } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import type { AdminUserRow, User } from "@/lib/types";
 
 type Totals = {
@@ -722,70 +717,29 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         }}
       />
 
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("admin.chrome.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <Shield size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("admin.chrome.title")}
-                  </h1>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {admin.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            <Link
-              href="/lab"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <FlaskConical size={14} />
-              {t("chat.modelLab")}
-            </Link>
-            <Link
-              href="/devlab"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <KeyRound size={14} />
-              {t("chat.devLab")}
-            </Link>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-              {t("admin.chrome.refresh")}
-            </button>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        backLabel={t("admin.chrome.backToChat")}
+        icon={Shield}
+        title={t("admin.chrome.title")}
+        subtitle={`${admin.username} · ${t("common.brand")}`}
+        links={[
+          { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
+          { href: "/devlab", label: t("chat.devLab"), icon: KeyRound },
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-2.5 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)] sm:px-3"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">{t("admin.chrome.refresh")}</span>
+          </button>
+        }
+      />
 
       <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <nav className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1">
+        <nav className="flex gap-0.5 overflow-x-auto rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1 [-webkit-overflow-scrolling:touch]">
           {tabs.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
             return (
@@ -793,7 +747,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 key={id}
                 type="button"
                 onClick={() => setTab(id)}
-                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition sm:flex-none ${
+                className={`inline-flex shrink-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition sm:flex-none ${
                   active
                     ? "bg-[var(--accent)] text-white"
                     : "text-[var(--admin-muted)] hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
