@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FlaskConical,
+  KeyRound,
   Gauge,
   LayoutDashboard,
   Radio,
@@ -763,6 +764,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             >
               <FlaskConical size={14} />
               {t("chat.modelLab")}
+            </Link>
+            <Link
+              href="/devlab"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
+            >
+              <KeyRound size={14} />
+              {t("chat.devLab")}
             </Link>
             <button
               type="button"

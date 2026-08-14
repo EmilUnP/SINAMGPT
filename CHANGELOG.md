@@ -10,6 +10,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.9.0] — 2026-08-14
+
+Corporate API keys so other SINAM apps can call local models through SINAMGPT.
+
+### Added
+- **Corporate API keys** — signed-in users generate keys on `/developer`; other company apps call `GET /api/v1/models` and `POST /api/v1/generate` (custom JSON/SSE, Bearer `sinam_…`). Raw model proxy only (no knowledge, no guardrails). Secret shown once; hashed at rest.
+- **Dev lab (`/devlab`)** — admin-only page for all keys, API request history, live streams, and gateway settings (enable, max keys, RPM, max chars, CORS origins)
+
 ## [1.8.0] — 2026-08-13
 
 Model lab is a real test console: live chat of the run, scored results, and charts. Suites and RAG matching are sharper against the SINAM pack.
@@ -178,7 +186,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0

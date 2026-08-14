@@ -1,4 +1,6 @@
 import { adminAz } from "./admin";
+import { developerAz } from "./developer";
+import { devlabAz } from "./devlab";
 import { labAz } from "./lab";
 import type { Messages } from "./en";
 
@@ -143,6 +145,8 @@ export const az: Messages = {
     unlimitedMessages: "Limitsiz mesajlar",
     adminPanel: "Admin paneli",
     modelLab: "Model laboratoriyası",
+    developer: "Developer",
+    devLab: "Dev lab",
     signOut: "Çıxış",
     unlimited: "Limitsiz",
     historySaved: "Tarixçə saxlanılır",
@@ -228,5 +232,7 @@ export const az: Messages = {
     backToChat: "Söhbətə qayıt",
   },
   lab: labAz,
+  developer: developerAz,
+  devlab: devlabAz,
   admin: adminAz,
 };

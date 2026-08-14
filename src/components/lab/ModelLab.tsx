@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   BarChart3,
   FlaskConical,
+  KeyRound,
   LineChart,
   MessageSquare,
   Play,
@@ -893,6 +894,13 @@ export const ModelLab = ({ admin }: Props) => {
           <div className="flex items-center gap-2">
             <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
+            <Link
+              href="/devlab"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
+            >
+              <KeyRound size={14} />
+              {t("chat.devLab")}
+            </Link>
             <Link
               href="/admin"
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"

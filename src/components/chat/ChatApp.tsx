@@ -2,7 +2,9 @@
 
 import {
   Check,
+  Cable,
   FlaskConical,
+  KeyRound,
   Folder,
   FolderPlus,
   Infinity as InfinityIcon,
@@ -1429,6 +1431,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 </span>
               </button>
             ) : null}
+            <Link
+              href="/developer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+              title={t("chat.developer")}
+            >
+              <KeyRound size={14} />
+              <span className="hidden sm:inline">{t("chat.developer")}</span>
+            </Link>
             {user.role === "admin" ? (
               <>
                 <Link
@@ -1446,6 +1456,14 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 >
                   <FlaskConical size={14} />
                   <span className="hidden sm:inline">{t("chat.modelLab")}</span>
+                </Link>
+                <Link
+                  href="/devlab"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                  title={t("chat.devLab")}
+                >
+                  <Cable size={14} />
+                  <span className="hidden sm:inline">{t("chat.devLab")}</span>
                 </Link>
               </>
             ) : null}

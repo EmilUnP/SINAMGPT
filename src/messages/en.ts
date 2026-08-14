@@ -1,4 +1,6 @@
 import { adminEn } from "./admin";
+import { developerEn } from "./developer";
+import { devlabEn } from "./devlab";
 import { labEn } from "./lab";
 
 export const en = {
@@ -136,6 +138,8 @@ export const en = {
     unlimitedMessages: "Unlimited messages",
     adminPanel: "Admin panel",
     modelLab: "Model lab",
+    developer: "Developer",
+    devLab: "Dev lab",
     signOut: "Sign out",
     unlimited: "Unlimited",
     historySaved: "History saved",
@@ -219,6 +223,8 @@ export const en = {
     backToChat: "Back to chat",
   },
   lab: labEn,
+  developer: developerEn,
+  devlab: devlabEn,
   admin: adminEn,
 } as const;
 

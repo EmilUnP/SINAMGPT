@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.8.0](./CHANGELOG.md#180--2026-08-13) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.9.0](./CHANGELOG.md#190--2026-08-14) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Login / register** (accounts stored locally)
@@ -14,6 +14,8 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
 - **Admin** — users, models, live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
+- **Developer API** (`/developer`) — generate API keys; call local models from other company apps via `/api/v1/generate`
+- **Dev lab** (`/devlab`) — admin view of all keys, API usage, and gateway limits
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -38,7 +40,8 @@ Open [http://localhost:3055](http://localhost:3055)
 
 1. **Home** (`/`) — try the model immediately (guest, limited, no saved history)
 2. **Sign in / Register** — full chat with saved history
-3. Admin account can open `/admin` and **Model lab** at `/lab`
+3. Admin account can open `/admin`, **Model lab** at `/lab`, and **Dev lab** at `/devlab`
+4. Any signed-in user can open **Developer** at `/developer` for API keys
 
 For production on the company machine:
 
@@ -81,6 +84,7 @@ There you can:
 - Enable / disable accounts and which models users can use
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
+- **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
 
 ## Config
 
@@ -122,6 +126,25 @@ Uses `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env.local` (or `TEST_USERNAME` /
 Checks login, models, streaming chat, English language drift, citations on SINAM knowledge (about, SESDA, Farabi, contact), guardrail refusals (salary, jailbreak, secrets), projects, share links, and rewrite.
 
 Admins can also run live model checks in the UI at `/lab` (Quick / Assist / Guardrails — Live, Results, and Charts tabs).
+
+## Corporate API keys
+
+Other SINAM apps can call **local models through SINAMGPT** with a personal API key. This is a **raw model proxy** (no knowledge RAG, no guardrails). Chat in the UI is unchanged.
+
+1. Sign in → **Developer** (`/developer`) → create a key (shown once)
+2. Call:
+
+```bash
+curl -N http://localhost:3055/api/v1/generate \
+  -H "Authorization: Bearer sinam_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemma3:4b","stream":true,"messages":[{"role":"user","content":"Hello"}]}'
+```
+
+- `GET /api/v1/models` — enabled models
+- `POST /api/v1/generate` — `{ model, messages, stream }` → SSE (`token` / `done` / `error`) or JSON when `"stream": false`
+- Limits, CORS origins, and a master on/off switch live in admin **Dev lab** (`/devlab`)
+- Default: 5 keys/user, 30 requests/minute/key, 16000 prompt chars; empty CORS list means server-to-server only
 
 ## Releases & changelog
 

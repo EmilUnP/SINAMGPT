@@ -68,7 +68,9 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/chat") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/lab")
+    pathname.startsWith("/lab") ||
+    pathname.startsWith("/developer") ||
+    pathname.startsWith("/devlab")
   ) {
     if (!session) {
       const url = request.nextUrl.clone();
@@ -79,7 +81,9 @@ export async function middleware(request: NextRequest) {
     // Defense-in-depth: block non-admins early when role is in the session.
     // Older cookies without role still reach the page-level requireAdmin check.
     if (
-      (pathname.startsWith("/admin") || pathname.startsWith("/lab")) &&
+      (pathname.startsWith("/admin") ||
+        pathname.startsWith("/lab") ||
+        pathname.startsWith("/devlab")) &&
       session.role &&
       session.role !== "admin"
     ) {
@@ -107,6 +111,10 @@ export const config = {
     "/admin/:path*",
     "/lab",
     "/lab/:path*",
+    "/developer",
+    "/developer/:path*",
+    "/devlab",
+    "/devlab/:path*",
     "/login",
     "/register",
   ],

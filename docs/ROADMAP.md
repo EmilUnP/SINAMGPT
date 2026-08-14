@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.8.0](../CHANGELOG.md#180--2026-08-13) (see [README](../README.md)).
+**Current release:** [v1.9.0](../CHANGELOG.md#190--2026-08-14) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.8.0)
+## Product today (v1.9.0)
 
 What operators and users can rely on right now:
 
@@ -25,6 +25,7 @@ What operators and users can rely on right now:
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
+| **API gateway** | User keys at `/developer`; custom `POST /api/v1/generate` raw proxy; admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -64,6 +65,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.9.0 — Corporate API gateway (2026-08-14)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| API keys `/developer` | `done` | Users create/revoke keys; secret shown once; hashed at rest |
+| `GET /api/v1/models` + `POST /api/v1/generate` | `done` | Custom JSON/SSE; raw model proxy (no RAG, no guardrails) |
+| Dev lab `/devlab` | `done` | Admin keys, request log, RPM/CORS/gateway settings |
 
 ### v1.8.0 — Lab console (2026-08-13)
 

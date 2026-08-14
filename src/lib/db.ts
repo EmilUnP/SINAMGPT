@@ -172,6 +172,54 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_audit_events_category
       ON audit_events(category, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
+      last_used_at TEXT,
+      revoked_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_keys_user
+      ON api_keys(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS api_usage_events (
+      id TEXT PRIMARY KEY,
+      api_key_id TEXT,
+      user_id TEXT,
+      username TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT '',
+      prompt_preview TEXT NOT NULL DEFAULT '',
+      prompt_chars INTEGER NOT NULL DEFAULT 0,
+      response_chars INTEGER NOT NULL DEFAULT 0,
+      ttft_ms INTEGER,
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      tokens_eval INTEGER,
+      tokens_prompt INTEGER,
+      tokens_per_sec REAL,
+      status TEXT NOT NULL CHECK (
+        status IN ('ok', 'error', 'aborted', 'rejected')
+      ),
+      error_message TEXT,
+      ip TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_created
+      ON api_usage_events(created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_user
+      ON api_usage_events(user_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_key
+      ON api_usage_events(api_key_id, created_at DESC);
   `);
 
   // Seed defaults once (admin can change later in Admin → Settings / Guardrails)
@@ -197,6 +245,16 @@ const ensureSchema = (database: Database.Database) => {
   insertSettingIfMissing(
     "guardrail_policy_suggestions",
     JSON.stringify(DEFAULT_POLICY_SUGGESTIONS),
+  );
+  insertSettingIfMissing(
+    "api_gateway",
+    JSON.stringify({
+      enabled: true,
+      maxKeysPerUser: 5,
+      maxRequestsPerMinute: 30,
+      maxChars: 16000,
+      corsOrigins: [],
+    }),
   );
 
   // Migrate older DBs created before admin fields existed
