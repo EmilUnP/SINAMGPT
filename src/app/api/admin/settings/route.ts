@@ -16,6 +16,7 @@ import {
   setTopPSetting,
   setUserHistoryLimitSetting,
   setUserMaxCharsSetting,
+  setAppFeatureFlags,
 } from "@/lib/settings";
 
 export async function GET() {
@@ -41,6 +42,8 @@ const patchSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   numPredict: z.number().int().min(-1).max(8192).optional(),
   topP: z.number().min(0.05).max(1).optional(),
+  developerApiEnabled: z.boolean().optional(),
+  devLabEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -84,6 +87,17 @@ export async function PATCH(request: Request) {
   if (d.temperature !== undefined) setTemperatureSetting(d.temperature);
   if (d.numPredict !== undefined) setNumPredictSetting(d.numPredict);
   if (d.topP !== undefined) setTopPSetting(d.topP);
+  if (
+    d.developerApiEnabled !== undefined ||
+    d.devLabEnabled !== undefined
+  ) {
+    setAppFeatureFlags({
+      ...(d.developerApiEnabled !== undefined
+        ? { developerApi: d.developerApiEnabled }
+        : {}),
+      ...(d.devLabEnabled !== undefined ? { devLab: d.devLabEnabled } : {}),
+    });
+  }
 
   return NextResponse.json({ settings: getAppSettings() });
 }

@@ -14,6 +14,7 @@ import {
 import { decodeImageData, MAX_CHAT_IMAGES } from "@/lib/attachments";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 import {
   getChatRuntimeOptions,
   isModelEnabled,
@@ -189,6 +190,11 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const settings = getApiGatewaySettings();
   const ip = clientIp(request);
+
+  if (!isFeatureEnabled("developerApi")) {
+    return jsonWithCors(request, { error: FEATURE_DISABLED_ERROR }, 403);
+  }
+
   const auth = authenticateApiKey(request);
   if (!auth) {
     return jsonWithCors(request, { error: "Invalid or missing API key" }, 401);

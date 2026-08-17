@@ -28,7 +28,7 @@ import type { ApiGatewaySettings, ApiKeyPublic } from "@/lib/api-keys";
 import type { ApiUsageEvent, ApiUsageStatus } from "@/lib/api-usage";
 import type { User } from "@/lib/types";
 
-type Props = { admin: User };
+type Props = { admin: User; developerApiEnabled?: boolean };
 
 type Tab = "overview" | "keys" | "requests" | "settings";
 
@@ -53,7 +53,7 @@ type LiveRow = {
 const num = (value: number | null | undefined) =>
   value == null || Number.isNaN(value) ? "—" : String(value);
 
-export const DevLab = ({ admin }: Props) => {
+export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
   const { locale, t } = useLocale();
   const [tab, setTab] = useState<Tab>("overview");
   const [, setSettings] = useState<ApiGatewaySettings | null>(null);
@@ -193,7 +193,9 @@ export const DevLab = ({ admin }: Props) => {
         badge={t("devlab.badge")}
         subtitle={`${admin.username} · ${t("common.brand")}`}
         links={[
-          { href: "/developer", label: t("devlab.developer") },
+          ...(developerApiEnabled
+            ? [{ href: "/developer", label: t("devlab.developer") }]
+            : []),
           { href: "/lab", label: t("devlab.lab"), icon: FlaskConical },
           { href: "/admin", label: t("devlab.admin"), icon: Shield },
         ]}

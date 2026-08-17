@@ -17,11 +17,11 @@ import type { ApiKeyPublic } from "@/lib/api-keys";
 import type { ApiUsageEvent } from "@/lib/api-usage";
 import type { User } from "@/lib/types";
 
-type Props = { user: User };
+type Props = { user: User; devLabEnabled?: boolean };
 
 type Tab = "keys" | "requests" | "howto";
 
-export const DeveloperConsole = ({ user }: Props) => {
+export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const { locale, t } = useLocale();
   const [tab, setTab] = useState<Tab>("keys");
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
@@ -165,7 +165,9 @@ export const DeveloperConsole = ({ user }: Props) => {
             ? [
                 { href: "/admin", label: t("developer.admin"), icon: Shield },
                 { href: "/lab", label: t("developer.lab"), icon: FlaskConical },
-                { href: "/devlab", label: t("developer.devLab") },
+                ...(devLabEnabled
+                  ? [{ href: "/devlab", label: t("developer.devLab") }]
+                  : []),
               ]
             : []
         }

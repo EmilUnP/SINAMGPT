@@ -3,6 +3,7 @@ import {
   getApiGatewaySettings,
   withApiCors,
 } from "@/lib/api-keys";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 import { getEnabledModels } from "@/lib/settings";
 
 export async function OPTIONS(request: Request) {
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
   const settings = getApiGatewaySettings();
   const json = (body: unknown, status = 200) =>
     withApiCors(Response.json(body, { status }), request, settings);
+
+  if (!isFeatureEnabled("developerApi")) {
+    return json({ error: FEATURE_DISABLED_ERROR }, 403);
+  }
 
   const auth = authenticateApiKey(request);
   if (!auth) {

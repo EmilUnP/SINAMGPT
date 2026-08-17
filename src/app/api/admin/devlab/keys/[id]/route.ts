@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { revokeApiKey, setApiKeyEnabled } from "@/lib/api-keys";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 const patchSchema = z.object({
   enabled: z.boolean().optional(),
@@ -14,6 +15,9 @@ export async function PATCH(request: Request, { params }: Params) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!isFeatureEnabled("devLab")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
 
   const { id } = await params;

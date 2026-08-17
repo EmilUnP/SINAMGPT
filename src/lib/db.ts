@@ -259,6 +259,13 @@ const ensureSchema = (database: Database.Database) => {
       corsOrigins: [],
     }),
   );
+  insertSettingIfMissing(
+    "feature_flags",
+    JSON.stringify({
+      developerApi: false,
+      devLab: false,
+    }),
+  );
 
   // Migrate older DBs created before admin fields existed
   if (!hasColumn(database, "users", "role")) {

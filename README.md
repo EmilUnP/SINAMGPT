@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.10.0](./CHANGELOG.md#1100--2026-08-14) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.10.1](./CHANGELOG.md#1101--2026-08-17) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
 - **Vision models** — attach or paste images when the selected model is multimodal (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …)
@@ -15,8 +15,8 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
 - **Admin** — users, models (capability chips), live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
-- **Developer API** (`/developer`) — generate API keys; call local models from other company apps via `/api/v1/generate` (text and images)
-- **Dev lab** (`/devlab`) — admin view of all keys, API usage, and gateway limits
+- **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images)
+- **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
@@ -41,8 +41,8 @@ Open [http://localhost:3055](http://localhost:3055)
 
 1. **Home** (`/`) — try the model immediately (guest, limited, no saved history)
 2. **Sign in / Register** — full chat with saved history
-3. Admin account can open `/admin`, **Model lab** at `/lab`, and **Dev lab** at `/devlab`
-4. Any signed-in user can open **Developer** at `/developer` for API keys
+3. Admin account can open `/admin` and **Model lab** at `/lab`. **Dev lab** (`/devlab`) is off until enabled in Admin → Settings → Features
+4. **Developer** (`/developer`) API keys are off until that same Features toggle is on
 
 For production on the company machine:
 
@@ -133,7 +133,8 @@ Admins can also run live model checks in the UI at `/lab` (Quick / Assist / Guar
 
 Other SINAM apps can call **local models through SINAMGPT** with a personal API key. This is a **raw model proxy** (no knowledge RAG, no guardrails). Chat in the UI is unchanged.
 
-1. Sign in → **Developer** (`/developer`) → create a key (shown once)
+1. Admin → Settings → Features → enable **Developer API** (and **Dev lab** if you want the admin console)
+2. Sign in → **Developer** (`/developer`) → create a key (shown once)
 2. Call:
 
 ```bash
@@ -154,7 +155,7 @@ curl -N http://localhost:3055/api/v1/generate \
 
 - `GET /api/v1/models` — enabled models (`name`, `displayName`, `backend`, `vision`, `tools`)
 - `POST /api/v1/generate` — `{ model, messages, stream }` → SSE (`token` / `done` / `error`) or JSON when `"stream": false`. Each message may include optional `images: [{ mime, data }]` (raw or data-URL base64) when the model supports vision.
-- Limits, CORS origins, and a master on/off switch live in admin **Dev lab** (`/devlab`)
+- Limits, CORS origins, and a master on/off switch live in admin **Dev lab** (`/devlab`) (feature must be on in Settings first)
 - Default: 5 keys/user, 30 requests/minute/key, 16000 prompt chars; empty CORS list means server-to-server only
 
 ## Releases & changelog

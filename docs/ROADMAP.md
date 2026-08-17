@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.10.0](../CHANGELOG.md#1100--2026-08-14) (see [README](../README.md)).
+**Current release:** [v1.10.1](../CHANGELOG.md#1101--2026-08-17) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.10.0)
+## Product today (v1.10.1)
 
 What operators and users can rely on right now:
 
@@ -25,7 +25,7 @@ What operators and users can rely on right now:
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images; admin middleware by session role |
 | **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`); capabilities from Ollama `/api/show` + name heuristics |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
-| **API gateway** | User keys at `/developer`; custom `POST /api/v1/generate` raw proxy (text + optional images); admin **Dev lab** at `/devlab` |
+| **API gateway** | Off by default. Admin → Settings → Features turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -65,6 +65,12 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.10.1 — Feature toggles (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Feature flags (Settings) | `done` | Developer API + Dev lab off until Admin → Settings → Features |
 
 ### v1.10.0 — Vision chat & mobile polish (2026-08-14)
 

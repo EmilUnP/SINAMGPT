@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   Bot,
   MessageSquare,
+  Puzzle,
   Settings2,
   SlidersHorizontal,
   UserPlus,
@@ -34,6 +35,8 @@ export type SettingsDraft = {
   temperature: string;
   numPredict: string;
   topP: string;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
 };
 
 type ModelOption = {
@@ -42,7 +45,7 @@ type ModelOption = {
   is_enabled: boolean;
 };
 
-type SettingsTab = "access" | "chat" | "generation";
+type SettingsTab = "access" | "chat" | "generation" | "features";
 
 type Props = {
   draft: SettingsDraft;
@@ -148,6 +151,11 @@ export const AdminSettingsPanel = ({
               id: "generation",
               label: t("admin.settings.tabGeneration"),
               icon: SlidersHorizontal,
+            },
+            {
+              id: "features",
+              label: t("admin.settings.tabFeatures"),
+              icon: Puzzle,
             },
           ]}
         />
@@ -405,6 +413,32 @@ export const AdminSettingsPanel = ({
             </strong>{" "}
             {t("admin.settings.genHintAfter")}
           </AdminHint>
+        </div>
+      ) : null}
+
+      {tab === "features" ? (
+        <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
+          <SectionCard
+            title={t("admin.settings.featuresTitle")}
+            description={t("admin.settings.featuresDesc")}
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AdminToggleCard
+                emphasize
+                checked={draft.developerApiEnabled}
+                onChange={(v) => patch({ developerApiEnabled: v })}
+                label={t("admin.settings.developerApi")}
+                hint={t("admin.settings.developerApiHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.devLabEnabled}
+                onChange={(v) => patch({ devLabEnabled: v })}
+                label={t("admin.settings.devLab")}
+                hint={t("admin.settings.devLabHint")}
+              />
+            </div>
+          </SectionCard>
         </div>
       ) : null}
 

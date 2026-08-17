@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import {
+  completeOllamaChat,
   isOllamaEnabled,
   listOllamaModels,
   pingOllama,
@@ -13,6 +14,7 @@ import type {
   LlmModel,
 } from "./types";
 import {
+  completeVllmChat,
   isVllmEnabled,
   listVllmModels,
   pingVllm,
@@ -122,6 +124,20 @@ export const streamChat = async (
     return streamVllmChat(realName, messages, options);
   }
   return streamOllamaChat(realName, messages, options);
+};
+
+/** Non-streaming completion for small helper prompts (query gloss, etc.). */
+export const completeChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<string> => {
+  const backend = resolveModelBackend(model);
+  const realName = stripBackendPrefix(model);
+  if (backend === "vllm") {
+    return completeVllmChat(realName, messages, options);
+  }
+  return completeOllamaChat(realName, messages, options);
 };
 
 export const pingBackends = async (): Promise<BackendHealth[]> => {

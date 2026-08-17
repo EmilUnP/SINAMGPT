@@ -6,6 +6,7 @@ import {
   getApiGatewaySettings,
   listApiKeysForUser,
 } from "@/lib/api-keys";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -15,6 +16,9 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isFeatureEnabled("developerApi")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
   const settings = getApiGatewaySettings();
   return NextResponse.json({
@@ -32,6 +36,9 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isFeatureEnabled("developerApi")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
 
   const settings = getApiGatewaySettings();

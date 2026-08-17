@@ -1,9 +1,14 @@
 import { redirect } from "next/navigation";
 import { DeveloperConsole } from "@/components/developer";
 import { getPageUser } from "@/lib/auth";
+import { getFeatureFlags } from "@/lib/features";
 
 export default async function DeveloperPage() {
   const user = await getPageUser();
   if (!user) redirect("/login?next=/developer");
-  return <DeveloperConsole user={user} />;
+  const features = getFeatureFlags();
+  if (!features.developerApi) redirect("/chat");
+  return (
+    <DeveloperConsole user={user} devLabEnabled={features.devLab} />
+  );
 }

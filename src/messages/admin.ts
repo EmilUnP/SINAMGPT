@@ -139,10 +139,11 @@ export const adminEn = {
   settings: {
     title: "App settings",
     description:
-      "Control guest access, registration, default models, context limits, and generation behavior for Ollama / vLLM.",
+      "Control guest access, registration, default models, context limits, generation behavior, and which product features are turned on.",
     tabAccess: "Access",
     tabChat: "Chat & models",
     tabGeneration: "Generation",
+    tabFeatures: "Features",
     guestTitle: "Guest try-chat",
     guestDesc:
       "Home page chat without an account. Keep limits tight for public LAN use.",
@@ -211,6 +212,15 @@ export const adminEn = {
     errTemp: "Temperature must be between 0 and 2",
     errTokens: "Max reply tokens must be -1 (default) or 1–8192",
     errTopP: "Top-p must be between 0.05 and 1",
+    featuresTitle: "Product features",
+    featuresDesc:
+      "Turn surfaces on or off. Off hides them in navigation and blocks the pages and APIs until you enable them here.",
+    developerApi: "Developer API",
+    developerApiHint:
+      "Lets signed-in users create keys and call local models from other products via /api/v1.",
+    devLab: "Dev lab",
+    devLabHint:
+      "Admin page for all keys, API request log, and the gateway kill switch.",
   },
   usage: {
     title: "Live usage",
@@ -623,10 +633,11 @@ export const adminAz: AdminMessages = {
   settings: {
     title: "Tətbiq parametrləri",
     description:
-      "Qonaq girişi, qeydiyyat, standart modellər, kontekst limitləri və Ollama / vLLM generasiya davranışını idarə edin.",
+      "Qonaq girişi, qeydiyyat, standart modellər, kontekst limitləri, generasiya və hansı məhsul funksiyalarının aktiv olduğunu idarə edin.",
     tabAccess: "Giriş",
     tabChat: "Söhbət və modellər",
     tabGeneration: "Generasiya",
+    tabFeatures: "Funksiyalar",
     guestTitle: "Qonaq söhbəti",
     guestDesc:
       "Hesabsız ana səhifə söhbəti. İctimai LAN üçün limitləri sıx saxlayın.",
@@ -695,6 +706,15 @@ export const adminAz: AdminMessages = {
     errTemp: "Temperatur 0–2 arası olmalıdır",
     errTokens: "Maks. cavab tokenləri -1 (standart) və ya 1–8192 olmalıdır",
     errTopP: "Top-p 0.05–1 arası olmalıdır",
+    featuresTitle: "Məhsul funksiyaları",
+    featuresDesc:
+      "Səhifələri və API-ləri yandırın və ya söndürün. Sönük olanda naviqasiyada gizlənir və burada açılana qədər istifadə bloklanır.",
+    developerApi: "Developer API",
+    developerApiHint:
+      "Daxil olmuş istifadəçilər açar yarada və /api/v1 ilə digər məhsullardan lokal modelləri çağıra bilər.",
+    devLab: "Dev lab",
+    devLabHint:
+      "Admin səhifəsi: bütün açarlar, API sorğu jurnalı və şlüzün kill switch-i.",
   },
   usage: {
     title: "Canlı istifadə",

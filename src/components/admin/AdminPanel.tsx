@@ -113,6 +113,8 @@ type AppSettings = {
   numPredict: number;
   topP: number;
   loggedInUnlimited: boolean;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
 };
 
 type TabId =
@@ -207,6 +209,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     temperature: "0.7",
     numPredict: "-1",
     topP: "0.9",
+    developerApiEnabled: false,
+    devLabEnabled: false,
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -318,6 +322,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           temperature: String(s.temperature ?? 0.7),
           numPredict: String(s.numPredict ?? -1),
           topP: String(s.topP ?? 0.9),
+          developerApiEnabled: s.developerApiEnabled === true,
+          devLabEnabled: s.devLabEnabled === true,
         });
       }
 
@@ -671,6 +677,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           temperature,
           numPredict: Math.floor(numPredict),
           topP,
+          developerApiEnabled: settingsDraft.developerApiEnabled,
+          devLabEnabled: settingsDraft.devLabEnabled,
         }),
       });
       const data = (await res.json()) as {
@@ -698,6 +706,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           temperature: String(s.temperature),
           numPredict: String(s.numPredict),
           topP: String(s.topP),
+          developerApiEnabled: s.developerApiEnabled === true,
+          devLabEnabled: s.devLabEnabled === true,
         });
       }
       setNotice(t("admin.settings.saved"));
@@ -726,7 +736,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         subtitle={`${admin.username} · ${t("common.brand")}`}
         links={[
           { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
-          { href: "/devlab", label: t("chat.devLab"), icon: KeyRound },
+          ...(settings?.devLabEnabled
+            ? [{ href: "/devlab", label: t("chat.devLab"), icon: KeyRound }]
+            : []),
         ]}
         actions={
           <button

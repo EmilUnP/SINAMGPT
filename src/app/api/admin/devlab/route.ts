@@ -11,6 +11,7 @@ import {
   getPagedApiUsage,
   listActiveApiUsage,
 } from "@/lib/api-usage";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 const settingsSchema = z.object({
   enabled: z.boolean().optional(),
@@ -24,6 +25,9 @@ export async function GET(request: Request) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!isFeatureEnabled("devLab")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -63,6 +67,9 @@ export async function PATCH(request: Request) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!isFeatureEnabled("devLab")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

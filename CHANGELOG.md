@@ -10,6 +10,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.10.1] — 2026-08-17
+
+Admin can turn product surfaces on or off from Settings. Developer API and Dev lab stay hidden until enabled.
+
+### Added
+- **Feature toggles** — Admin → Settings → Features. Developer API (`/developer`, `/api/v1`) and Dev lab (`/devlab`) start **off**: hidden in nav and blocked until an admin enables them. Same pattern can cover later surfaces.
+
 ## [1.10.0] — 2026-08-14
 
 Vision models can take images, not only text. Mobile chrome and EN/AZ copy cover every page.
@@ -201,7 +208,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0

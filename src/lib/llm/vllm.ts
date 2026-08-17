@@ -224,6 +224,52 @@ export const streamVllmChat = async (
   });
 };
 
+export const completeVllmChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<string> => {
+  const body: Record<string, unknown> = {
+    model,
+    messages: toVllmMessages(messages),
+    stream: false,
+  };
+  if (options?.temperature != null) body.temperature = options.temperature;
+  if (options?.numPredict != null && options.numPredict >= 0) {
+    body.max_tokens = options.numPredict;
+  }
+  if (options?.topP != null) body.top_p = options.topP;
+
+  const res = await fetch(`${getBaseUrl()}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(options?.timeoutMs ?? 8000),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(formatVllmError(text, res.status, model));
+  }
+
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string } | string;
+  };
+  if (data.error) {
+    throw new Error(
+      typeof data.error === "string"
+        ? data.error
+        : data.error.message || "vLLM complete failed",
+    );
+  }
+  return (data.choices?.[0]?.message?.content ?? "").trim();
+};
+
 export const pingVllm = async (): Promise<BackendHealth> => {
   const baseUrl = getBaseUrl();
   const started = Date.now();

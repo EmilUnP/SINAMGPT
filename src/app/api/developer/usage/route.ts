@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPagedApiUsage } from "@/lib/api-usage";
+import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isFeatureEnabled("developerApi")) {
+    return NextResponse.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

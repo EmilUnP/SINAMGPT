@@ -6,6 +6,11 @@ import {
   type LlmBackend,
   type LlmModel,
 } from "@/lib/llm";
+import {
+  getFeatureFlags,
+  setFeatureFlags,
+  type FeatureFlags,
+} from "@/lib/features";
 
 const KEY_GUEST_DAILY_LIMIT = "guest_daily_limit";
 const KEY_GUEST_MAX_CHARS = "guest_max_message_chars";
@@ -49,6 +54,8 @@ export type AppSettings = {
   numPredict: number;
   topP: number;
   loggedInUnlimited: true;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
 };
 
 const getSetting = (key: string): string | null => {
@@ -235,22 +242,27 @@ export const setTopPSetting = (value: number) => {
   return safe;
 };
 
-export const getAppSettings = (): AppSettings => ({
-  guestEnabled: getGuestEnabledSetting(),
-  guestDailyLimit: getGuestDailyLimitSetting(),
-  guestMaxMessageChars: getGuestMaxCharsSetting(),
-  guestHistoryLimit: getGuestHistoryLimitSetting(),
-  registrationEnabled: getRegistrationEnabledSetting(),
-  defaultModel: getDefaultModelSetting(),
-  fastModel: getFastModelSetting(),
-  smartModel: getSmartModelSetting(),
-  userMaxMessageChars: getUserMaxCharsSetting(),
-  userHistoryLimit: getUserHistoryLimitSetting(),
-  temperature: getTemperatureSetting(),
-  numPredict: getNumPredictSetting(),
-  topP: getTopPSetting(),
-  loggedInUnlimited: true,
-});
+export const getAppSettings = (): AppSettings => {
+  const features = getFeatureFlags();
+  return {
+    guestEnabled: getGuestEnabledSetting(),
+    guestDailyLimit: getGuestDailyLimitSetting(),
+    guestMaxMessageChars: getGuestMaxCharsSetting(),
+    guestHistoryLimit: getGuestHistoryLimitSetting(),
+    registrationEnabled: getRegistrationEnabledSetting(),
+    defaultModel: getDefaultModelSetting(),
+    fastModel: getFastModelSetting(),
+    smartModel: getSmartModelSetting(),
+    userMaxMessageChars: getUserMaxCharsSetting(),
+    userHistoryLimit: getUserHistoryLimitSetting(),
+    temperature: getTemperatureSetting(),
+    numPredict: getNumPredictSetting(),
+    topP: getTopPSetting(),
+    loggedInUnlimited: true,
+    developerApiEnabled: features.developerApi,
+    devLabEnabled: features.devLab,
+  };
+};
 
 export const getPublicAppSettings = () => {
   const s = getAppSettings();
@@ -259,8 +271,13 @@ export const getPublicAppSettings = () => {
     registrationEnabled: s.registrationEnabled,
     guestDailyLimit: s.guestDailyLimit,
     guestMaxMessageChars: s.guestMaxMessageChars,
+    developerApiEnabled: s.developerApiEnabled,
+    devLabEnabled: s.devLabEnabled,
   };
 };
+
+export const setAppFeatureFlags = (next: Partial<FeatureFlags>): FeatureFlags =>
+  setFeatureFlags(next);
 
 export const getChatRuntimeOptions = () => ({
   temperature: getTemperatureSetting(),

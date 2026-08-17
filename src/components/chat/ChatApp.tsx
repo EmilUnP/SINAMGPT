@@ -70,6 +70,10 @@ import type {
 
 type ChatAppProps = {
   user: User;
+  features?: {
+    developerApi: boolean;
+    devLab: boolean;
+  };
 };
 
 type UiMessage = Message & {
@@ -125,7 +129,10 @@ const parseSseChunk = (raw: string) => {
   return { event, data: JSON.parse(dataLines.join("\n")) };
 };
 
-export const ChatApp = ({ user }: ChatAppProps) => {
+export const ChatApp = ({
+  user,
+  features = { developerApi: false, devLab: false },
+}: ChatAppProps) => {
   const router = useRouter();
   const { locale, t } = useLocale();
   const suggestions = [
@@ -243,18 +250,29 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   }, [mobileSidebar]);
 
   const extraNav = useMemo((): OverflowNavItem[] => {
-    const items: OverflowNavItem[] = [
-      { href: "/developer", label: t("chat.developer"), icon: KeyRound },
-    ];
+    const items: OverflowNavItem[] = [];
+    if (features.developerApi) {
+      items.push({
+        href: "/developer",
+        label: t("chat.developer"),
+        icon: KeyRound,
+      });
+    }
     if (user.role === "admin") {
       items.push(
         { href: "/admin", label: t("chat.adminPanel"), icon: Shield },
         { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
-        { href: "/devlab", label: t("chat.devLab"), icon: Cable },
       );
+      if (features.devLab) {
+        items.push({
+          href: "/devlab",
+          label: t("chat.devLab"),
+          icon: Cable,
+        });
+      }
     }
     return items;
-  }, [t, user.role]);
+  }, [t, user.role, features.developerApi, features.devLab]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,

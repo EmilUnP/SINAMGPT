@@ -108,6 +108,51 @@ export const streamOllamaChat = async (
   return res;
 };
 
+export const completeOllamaChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<string> => {
+  const ollamaOptions: Record<string, number> = {};
+  if (options?.temperature != null) {
+    ollamaOptions.temperature = options.temperature;
+  }
+  if (options?.numPredict != null && options.numPredict >= 0) {
+    ollamaOptions.num_predict = options.numPredict;
+  }
+  if (options?.topP != null) {
+    ollamaOptions.top_p = options.topP;
+  }
+
+  const res = await fetch(`${getBaseUrl()}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: false,
+      keep_alive: getKeepAlive(),
+      ...(Object.keys(ollamaOptions).length
+        ? { options: ollamaOptions }
+        : {}),
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(options?.timeoutMs ?? 8000),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(formatOllamaError(text, res.status, model));
+  }
+
+  const data = (await res.json()) as {
+    message?: { content?: string };
+    error?: string;
+  };
+  if (data.error) throw new Error(data.error);
+  return (data.message?.content ?? "").trim();
+};
+
 export const pingOllama = async (): Promise<BackendHealth> => {
   const baseUrl = getBaseUrl();
   const started = Date.now();

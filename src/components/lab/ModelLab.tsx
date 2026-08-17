@@ -39,7 +39,7 @@ import {
 import type { MessageKey } from "@/messages";
 import type { User } from "@/lib/types";
 
-type Props = { admin: User };
+type Props = { admin: User; devLabEnabled?: boolean };
 
 type LabTab = "live" | "results" | "charts";
 
@@ -416,7 +416,7 @@ const LabLiveView = ({
   );
 };
 
-export const ModelLab = ({ admin }: Props) => {
+export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
   const t = useTranslations();
   const [models, setModels] = useState<ModelRow[]>([]);
   const [model, setModel] = useState("");
@@ -864,7 +864,9 @@ export const ModelLab = ({ admin }: Props) => {
         badge={t("lab.badge")}
         subtitle={`${admin.username} · ${t("common.brand")}`}
         links={[
-          { href: "/devlab", label: t("chat.devLab"), icon: KeyRound },
+          ...(devLabEnabled
+            ? [{ href: "/devlab", label: t("chat.devLab"), icon: KeyRound }]
+            : []),
           { href: "/admin", label: t("lab.admin"), icon: Shield },
         ]}
       />
