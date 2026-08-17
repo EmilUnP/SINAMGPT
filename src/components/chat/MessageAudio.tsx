@@ -25,11 +25,12 @@ export const MessageAudio = ({
     >
       <audio
         controls
+        preload="metadata"
         src={src}
-        className="h-9 max-w-full min-w-[12rem] flex-1"
+        className="max-w-full min-w-[14rem] flex-1"
         aria-label={name || "Voice recording"}
       >
-        {name}
+        <source src={src} type="audio/wav" />
       </audio>
       {onRemove ? (
         <button

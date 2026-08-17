@@ -2,17 +2,28 @@ import { getDb } from "@/lib/db";
 
 const SETTINGS_KEY = "feature_flags";
 
-export type FeatureId = "developerApi" | "devLab";
+export type FeatureId =
+  | "developerApi"
+  | "devLab"
+  | "fileUpload"
+  | "fileImport"
+  | "microphone";
 
 export type FeatureFlags = {
   developerApi: boolean;
   devLab: boolean;
+  fileUpload: boolean;
+  fileImport: boolean;
+  microphone: boolean;
 };
 
 /** Off until an admin turns the surface on in Settings. */
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   developerApi: false,
   devLab: false,
+  fileUpload: false,
+  fileImport: false,
+  microphone: false,
 };
 
 export const getFeatureFlags = (): FeatureFlags => {
@@ -25,6 +36,9 @@ export const getFeatureFlags = (): FeatureFlags => {
     return {
       developerApi: parsed.developerApi === true,
       devLab: parsed.devLab === true,
+      fileUpload: parsed.fileUpload === true,
+      fileImport: parsed.fileImport === true,
+      microphone: parsed.microphone === true,
     };
   } catch {
     return { ...DEFAULT_FEATURE_FLAGS };
@@ -49,5 +63,17 @@ export const setFeatureFlags = (
 
 export const isFeatureEnabled = (id: FeatureId): boolean =>
   getFeatureFlags()[id] === true;
+
+/** Images may arrive from paperclip upload or drag/paste import. */
+export const isChatImagesEnabled = (): boolean => {
+  const flags = getFeatureFlags();
+  return flags.fileUpload || flags.fileImport;
+};
+
+/** Audio may arrive from the microphone or a dropped/pasted file. */
+export const isChatAudioEnabled = (): boolean => {
+  const flags = getFeatureFlags();
+  return flags.microphone || flags.fileImport;
+};
 
 export const FEATURE_DISABLED_ERROR = "This feature is currently disabled";

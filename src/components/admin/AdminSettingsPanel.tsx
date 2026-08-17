@@ -35,6 +35,9 @@ export type SettingsDraft = {
   topP: string;
   developerApiEnabled: boolean;
   devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 type ModelOption = {
@@ -406,6 +409,34 @@ export const AdminSettingsPanel = ({
                 onChange={(v) => patch({ devLabEnabled: v })}
                 label={t("admin.settings.devLab")}
                 hint={t("admin.settings.devLabHint")}
+              />
+            </div>
+          </SectionCard>
+          <SectionCard
+            title={t("admin.settings.chatInputsTitle")}
+            description={t("admin.settings.chatInputsDesc")}
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AdminToggleCard
+                emphasize
+                checked={draft.fileUploadEnabled}
+                onChange={(v) => patch({ fileUploadEnabled: v })}
+                label={t("admin.settings.fileUpload")}
+                hint={t("admin.settings.fileUploadHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.fileImportEnabled}
+                onChange={(v) => patch({ fileImportEnabled: v })}
+                label={t("admin.settings.fileImport")}
+                hint={t("admin.settings.fileImportHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.microphoneEnabled}
+                onChange={(v) => patch({ microphoneEnabled: v })}
+                label={t("admin.settings.microphone")}
+                hint={t("admin.settings.microphoneHint")}
               />
             </div>
           </SectionCard>

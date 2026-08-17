@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.13.0](./CHANGELOG.md#1130--2026-08-17)
+**Current version:** [1.14.0](./CHANGELOG.md#1140--2026-08-17)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -16,8 +16,8 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
 - **Local models** via [Ollama](https://ollama.com)
-- **Vision models** — attach, paste, or drop images when the selected model is multimodal (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …)
-- **Audio models** — record from the microphone (pick the device on laptops) or drop a short audio file; up to 30 seconds. Gemma 4 E2B/E4B yes, 31B dense no
+- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …). Those Features start **off**.
+- **Audio models** — record from the microphone (pick the device on laptops) or drop a short audio file; up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone / File import (also start **off**). Gemma 4 E2B/E4B yes, 31B dense no
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker (Text / Image / Audio, plus Ollama Functions tags), rewrite shortcuts
@@ -25,12 +25,12 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note
-- **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
-- **Admin** — users, models (Activate before users can pick them), live usage, knowledge, multi-layer guardrails, Settings → Features On/Off
+- **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
+- **Admin** — users, models (Activate before users can pick them), live usage (click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
-- **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models, including drag-and-drop)
+- **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models when File upload / File import is on)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
 
@@ -91,10 +91,10 @@ Sign in with that account → open **Admin panel** (or `/admin`).
 There you can:
 
 - See users, registration / last-active, chat usage
-- **Live usage** — active AI generations, response speed (t/s), TTFT, history
+- **Live usage** — active AI generations, response speed (t/s), TTFT, history. Click a live or past row to inspect the exact prompt sent to the model and the reply
 - **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; blocked phrases can also match via that same keyword list
-- **Settings** — Features On/Off (Developer API, Dev lab), default model, generation controls (temperature, max tokens, top-p)
+- **Settings** — Features On/Off (Developer API, Dev lab, File upload, File import, Microphone — chat inputs start **off**), default model, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Text / Image you can send; Audio follows Ollama; Functions not used in chat)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
@@ -118,9 +118,9 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (share tokens), messages (optional image attachments), settings, models (`vision` / `tools`), usage events, knowledge docs, guardrail events
-- Chat images: `data/attachments/{conversationId}/{messageId}/` (gitignored with `data/`)
-- Delete `data/owngpt.db` to wipe all accounts and chats (also delete `data/attachments/` if you want stored images gone)
+- Tables include users, projects, conversations (share tokens), messages (optional image/audio attachments), settings, models (`vision` / `tools` / `audio`), usage events (optional stored prompt + reply text), knowledge docs, guardrail events
+- Chat images and voice clips: `data/attachments/{conversationId}/{messageId}/` (gitignored with `data/`)
+- Delete `data/owngpt.db` to wipe all accounts and chats (also delete `data/attachments/` if you want stored files gone)
 - Never commit `.env.local` or `data/` (already gitignored)
 - How it works (plain language): [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)

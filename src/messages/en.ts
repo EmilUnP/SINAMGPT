@@ -261,7 +261,8 @@ export const en = {
     stopRecording: "Stop recording",
     removeAudio: "Remove recording",
     recording: "Recording… {n}s",
-    audioDefaultPrompt: "Listen to this recording and respond.",
+    audioDefaultPrompt:
+      "Transcribe this recording, then respond to what was said.",
     micDenied:
       "Microphone access was blocked. Allow it in the browser, then try again.",
     micNotFound: "No microphone was found.",

@@ -7,7 +7,26 @@ import {
 
 type Params = { params: Promise<{ messageId: string; index: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+const parseByteRange = (
+  header: string | null,
+  size: number,
+): { start: number; end: number } | "invalid" | null => {
+  if (!header) return null;
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(header.trim());
+  if (!match) return "invalid";
+  const hasStart = match[1] !== "";
+  const hasEnd = match[2] !== "";
+  if (!hasStart && !hasEnd) return "invalid";
+  let start = hasStart ? Number.parseInt(match[1], 10) : size - Number.parseInt(match[2], 10);
+  let end = hasEnd ? Number.parseInt(match[2], 10) : size - 1;
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return "invalid";
+  if (!hasStart) start = Math.max(0, start);
+  end = Math.min(end, size - 1);
+  if (start < 0 || start >= size || end < start) return "invalid";
+  return { start, end };
+};
+
+export async function GET(request: Request, { params }: Params) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,12 +59,43 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const bytes = new Uint8Array(file);
+  const size = bytes.byteLength;
   const filename = attachment.name.replace(/["\r\n]+/g, "_");
-  return new NextResponse(new Uint8Array(file), {
+  const baseHeaders: Record<string, string> = {
+    "Content-Type": attachment.mime,
+    "Cache-Control": "private, max-age=3600",
+    "Content-Disposition": `inline; filename="${filename}"`,
+    "Accept-Ranges": "bytes",
+  };
+
+  const range = parseByteRange(request.headers.get("range"), size);
+  if (range === "invalid") {
+    return new NextResponse(null, {
+      status: 416,
+      headers: {
+        ...baseHeaders,
+        "Content-Range": `bytes */${size}`,
+      },
+    });
+  }
+
+  if (range) {
+    const slice = bytes.subarray(range.start, range.end + 1);
+    return new NextResponse(slice, {
+      status: 206,
+      headers: {
+        ...baseHeaders,
+        "Content-Length": String(slice.byteLength),
+        "Content-Range": `bytes ${range.start}-${range.end}/${size}`,
+      },
+    });
+  }
+
+  return new NextResponse(bytes, {
     headers: {
-      "Content-Type": attachment.mime,
-      "Cache-Control": "private, max-age=3600",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      ...baseHeaders,
+      "Content-Length": String(size),
     },
   });
 }

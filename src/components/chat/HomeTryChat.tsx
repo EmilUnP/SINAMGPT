@@ -48,6 +48,14 @@ type ChatTurn = {
   images?: ChatImagePayload[];
 };
 
+type HomeTryChatProps = {
+  features?: {
+    fileUpload?: boolean;
+    fileImport?: boolean;
+    microphone?: boolean;
+  };
+};
+
 type PendingImage = ChatImagePayload & { id: string };
 
 type Usage = {
@@ -71,7 +79,9 @@ const parseSseChunk = (raw: string) => {
   return { event, data: JSON.parse(dataLines.join("\n")) };
 };
 
-export const HomeTryChat = () => {
+export const HomeTryChat = ({
+  features = {},
+}: HomeTryChatProps) => {
   const { locale, t } = useLocale();
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
@@ -157,10 +167,14 @@ export const HomeTryChat = () => {
   const supportsVision = Boolean(
     models.find((m) => m.name === model)?.vision,
   );
+  const canAttachImages = supportsVision && features.fileUpload === true;
+  const canImportImages = supportsVision && features.fileImport === true;
 
   useEffect(() => {
-    if (!supportsVision && pendingImages.length) setPendingImages([]);
-  }, [supportsVision, pendingImages.length]);
+    if (!canAttachImages && !canImportImages && pendingImages.length) {
+      setPendingImages([]);
+    }
+  }, [canAttachImages, canImportImages, pendingImages.length]);
 
   const handleStop = () => abortRef.current?.abort();
 
@@ -180,7 +194,7 @@ export const HomeTryChat = () => {
   };
 
   const addImageFiles = async (files: File[]) => {
-    if (!supportsVision || !files.length) return;
+    if ((!canAttachImages && !canImportImages) || !files.length) return;
     const remaining = MAX_GUEST_IMAGES - pendingImages.length;
     if (remaining <= 0) {
       setError(t("chat.imageLimit", { n: MAX_GUEST_IMAGES }));
@@ -203,11 +217,11 @@ export const HomeTryChat = () => {
   };
 
   const canDropImages = Boolean(
-    supportsVision && guestEnabled && !(usage && usage.remaining <= 0),
+    canImportImages && guestEnabled && !(usage && usage.remaining <= 0),
   );
 
   const addDroppedFiles = async (files: File[]) => {
-    if (!files.length || isSending) return;
+    if (!files.length || isSending || !canDropImages) return;
     const images = files.filter(isDroppedImageFile);
     if (!images.length) {
       setError(t("chat.dropUnsupported"));
@@ -795,7 +809,7 @@ export const HomeTryChat = () => {
             </div>
           ) : null}
           <div className="flex items-end gap-2">
-            {supportsVision && guestEnabled && !limitHit ? (
+            {canAttachImages && guestEnabled && !limitHit ? (
               <>
                 <input
                   ref={fileInputRef}
@@ -830,7 +844,7 @@ export const HomeTryChat = () => {
               onKeyDown={handleKeyDown}
               onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
                 const files = Array.from(event.clipboardData.files);
-                if (!files.length) return;
+                if (!files.length || !canDropImages) return;
                 event.preventDefault();
                 void addDroppedFiles(files);
               }}
@@ -874,7 +888,9 @@ export const HomeTryChat = () => {
         </div>
 
         <p className="mt-3 text-center text-[10px] leading-snug text-[var(--home-faint)] sm:text-[11px]">
-          {supportsVision ? t("chat.visionFooterHint") : t("home.footerHint")}
+          {canAttachImages || canImportImages
+            ? t("chat.visionFooterHint")
+            : t("home.footerHint")}
         </p>
       </main>
     </div>

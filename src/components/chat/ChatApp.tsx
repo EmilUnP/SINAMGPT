@@ -93,6 +93,9 @@ type ChatAppProps = {
   features?: {
     developerApi: boolean;
     devLab: boolean;
+    fileUpload: boolean;
+    fileImport: boolean;
+    microphone: boolean;
   };
 };
 
@@ -164,7 +167,13 @@ const parseSseChunk = (raw: string) => {
 
 export const ChatApp = ({
   user,
-  features = { developerApi: false, devLab: false },
+  features = {
+    developerApi: false,
+    devLab: false,
+    fileUpload: false,
+    fileImport: false,
+    microphone: false,
+  },
 }: ChatAppProps) => {
   const router = useRouter();
   const { locale, t } = useLocale();
@@ -352,6 +361,11 @@ export const ChatApp = ({
   const supportsAudio = Boolean(
     models.find((m) => m.name === model)?.audio,
   );
+  const canAttachImages = supportsVision && features.fileUpload === true;
+  const canImportImages = supportsVision && features.fileImport === true;
+  const canImportAudio = supportsAudio && features.fileImport === true;
+  const canUseMic = supportsAudio && features.microphone === true;
+  const canDropFiles = canImportImages || canImportAudio;
   const currentMicLabel =
     micDevices.find((device) => device.deviceId === micDeviceId)?.label || "";
 
@@ -368,8 +382,10 @@ export const ChatApp = ({
   }, [input, pendingImages.length, pendingAudio]);
 
   useEffect(() => {
-    if (!supportsVision && pendingImages.length) setPendingImages([]);
-  }, [supportsVision, pendingImages.length]);
+    if (!canAttachImages && !canImportImages && pendingImages.length) {
+      setPendingImages([]);
+    }
+  }, [canAttachImages, canImportImages, pendingImages.length]);
 
   const clearPendingAudio = useCallback(() => {
     setPendingAudio(null);
@@ -441,7 +457,7 @@ export const ChatApp = ({
   }, []);
 
   useEffect(() => {
-    if (!supportsAudio) {
+    if (!canUseMic) {
       setMicDevices([]);
       setMicPickerOpen(false);
       return;
@@ -454,7 +470,7 @@ export const ChatApp = ({
     };
     media.addEventListener("devicechange", onChange);
     return () => media.removeEventListener("devicechange", onChange);
-  }, [supportsAudio, refreshMicDevices]);
+  }, [canUseMic, refreshMicDevices]);
 
   useEffect(() => {
     if (!micPickerOpen) return;
@@ -479,10 +495,16 @@ export const ChatApp = ({
   }, [micDeviceId]);
 
   useEffect(() => {
-    if (supportsAudio) return;
+    if (canUseMic || canImportAudio) return;
     cancelMicSession();
     if (pendingAudio) clearPendingAudio();
-  }, [supportsAudio, pendingAudio, cancelMicSession, clearPendingAudio]);
+  }, [
+    canUseMic,
+    canImportAudio,
+    pendingAudio,
+    cancelMicSession,
+    clearPendingAudio,
+  ]);
 
   useEffect(
     () => () => {
@@ -561,7 +583,7 @@ export const ChatApp = ({
   };
 
   const addImageFiles = async (files: File[]) => {
-    if (!supportsVision || !files.length) return;
+    if ((!canAttachImages && !canImportImages) || !files.length) return;
     const remaining = MAX_CHAT_IMAGES - pendingImages.length;
     if (remaining <= 0) {
       setError(t("chat.imageLimit", { n: MAX_CHAT_IMAGES }));
@@ -584,7 +606,7 @@ export const ChatApp = ({
   };
 
   const addAudioFile = async (file: File) => {
-    if (!supportsAudio) {
+    if (!canImportAudio) {
       setError(t("chat.audioRequired"));
       return;
     }
@@ -606,7 +628,7 @@ export const ChatApp = ({
   };
 
   const addDroppedFiles = async (files: File[]) => {
-    if (!files.length || isSending) return;
+    if (!files.length || isSending || !canDropFiles) return;
     const images = files.filter(isDroppedImageFile);
     const audios = files.filter(isDroppedAudioFile);
     const unsupported = files.filter(
@@ -621,19 +643,17 @@ export const ChatApp = ({
     let warning = "";
     if (unsupported.length) warning = t("chat.dropUnsupported");
     if (images.length) {
-      if (supportsVision) await addImageFiles(images);
+      if (canImportImages) await addImageFiles(images);
       else warning = t("chat.visionRequired");
     }
     if (audios.length) {
-      if (supportsAudio) {
+      if (canImportAudio) {
         await addAudioFile(audios[0]);
         if (audios.length > 1) warning = t("chat.audioLimit");
       } else warning = t("chat.audioRequired");
     }
     if (warning) setError(warning);
   };
-
-  const canDropFiles = supportsVision || supportsAudio;
 
   const handleComposerDragEnter = (event: DragEvent<HTMLDivElement>) => {
     if (!dropHasFiles(event.dataTransfer.types)) return;
@@ -677,7 +697,7 @@ export const ChatApp = ({
   };
 
   const handleToggleMic = async () => {
-    if (!supportsAudio || isSending) return;
+    if (!canUseMic || isSending) return;
     if (isProcessingAudio) return;
     if (isRecording) {
       await stopMicSession();
@@ -712,7 +732,7 @@ export const ChatApp = ({
   };
 
   const handleOpenMicPicker = async () => {
-    if (isRecording || isSending || isProcessingAudio) return;
+    if (!canUseMic || isRecording || isSending || isProcessingAudio) return;
     if (micPickerOpen) {
       setMicPickerOpen(false);
       return;
@@ -2209,9 +2229,9 @@ export const ChatApp = ({
           >
             {isDraggingOver ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-sky-500/15 text-sm font-medium text-sky-800 dark:text-sky-100">
-                {supportsAudio && supportsVision
+                {canImportAudio && canImportImages
                   ? t("chat.dropImagesOrAudio")
-                  : supportsAudio
+                  : canImportAudio
                     ? t("chat.dropAudio")
                     : t("chat.dropImages")}
               </div>
@@ -2274,7 +2294,7 @@ export const ChatApp = ({
               </div>
             ) : null}
             <div className="flex items-end gap-2">
-              {supportsVision ? (
+              {canAttachImages ? (
                 <>
                   <input
                     ref={fileInputRef}
@@ -2300,7 +2320,7 @@ export const ChatApp = ({
                   </button>
                 </>
               ) : null}
-              {supportsAudio ? (
+              {canUseMic ? (
                 <div className="relative mb-0.5 flex shrink-0 items-center" ref={micPickerRef}>
                   <button
                     type="button"
@@ -2387,7 +2407,7 @@ export const ChatApp = ({
                 onKeyDown={handleKeyDown}
                 onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
                   const files = Array.from(event.clipboardData.files);
-                  if (!files.length) return;
+                  if (!files.length || !canDropFiles) return;
                   event.preventDefault();
                   void addDroppedFiles(files);
                 }}
@@ -2432,11 +2452,12 @@ export const ChatApp = ({
             </div>
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] leading-snug text-[var(--text-muted)] sm:text-[11px]">
-            {supportsAudio && supportsVision
+            {(canUseMic || canImportAudio) &&
+            (canAttachImages || canImportImages)
               ? t("chat.audioVisionFooterHint")
-              : supportsAudio
+              : canUseMic || canImportAudio
                 ? t("chat.audioFooterHint")
-                : supportsVision
+                : canAttachImages || canImportImages
                   ? t("chat.visionFooterHint")
                   : t("chat.footerHint")}
           </p>

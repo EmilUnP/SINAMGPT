@@ -1,4 +1,4 @@
-import type { AppLocale } from "@/lib/locale";
+import { LOCALE_BCP47, type AppLocale } from "@/lib/locale";
 import { translate } from "@/messages";
 
 export const autoResizeTextarea = (el: HTMLTextAreaElement | null) => {
@@ -16,8 +16,7 @@ export const copyText = async (text: string): Promise<boolean> => {
   }
 };
 
-const bcp47 = (locale: AppLocale = "en"): string =>
-  locale === "az" ? "az-AZ" : "en-US";
+const bcp47 = (locale: AppLocale = "en"): string => LOCALE_BCP47[locale];
 
 export const relativeTime = (
   value: string,

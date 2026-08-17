@@ -15,6 +15,11 @@ import {
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { assertAssignableProject } from "@/lib/projects";
 import {
+  FEATURE_DISABLED_ERROR,
+  isChatAudioEnabled,
+  isChatImagesEnabled,
+} from "@/lib/features";
+import {
   getChatRuntimeOptions,
   getUserHistoryLimitSetting,
   getUserMaxCharsSetting,
@@ -24,6 +29,7 @@ import {
   resolveOllamaModelName,
 } from "@/lib/settings";
 import {
+  attachUsageRequest,
   finishUsage,
   markUsageToken,
   startUsage,
@@ -178,6 +184,7 @@ const streamAssistantReply = async (input: {
   );
   const promptedHistory = prepared.messages;
   const knowledgeSources = prepared.sources;
+  attachUsageRequest(usageId, promptedHistory);
   const runtime = getChatRuntimeOptions();
 
   const startStream = async () => {
@@ -260,7 +267,7 @@ const streamAssistantReply = async (input: {
               const piece = chunk.message?.content ?? "";
               if (piece) {
                 assistantText += piece;
-                markUsageToken(usageId, piece.length);
+                markUsageToken(usageId, piece);
                 send("token", { content: piece });
               }
 
@@ -398,6 +405,12 @@ export async function POST(request: Request) {
 
     const incomingImages = parsed.data.images ?? [];
     const incomingAudio = parsed.data.audio ?? null;
+    if (incomingImages.length && !isChatImagesEnabled()) {
+      return Response.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
+    }
+    if (incomingAudio && !isChatAudioEnabled()) {
+      return Response.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
+    }
     if (incomingImages.length && !modelSupportsVision(model)) {
       return Response.json(
         {
@@ -777,7 +790,9 @@ export async function POST(request: Request) {
     // ——— Normal send ———
     const message =
       (parsed.data.message ?? "").trim() ||
-      (incomingAudio ? "Listen to this recording and respond." : "");
+      (incomingAudio
+        ? "Transcribe this recording, then respond to what was said."
+        : "");
 
     if (message.length > maxChars) {
       return Response.json(

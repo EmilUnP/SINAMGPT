@@ -10,6 +10,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.14.0] — 2026-08-17
+
+Russian UI, admin gates for chat files/mic, and live usage that shows the exact prompt.
+
+### Added
+- **Russian UI** — the language picker is English / Azərbaycan / Русский. Chat, guest, auth, Admin, Models, Developer, and Dev lab have Russian copy. Dates follow `ru-RU`.
+- **Chat input feature flags** — Admin → Settings → Features now also controls **File upload** (paperclip), **File import** (drag/drop and paste), and **Microphone**. All three start **off**. The composer hides those controls and the APIs reject the payloads until an admin turns them on. The model still has to support vision or audio.
+- **Usage request detail** — Admin → Live usage: click a live or past row to see the exact payload sent to the model and the reply so far (attachments noted, not stored as raw bytes). Copy either pane. Live rows keep refreshing.
+
+### Fixed
+- **Microphone replies** — the clip was reaching Gemma 4, but the default “listen to this recording” prompt made E2B claim nothing was attached. Audio stays on native `/api/chat` (`images` + WAV, thinking off, `num_ctx` 8192) with an explicit “you can hear this” system line. The in-chat player no longer clips to 0:00.
+
 ## [1.13.0] — 2026-08-17
 
 Voice and files in the composer: microphone (with a real device picker) and drag-and-drop.
@@ -251,7 +263,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...v1.11.0

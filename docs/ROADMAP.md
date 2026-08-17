@@ -7,26 +7,27 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.13.0](../CHANGELOG.md#1130--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.14.0](../CHANGELOG.md#1140--2026-08-17) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.13.0**):
+What operators and users can rely on in the current tree (**v1.14.0**):
 
 | Area | Reality |
 |------|---------|
-| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language |
-| **Chat** | Streaming replies, model picker (input badges), rewrite, theme; **attach / paste / drop images** on vision models; **microphone or drop audio** (up to 30s) on audio models with a hardware mic picker; **Models guide** at `/models` (header + sidebar). No Fast/Smart toggle — pick a model in the header |
+| **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language |
+| **Chat** | Streaming replies, model picker (input badges), rewrite, theme; **Models guide** at `/models`. Image attach/drop and microphone exist but stay **off** until Admin → Settings → Features (File upload, File import, Microphone) **and** the model supports vision/audio. No Fast/Smart toggle — pick a model in the header |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; citations; pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images (attach/paste/drop); admin middleware by session role |
+| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
+| **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
 
 ---
@@ -67,6 +68,15 @@ Ideas kept for later — not a commitment.
 
 Closed tracks — keep for context; do not re-open unless regressing.
 
+### v1.14.0 — Russian UI, chat input flags & usage detail (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Russian UI | `done` | Flag toggle EN / AZ / RU; full product copy; `ru-RU` dates |
+| Chat input feature flags | `done` | File upload, File import, Microphone start **off** in Admin → Settings → Features |
+| Usage request detail | `done` | Click a live or past usage row for the exact prompt and reply |
+| Microphone replies | `done` | Native `/api/chat` WAV path; player duration no longer 0:00 |
+
 ### v1.13.0 — Voice, mic picker & drag-and-drop (2026-08-17)
 
 | Feature | Status | Notes |
@@ -97,7 +107,7 @@ Closed tracks — keep for context; do not re-open unless regressing.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Feature flags (Settings) | `done` | Developer API + Dev lab off until Admin → Settings → Features |
+| Feature flags (Settings) | `done` | Developer API + Dev lab off until Admin → Settings → Features; chat inputs added in v1.14.0 |
 
 ### v1.10.0 — Vision chat & mobile polish (2026-08-14)
 

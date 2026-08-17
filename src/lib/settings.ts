@@ -52,6 +52,9 @@ export type AppSettings = {
   loggedInUnlimited: true;
   developerApiEnabled: boolean;
   devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 const getSetting = (key: string): string | null => {
@@ -237,6 +240,9 @@ export const getAppSettings = (): AppSettings => {
     loggedInUnlimited: true,
     developerApiEnabled: features.developerApi,
     devLabEnabled: features.devLab,
+    fileUploadEnabled: features.fileUpload,
+    fileImportEnabled: features.fileImport,
+    microphoneEnabled: features.microphone,
   };
 };
 
@@ -249,6 +255,9 @@ export const getPublicAppSettings = () => {
     guestMaxMessageChars: s.guestMaxMessageChars,
     developerApiEnabled: s.developerApiEnabled,
     devLabEnabled: s.devLabEnabled,
+    fileUploadEnabled: s.fileUploadEnabled,
+    fileImportEnabled: s.fileImportEnabled,
+    microphoneEnabled: s.microphoneEnabled,
   };
 };
 

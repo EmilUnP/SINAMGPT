@@ -111,6 +111,8 @@ const ensureSchema = (database: Database.Database) => {
       status TEXT NOT NULL CHECK (status IN ('ok', 'error', 'aborted')),
       error_message TEXT,
       conversation_id TEXT,
+      request_payload TEXT NOT NULL DEFAULT '',
+      response_full TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -266,6 +268,9 @@ const ensureSchema = (database: Database.Database) => {
     JSON.stringify({
       developerApi: false,
       devLab: false,
+      fileUpload: false,
+      fileImport: false,
+      microphone: false,
     }),
   );
 
@@ -330,6 +335,16 @@ const ensureSchema = (database: Database.Database) => {
   }
   if (!hasColumn(database, "conversations", "share_token")) {
     database.exec(`ALTER TABLE conversations ADD COLUMN share_token TEXT`);
+  }
+  if (!hasColumn(database, "usage_events", "request_payload")) {
+    database.exec(
+      `ALTER TABLE usage_events ADD COLUMN request_payload TEXT NOT NULL DEFAULT ''`,
+    );
+  }
+  if (!hasColumn(database, "usage_events", "response_full")) {
+    database.exec(
+      `ALTER TABLE usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
+    );
   }
   database.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_share_token

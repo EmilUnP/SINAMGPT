@@ -32,6 +32,7 @@ import { AdminUsagePanel } from "./AdminUsagePanel";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
 import { useLocale } from "@/components/LocaleProvider";
+import { LOCALE_BCP47 } from "@/lib/locale";
 import type { AdminUserRow, User } from "@/lib/types";
 
 type Totals = {
@@ -116,6 +117,9 @@ type AppSettings = {
   loggedInUnlimited: boolean;
   developerApiEnabled: boolean;
   devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 type TabId =
@@ -186,7 +190,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
     const date = new Date(normalized);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString(locale === "az" ? "az-AZ" : "en-US");
+    return date.toLocaleString(LOCALE_BCP47[locale]);
   };
 
   const [tab, setTab] = useState<TabId>("overview");
@@ -210,6 +214,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     topP: "0.9",
     developerApiEnabled: false,
     devLabEnabled: false,
+    fileUploadEnabled: false,
+    fileImportEnabled: false,
+    microphoneEnabled: false,
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -321,6 +328,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           topP: String(s.topP ?? 0.9),
           developerApiEnabled: s.developerApiEnabled === true,
           devLabEnabled: s.devLabEnabled === true,
+          fileUploadEnabled: s.fileUploadEnabled === true,
+          fileImportEnabled: s.fileImportEnabled === true,
+          microphoneEnabled: s.microphoneEnabled === true,
         });
       }
 
@@ -682,6 +692,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           topP,
           developerApiEnabled: settingsDraft.developerApiEnabled,
           devLabEnabled: settingsDraft.devLabEnabled,
+          fileUploadEnabled: settingsDraft.fileUploadEnabled,
+          fileImportEnabled: settingsDraft.fileImportEnabled,
+          microphoneEnabled: settingsDraft.microphoneEnabled,
         }),
       });
       const data = (await res.json()) as {
@@ -709,6 +722,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           topP: String(s.topP),
           developerApiEnabled: s.developerApiEnabled === true,
           devLabEnabled: s.devLabEnabled === true,
+          fileUploadEnabled: s.fileUploadEnabled === true,
+          fileImportEnabled: s.fileImportEnabled === true,
+          microphoneEnabled: s.microphoneEnabled === true,
         });
       }
       setNotice(t("admin.settings.saved"));

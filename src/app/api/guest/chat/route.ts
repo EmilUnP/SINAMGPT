@@ -16,6 +16,10 @@ import {
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import {
+  FEATURE_DISABLED_ERROR,
+  isChatImagesEnabled,
+} from "@/lib/features";
+import {
   getChatRuntimeOptions,
   getGuestEnabledSetting,
   getGuestHistoryLimitSetting,
@@ -24,6 +28,7 @@ import {
   resolveOllamaModelName,
 } from "@/lib/settings";
 import {
+  attachUsageRequest,
   finishUsage,
   markUsageToken,
   startUsage,
@@ -122,6 +127,10 @@ export async function POST(request: Request) {
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
       );
+    }
+
+    if (incomingImages.length && !isChatImagesEnabled()) {
+      return Response.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
     }
 
     if (incomingImages.length && !modelSupportsVision(model)) {
@@ -232,6 +241,7 @@ export async function POST(request: Request) {
       model,
       prompt: message || "[image]",
     });
+    attachUsageRequest(usageId, messages);
 
     const runtime = getChatRuntimeOptions();
     let ollamaRes: Response;
@@ -307,7 +317,7 @@ export async function POST(request: Request) {
               const piece = chunk.message?.content ?? "";
               if (piece) {
                 responseChars += piece.length;
-                markUsageToken(usageId, piece.length);
+                markUsageToken(usageId, piece);
                 send("token", { content: piece });
               }
 

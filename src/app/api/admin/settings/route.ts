@@ -40,6 +40,9 @@ const patchSchema = z.object({
   topP: z.number().min(0.05).max(1).optional(),
   developerApiEnabled: z.boolean().optional(),
   devLabEnabled: z.boolean().optional(),
+  fileUploadEnabled: z.boolean().optional(),
+  fileImportEnabled: z.boolean().optional(),
+  microphoneEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -83,13 +86,25 @@ export async function PATCH(request: Request) {
   if (d.topP !== undefined) setTopPSetting(d.topP);
   if (
     d.developerApiEnabled !== undefined ||
-    d.devLabEnabled !== undefined
+    d.devLabEnabled !== undefined ||
+    d.fileUploadEnabled !== undefined ||
+    d.fileImportEnabled !== undefined ||
+    d.microphoneEnabled !== undefined
   ) {
     setAppFeatureFlags({
       ...(d.developerApiEnabled !== undefined
         ? { developerApi: d.developerApiEnabled }
         : {}),
       ...(d.devLabEnabled !== undefined ? { devLab: d.devLabEnabled } : {}),
+      ...(d.fileUploadEnabled !== undefined
+        ? { fileUpload: d.fileUploadEnabled }
+        : {}),
+      ...(d.fileImportEnabled !== undefined
+        ? { fileImport: d.fileImportEnabled }
+        : {}),
+      ...(d.microphoneEnabled !== undefined
+        ? { microphone: d.microphoneEnabled }
+        : {}),
     });
   }
 

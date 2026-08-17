@@ -271,7 +271,8 @@ export const az: Messages = {
     stopRecording: "Yazını dayandır",
     removeAudio: "Yazını sil",
     recording: "Yazılır… {n}s",
-    audioDefaultPrompt: "Bu yazıya qulaq as və cavab ver.",
+    audioDefaultPrompt:
+      "Bu yazıda nə deyildiyini yaz, sonra deyilənə cavab ver.",
     micDenied:
       "Mikrofon icazəsi bağlanıb. Brauzerdə icazə verin, sonra yenidən yoxlayın.",
     micNotFound: "Mikrofon tapılmadı.",

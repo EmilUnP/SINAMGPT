@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.13.0
+**Current product:** v1.14.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -21,7 +21,7 @@ Three promises:
 
 1. **It stays with us.** Models run on the company machine (Ollama). We do not send chats to ChatGPT, Gemini, or other public clouds.
 2. **Admins own the facts and the rules.** Product text and “do not answer this” policy live in Admin, not only in code.
-3. **It answers in the user’s language.** The screen is English / Azərbaycan. Questions in Russian or Turkish still get a reply in that language when possible.
+3. **It answers in the user’s language.** The screen is English / Azərbaycan / Русский. Questions in Turkish still get a reply in that language when possible.
 
 ---
 
@@ -31,7 +31,7 @@ Three promises:
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. |
 | **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Open **Models** to compare size and inputs. |
-| **Admin** | Turns models on, edits knowledge, sets guardrails, watches usage, can run Model lab. Can hide Developer API until the company needs it. |
+| **Admin** | Turns models on, edits knowledge, sets guardrails, watches usage (including the exact prompt), can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
 ---
@@ -69,9 +69,9 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 3 finds nothing:** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes.
 
-**Images:** only if the **selected model** can see pictures (Gemma 4, Gemma 3 4B+, LLaVA, …). Attach, paste, or drop a file onto the chat box. Text-only models stay text-only.
+**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 4, Gemma 3 4B+, LLaVA, …), **and** an admin has turned on **File upload** (paperclip) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Text-only models stay text-only.
 
-**Voice:** only if the model lists **Audio** (for example Gemma 4 E2B / E4B, not the 31B dense card). Use the microphone (arrow next to it picks which laptop/headset mic) or drop a short audio file. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
+**Voice:** only if the model lists **Audio** (for example Gemma 4 E2B / E4B, not the 31B dense card) **and** an admin has turned on **Microphone** and/or **File import**. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
 
 ---
 
@@ -134,7 +134,8 @@ You do not need engineering to run day-to-day:
 - **Knowledge** — add, edit, seed/replace the SINAM starter pack  
 - **Guardrails** — On/Off switches; apply to new chats immediately  
 - **Guest** — daily limit; can turn guest chat off  
-- **Features** — Developer API and Dev lab start **off** until you need other SINAM apps to call the model  
+- **Features** — start **off** until you need them: Developer API, Dev lab, File upload, File import, Microphone  
+- **Live usage** — click a generation to see the exact prompt sent to the model and the reply  
 - **Model lab** (`/lab`) — run the same chat path employees use and see pass rate / speed  
 
 Developer API (`/api/v1/generate`), when on, is a **raw model pipe**: no knowledge, no guardrails. Use it for other apps, not as a replacement for employee chat.
@@ -148,8 +149,8 @@ Say this clearly to the business:
 - We do **not** send prompts to a third-party LLM by default.  
 - We do **not** have departments, billing, or public internet share links. Share links work only for **logged-in** colleagues.  
 - We do **not** automatically read PDFs into knowledge yet (you paste or type docs in Admin).  
-- Vision is **not** every model — only those marked as image-capable.  
-- Voice is **not** every model — only those marked as audio-capable. Video still cannot be sent.  
+- Vision is **not** every model — only those marked as image-capable, and only after Admin turns on File upload / File import.  
+- Voice is **not** every model — only those marked as audio-capable, and only after Admin turns on Microphone / File import. Video still cannot be sent.  
 - **Functions** on a model badge means the model *could* call extra functions; SINAMGPT **does not run that yet**.
 
 ---

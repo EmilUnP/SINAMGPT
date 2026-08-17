@@ -3,7 +3,10 @@ export type LlmBackend = "ollama" | "vllm";
 export type ChatMessage = {
   role: "user" | "assistant" | "system";
   content: string;
-  /** Raw base64 (no data-URL prefix). Ollama vision / vLLM image_url. */
+  /**
+   * Raw base64 (no data-URL prefix). Vision still uses this array; WAV
+   * recordings go here too (Ollama detects RIFF/WAVE in `images`).
+   */
   images?: string[];
 };
 
