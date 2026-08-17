@@ -66,6 +66,7 @@ const ensureSchema = (database: Database.Database) => {
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
       content TEXT NOT NULL,
       sources TEXT,
+      attachments TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -86,6 +87,8 @@ const ensureSchema = (database: Database.Database) => {
       is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
       backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
+      vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),
+      tools INTEGER NOT NULL DEFAULT 0 CHECK (tools IN (0, 1)),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -286,6 +289,19 @@ const ensureSchema = (database: Database.Database) => {
   }
   if (!hasColumn(database, "messages", "sources")) {
     database.exec(`ALTER TABLE messages ADD COLUMN sources TEXT`);
+  }
+  if (!hasColumn(database, "messages", "attachments")) {
+    database.exec(`ALTER TABLE messages ADD COLUMN attachments TEXT`);
+  }
+  if (!hasColumn(database, "models", "vision")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN vision INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "tools")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN tools INTEGER NOT NULL DEFAULT 0`,
+    );
   }
   if (!hasColumn(database, "conversations", "project_id")) {
     database.exec(`ALTER TABLE conversations ADD COLUMN project_id TEXT`);

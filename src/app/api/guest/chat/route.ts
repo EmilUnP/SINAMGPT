@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  decodeImageData,
+  MAX_GUEST_IMAGES,
+} from "@/lib/attachments";
+import {
   consumeGuestMessage,
   getGuestMaxChars,
   getGuestUsage,
@@ -16,6 +20,7 @@ import {
   getGuestEnabledSetting,
   getGuestHistoryLimitSetting,
   isModelEnabled,
+  modelSupportsVision,
   resolveOllamaModelName,
 } from "@/lib/settings";
 import {
@@ -24,20 +29,52 @@ import {
   startUsage,
 } from "@/lib/usage";
 
-const schema = z.object({
-  message: z.string().trim().min(1).max(20000),
-  model: z.string().trim().min(1).max(120),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string().trim().min(1).max(8000),
-      }),
-    )
-    .max(40)
-    .optional()
-    .default([]),
+const imageSchema = z.object({
+  mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  data: z.string().min(32).max(16_000_000),
+  name: z.string().trim().max(200).optional(),
 });
+
+const schema = z
+  .object({
+    message: z.string().max(20000).optional(),
+    images: z.array(imageSchema).max(MAX_GUEST_IMAGES).optional(),
+    model: z.string().trim().min(1).max(120),
+    history: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().max(8000).optional().default(""),
+          images: z.array(imageSchema).max(MAX_GUEST_IMAGES).optional(),
+        }),
+      )
+      .max(40)
+      .optional()
+      .default([]),
+  })
+  .superRefine((data, ctx) => {
+    const text = data.message?.trim() ?? "";
+    if (!text && !(data.images?.length ?? 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Message is required",
+        path: ["message"],
+      });
+    }
+  });
+
+const imagesToBase64 = (
+  images: z.infer<typeof imageSchema>[] | undefined,
+): { images: string[]; error?: string } => {
+  if (!images?.length) return { images: [] };
+  const out: string[] = [];
+  for (const image of images) {
+    const decoded = decodeImageData(image);
+    if ("error" in decoded) return { images: [], error: decoded.error };
+    out.push(decoded.buffer.toString("base64"));
+  }
+  return { images: out };
+};
 
 export async function POST(request: Request) {
   try {
@@ -75,13 +112,25 @@ export async function POST(request: Request) {
 
     const maxChars = getGuestMaxChars();
     const historyLimit = getGuestHistoryLimitSetting();
-    const { message, model: requestedModel, history } = parsed.data;
+    const { model: requestedModel, history } = parsed.data;
+    const message = (parsed.data.message ?? "").trim();
     const model = resolveOllamaModelName(requestedModel);
+    const incomingImages = parsed.data.images ?? [];
 
     if (!isModelEnabled(model)) {
       return Response.json(
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
+      );
+    }
+
+    if (incomingImages.length && !modelSupportsVision(model)) {
+      return Response.json(
+        {
+          error:
+            "This model does not support images. Choose a vision model.",
+        },
+        { status: 400 },
       );
     }
 
@@ -92,6 +141,31 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    }
+
+    const currentImages = imagesToBase64(incomingImages);
+    if (currentImages.error) {
+      return Response.json({ error: currentImages.error }, { status: 400 });
+    }
+
+    const priorTurns: ChatMessage[] = [];
+    for (const turn of historyLimit > 0 ? history.slice(-historyLimit) : history) {
+      const content = turn.content.trim();
+      if (turn.role === "assistant") {
+        if (!content) continue;
+        priorTurns.push({ role: "assistant", content });
+        continue;
+      }
+      const decoded = imagesToBase64(turn.images);
+      if (decoded.error) {
+        return Response.json({ error: decoded.error }, { status: 400 });
+      }
+      if (!content && !decoded.images.length) continue;
+      priorTurns.push({
+        role: "user",
+        content,
+        ...(decoded.images.length ? { images: decoded.images } : {}),
+      });
     }
 
     const guard = checkInputGuardrails(message, "guest", {
@@ -131,10 +205,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const prior =
-      historyLimit > 0 ? history.slice(-historyLimit) : [];
+    const prior = priorTurns;
     const prepared = withSystemPrompt(
-      [...prior, { role: "user" as const, content: message }],
+      [
+        ...prior,
+        {
+          role: "user" as const,
+          content: message,
+          ...(currentImages.images.length
+            ? { images: currentImages.images }
+            : {}),
+        },
+      ],
       "guest",
     );
     const messages: ChatMessage[] = prepared.messages;
@@ -145,7 +227,7 @@ export async function POST(request: Request) {
       username: "guest",
       userId: null,
       model,
-      prompt: message,
+      prompt: message || "[image]",
     });
 
     const runtime = getChatRuntimeOptions();

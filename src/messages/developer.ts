@@ -37,7 +37,7 @@ export const developerEn = {
   updateFailed: "Could not update key",
   curlTitle: "Example curl",
   curlHint:
-    "Send Authorization: Bearer <your key>. Models must be enabled in Admin. Browser apps also need a CORS origin allowlist in Dev lab.",
+    "Send Authorization: Bearer <your key>. Models must be enabled in Admin. Vision models accept optional images on messages. Browser apps also need a CORS origin allowlist in Dev lab.",
   endpointGenerate: "POST /api/v1/generate",
   endpointModels: "GET /api/v1/models",
   colTime: "Time",
@@ -100,7 +100,7 @@ export const developerAz: DeveloperMessages = {
   updateFailed: "Açar yenilənmədi",
   curlTitle: "Nümunə curl",
   curlHint:
-    "Authorization: Bearer <açar> göndərin. Modellər Admin-də aktiv olmalıdır. Brauzer tətbiqləri üçün Dev lab-da CORS origin siyahısı lazımdır.",
+    "Authorization: Bearer <açar> göndərin. Modellər Admin-də aktiv olmalıdır. Görüntü modelləri mesajlarda şəkil qəbul edir. Brauzer tətbiqləri üçün Dev lab-da CORS origin siyahısı lazımdır.",
   endpointGenerate: "POST /api/v1/generate",
   endpointModels: "GET /api/v1/models",
   colTime: "Vaxt",

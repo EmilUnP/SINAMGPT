@@ -233,6 +233,18 @@ export const en = {
     suggestionFact: "Fun fact",
     suggestionFactPrompt:
       "Tell me one interesting fun fact about technology. Keep it to 2 sentences.",
+    attachImage: "Attach image",
+    removeImage: "Remove image",
+    vision: "Vision",
+    tools: "Tools",
+    imagePlaceholder: "Add a caption, or send the image…",
+    visionFooterHint:
+      "Enter to send · Shift+Enter for new line · Attach or paste images",
+    imageTooLarge: "Each image must be under 8 MB.",
+    imageType: "Use JPEG, PNG, WebP, or GIF.",
+    imageLimit: "You can attach up to {n} images.",
+    imageFailed: "Could not read that image. Try another file.",
+    visionRequired: "This model does not support images. Choose a vision model.",
   },
   share: {
     back: "Back",

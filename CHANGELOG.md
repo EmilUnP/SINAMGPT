@@ -10,6 +10,21 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.10.0] — 2026-08-14
+
+Vision models can take images, not only text. Mobile chrome and EN/AZ copy cover every page.
+
+### Added
+- **Vision / image chat** — multimodal models (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, and others flagged by Ollama `capabilities`) accept attached or pasted images in signed-in chat and guest try-chat. Caption is optional.
+- **Capability badges** — model picker and Admin → Models show **Vision** and **Tools** (tools is display-only; no function-calling runtime yet)
+- **Image attachments** — JPEG/PNG/WebP/GIF, up to 4 per signed-in message (2 for guests), 8 MB each; files live under `data/attachments/` and are served at `GET /api/attachments/[messageId]/[index]` (owner, or any logged-in user if the chat is shared)
+- **API images** — `GET /api/v1/models` returns `vision` / `tools`; `POST /api/v1/generate` accepts optional `images` on messages (rejected on text-only models)
+
+### Changed
+- **Mobile / responsive UI** — wrapping headers, overflow More menu on small screens, safe-area insets, 16px composer (no iOS zoom), touch-visible pin/delete/rename
+- **EN / AZ copy** — attach-image strings, auth error mapping, locale-aware dates and API status labels; leftover “Developer” in AZ is “Tərtibatçı”
+- **Shared page chrome** — Admin, Model lab, Dev lab, and Developer use the same header; chat extra links collapse into More below `lg`
+
 ## [1.9.0] — 2026-08-14
 
 Corporate API keys so other SINAM apps can call local models through SINAMGPT.
@@ -186,7 +201,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0

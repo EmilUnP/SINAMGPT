@@ -3,6 +3,8 @@ export type LlmBackend = "ollama" | "vllm";
 export type ChatMessage = {
   role: "user" | "assistant" | "system";
   content: string;
+  /** Raw base64 (no data-URL prefix). Ollama vision / vLLM image_url. */
+  images?: string[];
 };
 
 export type LlmModel = {
@@ -10,6 +12,8 @@ export type LlmModel = {
   size: number;
   modified_at: string;
   backend: LlmBackend;
+  vision?: boolean;
+  tools?: boolean;
 };
 
 /** @deprecated Use LlmModel — kept for older imports */

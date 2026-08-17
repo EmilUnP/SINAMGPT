@@ -94,6 +94,8 @@ type ManagedModel = {
   is_enabled: boolean;
   display_name: string;
   backend?: "ollama" | "vllm";
+  vision?: boolean;
+  tools?: boolean;
 };
 
 type AppSettings = {
@@ -1396,6 +1398,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     <tr>
                       <th>{t("admin.models.colId")}</th>
                       <th>{t("admin.models.colBackend")}</th>
+                      <th>{t("admin.models.colCaps")}</th>
                       <th>{t("admin.models.colSize")}</th>
                       <th className="min-w-[220px]">{t("admin.models.colDisplay")}</th>
                       <th>{t("admin.models.colStatus")}</th>
@@ -1435,6 +1438,25 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             >
                               {model.backend === "vllm" ? "vLLM" : "Ollama"}
                             </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex flex-wrap gap-1">
+                              {model.vision ? (
+                                <span className="inline-flex rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-200">
+                                  {t("admin.models.vision")}
+                                </span>
+                              ) : null}
+                              {model.tools ? (
+                                <span className="inline-flex rounded-md bg-violet-500/15 px-2 py-0.5 text-[11px] font-medium text-violet-200">
+                                  {t("admin.models.tools")}
+                                </span>
+                              ) : null}
+                              {!model.vision && !model.tools ? (
+                                <span className="text-[11px] text-[var(--admin-muted)]">
+                                  —
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                             {formatSize(model.size)}

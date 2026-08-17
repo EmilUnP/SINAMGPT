@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { deleteConversationAttachments, hydrateUiMessage } from "@/lib/attachments";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { assertAssignableProject } from "@/lib/projects";
@@ -33,34 +34,16 @@ export async function GET(_request: Request, { params }: Params) {
 
   const rows = getDb()
     .prepare(
-      `SELECT id, conversation_id, role, content, sources, created_at
+      `SELECT id, conversation_id, role, content, sources, attachments, created_at
        FROM messages
        WHERE conversation_id = ?
        ORDER BY created_at ASC`,
     )
     .all(id) as Array<
-    Message & { sources: string | null }
+    Message & { sources: string | null; attachments?: string | null }
   >;
 
-  const messages: Message[] = rows.map((row) => {
-    let sources: Message["sources"] = null;
-    if (row.sources) {
-      try {
-        const parsed = JSON.parse(row.sources) as Message["sources"];
-        if (Array.isArray(parsed) && parsed.length) sources = parsed;
-      } catch {
-        sources = null;
-      }
-    }
-    return {
-      id: row.id,
-      conversation_id: row.conversation_id,
-      role: row.role,
-      content: row.content,
-      created_at: row.created_at,
-      sources,
-    };
-  });
+  const messages: Message[] = rows.map((row) => hydrateUiMessage(row));
 
   return NextResponse.json({ conversation, messages });
 }
@@ -141,6 +124,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  deleteConversationAttachments(id);
   getDb().prepare(`DELETE FROM conversations WHERE id = ?`).run(id);
   return NextResponse.json({ ok: true });
 }

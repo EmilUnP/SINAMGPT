@@ -6,6 +6,8 @@
 **Company context:** SINAM Ltd — internal productivity & knowledge assistant  
 **Working name:** SINAMGPT  
 
+Shipped product status (what is actually running) lives in [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), and [ROADMAP.md](./ROADMAP.md). **Current release: v1.10.0.**  
+
 ---
 
 ## 1. Why this document exists

@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { inferCapabilities } from "@/lib/llm/capabilities";
 import {
   getDefaultModel,
   listModels,
@@ -27,6 +28,8 @@ export type ManagedModel = LlmModel & {
 
 export type PublicModel = LlmModel & {
   display_name: string;
+  vision: boolean;
+  tools: boolean;
 };
 
 export type AppSettings = {
@@ -279,19 +282,37 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
   const db = getDb();
 
   const upsert = db.prepare(
-    `INSERT INTO models (name, is_enabled, backend, updated_at)
-     VALUES (?, 1, ?, datetime('now'))
+    `INSERT INTO models (name, is_enabled, backend, vision, tools, updated_at)
+     VALUES (?, 1, ?, ?, ?, datetime('now'))
      ON CONFLICT(name) DO UPDATE SET
        backend = excluded.backend,
+       vision = excluded.vision,
+       tools = excluded.tools,
        updated_at = datetime('now')`,
   );
 
   const sync = db.transaction(
-    (rows: Array<{ name: string; backend: LlmBackend }>) => {
-      for (const row of rows) upsert.run(row.name, row.backend);
+    (
+      rows: Array<{
+        name: string;
+        backend: LlmBackend;
+        vision: boolean;
+        tools: boolean;
+      }>,
+    ) => {
+      for (const row of rows) {
+        upsert.run(row.name, row.backend, row.vision ? 1 : 0, row.tools ? 1 : 0);
+      }
     },
   );
-  sync(liveModels.map((m) => ({ name: m.name, backend: m.backend })));
+  sync(
+    liveModels.map((m) => ({
+      name: m.name,
+      backend: m.backend,
+      vision: Boolean(m.vision),
+      tools: Boolean(m.tools),
+    })),
+  );
 
   const rows = db
     .prepare(`SELECT name, is_enabled, display_name, backend FROM models`)
@@ -319,6 +340,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       backend: meta?.backend ?? m.backend,
       is_enabled: meta?.is_enabled ?? true,
       display_name: normalizeDisplayName(meta?.display_name, m.name),
+      vision: Boolean(m.vision),
+      tools: Boolean(m.tools),
     };
   });
 };
@@ -383,6 +406,15 @@ export const isModelEnabled = (name: string): boolean => {
   return row.is_enabled === 1;
 };
 
+export const modelSupportsVision = (name: string): boolean => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT vision FROM models WHERE name = ?`)
+    .get(resolved) as { vision: number } | undefined;
+  if (row) return row.vision === 1;
+  return inferCapabilities(resolved).vision;
+};
+
 export const getEnabledModels = async (): Promise<{
   models: PublicModel[];
   defaultModel: string;
@@ -403,7 +435,11 @@ export const getEnabledModels = async (): Promise<{
     return defaultModel;
   };
   return {
-    models: enabled.map(({ is_enabled: _ignored, ...rest }) => rest),
+    models: enabled.map(({ is_enabled: _ignored, ...rest }) => ({
+      ...rest,
+      vision: Boolean(rest.vision),
+      tools: Boolean(rest.tools),
+    })),
     defaultModel,
     fastModel: pickPreset(getFastModelSetting()),
     smartModel: pickPreset(getSmartModelSetting()),

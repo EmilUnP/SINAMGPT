@@ -38,6 +38,13 @@ export type KnowledgeCitation = {
   category: string;
 };
 
+export type MessageAttachment = {
+  type: "image";
+  mime: string;
+  name: string;
+  index: number;
+};
+
 export type Message = {
   id: string;
   conversation_id: string;
@@ -46,6 +53,8 @@ export type Message = {
   created_at: string;
   /** Knowledge docs used for this assistant reply (JSON in DB) */
   sources?: KnowledgeCitation[] | null;
+  /** Image attachments on user messages (vision models) */
+  attachments?: MessageAttachment[] | null;
 };
 
 export type SessionPayload = {

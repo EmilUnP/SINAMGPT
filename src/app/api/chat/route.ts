@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { getCurrentUser, markActive, newId } from "@/lib/auth";
+import {
+  MAX_CHAT_IMAGES,
+  parseAttachments,
+  saveMessageImages,
+  toLlmHistory,
+} from "@/lib/attachments";
 import { getDb } from "@/lib/db";
 import {
   checkInputGuardrails,
@@ -12,6 +18,7 @@ import {
   getUserHistoryLimitSetting,
   getUserMaxCharsSetting,
   isModelEnabled,
+  modelSupportsVision,
   resolveOllamaModelName,
 } from "@/lib/settings";
 import {
@@ -21,10 +28,17 @@ import {
 } from "@/lib/usage";
 import type { Conversation, Message } from "@/lib/types";
 
+const imageSchema = z.object({
+  mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  data: z.string().min(32).max(16_000_000),
+  name: z.string().trim().max(200).optional(),
+});
+
 const schema = z
   .object({
     conversationId: z.string().min(1).optional(),
-    message: z.string().trim().min(1).max(32000).optional(),
+    message: z.string().max(32000).optional(),
+    images: z.array(imageSchema).max(MAX_CHAT_IMAGES).optional(),
     model: z.string().trim().min(1).max(120),
     projectId: z.string().trim().min(1).max(64).nullable().optional(),
     mode: z
@@ -34,7 +48,9 @@ const schema = z
     rewrite: z.enum(["shorter", "formal", "continue"]).optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.mode === "send" && !data.message) {
+    const text = data.message?.trim() ?? "";
+    const imageCount = data.images?.length ?? 0;
+    if (data.mode === "send" && !text && imageCount === 0) {
       ctx.addIssue({
         code: "custom",
         message: "Message is required",
@@ -88,9 +104,14 @@ const REWRITE_PROMPTS = {
 const CONVERSATION_SELECT =
   "id, user_id, title, model, project_id, is_pinned, created_at, updated_at";
 
-const titleFromMessage = (text: string): string => {
+const MESSAGE_SELECT = "id, role, content, created_at, attachments";
+
+const titleFromPrompt = (text: string, hasImages: boolean): string => {
   const cleaned = text.replace(/\s+/g, " ").trim();
-  return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
+  if (cleaned) {
+    return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
+  }
+  return hasImages ? "Image" : "New chat";
 };
 
 type DbMessage = {
@@ -98,6 +119,7 @@ type DbMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+  attachments?: string | null;
 };
 
 const streamAssistantReply = (input: {
@@ -358,6 +380,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const incomingImages = parsed.data.images ?? [];
+    if (incomingImages.length && !modelSupportsVision(model)) {
+      return Response.json(
+        {
+          error:
+            "This model does not support images. Choose a vision model.",
+        },
+        { status: 400 },
+      );
+    }
+
     // ——— Rewrite last assistant reply (shorter / formal / continue) ———
     if (mode === "rewrite") {
       const conversationId = parsed.data.conversationId!;
@@ -378,7 +411,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -438,20 +471,19 @@ export async function POST(request: Request) {
         .get(conversationId) as Conversation;
 
       const history: ChatMessage[] = [
-        ...rows.slice(0, lastAssistantIdx).map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        ...toLlmHistory(conversationId, rows.slice(0, lastAssistantIdx)),
         { role: "assistant", content: lastAssistant.content },
         { role: "user", content: REWRITE_PROMPTS[style] },
       ];
 
+      const lastUserAttachments = parseAttachments(lastUser.attachments);
       const userMessage: Message = {
         id: lastUser.id,
         conversation_id: conversationId,
         role: "user",
         content: lastUser.content,
         created_at: lastUser.created_at,
+        attachments: lastUserAttachments.length ? lastUserAttachments : null,
       };
 
       return streamAssistantReply({
@@ -485,7 +517,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -546,16 +578,19 @@ export async function POST(request: Request) {
         )
         .get(conversationId) as Conversation;
 
-      const history = rows
-        .slice(0, lastUserIdx + 1)
-        .map((m) => ({ role: m.role, content: m.content })) as ChatMessage[];
+      const history = toLlmHistory(
+        conversationId,
+        rows.slice(0, lastUserIdx + 1),
+      );
 
+      const lastUserAttachments = parseAttachments(lastUser.attachments);
       const userMessage: Message = {
         id: lastUser.id,
         conversation_id: conversationId,
         role: "user",
         content: lastUser.content,
         created_at: lastUser.created_at,
+        attachments: lastUserAttachments.length ? lastUserAttachments : null,
       };
 
       return streamAssistantReply({
@@ -616,7 +651,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -667,7 +702,7 @@ export async function POST(request: Request) {
           `UPDATE conversations
            SET title = ?, model = ?, updated_at = datetime('now')
            WHERE id = ?`,
-        ).run(titleFromMessage(message), model, conversationId);
+        ).run(titleFromPrompt(message, false), model, conversationId);
       } else {
         db.prepare(
           `UPDATE conversations
@@ -682,20 +717,21 @@ export async function POST(request: Request) {
         )
         .get(conversationId) as Conversation;
 
-      const history = [
-        ...rows.slice(0, editIdx).map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        { role: "user" as const, content: message },
-      ] as ChatMessage[];
+      const history = toLlmHistory(
+        conversationId,
+        rows.slice(0, editIdx + 1).map((row, i) =>
+          i === editIdx ? { ...row, content: message } : row,
+        ),
+      );
 
+      const editAttachments = parseAttachments(rows[editIdx].attachments);
       const userMessage: Message = {
         id: editMessageId,
         conversation_id: conversationId,
         role: "user",
         content: message,
         created_at: rows[editIdx].created_at,
+        attachments: editAttachments.length ? editAttachments : null,
       };
 
       return streamAssistantReply({
@@ -711,7 +747,7 @@ export async function POST(request: Request) {
     }
 
     // ——— Normal send ———
-    const message = parsed.data.message!;
+    const message = (parsed.data.message ?? "").trim();
 
     if (message.length > maxChars) {
       return Response.json(
@@ -780,25 +816,40 @@ export async function POST(request: Request) {
       ).run(
         conversationId,
         user.id,
-        titleFromMessage(message),
+        titleFromPrompt(message, incomingImages.length > 0),
         model,
         projectCheck.projectId,
       );
     }
 
     const userMessageId = newId();
-    db.prepare(
-      `INSERT INTO messages (id, conversation_id, role, content)
-       VALUES (?, ?, 'user', ?)`,
-    ).run(userMessageId, conversationId, message);
+    const saved = saveMessageImages(
+      conversationId,
+      userMessageId,
+      incomingImages,
+    );
+    if (saved.error) {
+      return Response.json({ error: saved.error }, { status: 400 });
+    }
 
-    const history = db
+    db.prepare(
+      `INSERT INTO messages (id, conversation_id, role, content, attachments)
+       VALUES (?, ?, 'user', ?, ?)`,
+    ).run(
+      userMessageId,
+      conversationId,
+      message,
+      saved.attachments.length ? JSON.stringify(saved.attachments) : null,
+    );
+
+    const historyRows = db
       .prepare(
-        `SELECT role, content FROM messages
+        `SELECT ${MESSAGE_SELECT} FROM messages
          WHERE conversation_id = ?
          ORDER BY created_at ASC`,
       )
-      .all(conversationId) as ChatMessage[];
+      .all(conversationId) as DbMessage[];
+    const history = toLlmHistory(conversationId, historyRows);
 
     let conversation = db
       .prepare(
@@ -807,10 +858,10 @@ export async function POST(request: Request) {
       .get(conversationId) as Conversation;
 
     const isFirstExchange =
-      history.filter((m) => m.role === "user").length === 1;
+      historyRows.filter((m) => m.role === "user").length === 1;
 
     if (isFirstExchange && conversation.title === "New chat") {
-      const title = titleFromMessage(message);
+      const title = titleFromPrompt(message, incomingImages.length > 0);
       db.prepare(
         `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
       ).run(title, conversationId);
@@ -826,6 +877,7 @@ export async function POST(request: Request) {
       role: "user",
       content: message,
       created_at: new Date().toISOString(),
+      attachments: saved.attachments.length ? saved.attachments : null,
     };
 
     return streamAssistantReply({
@@ -834,7 +886,7 @@ export async function POST(request: Request) {
       conversationId,
       conversation,
       model,
-      promptText: message,
+      promptText: message || "[image]",
       userMessage,
       history,
     });

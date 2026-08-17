@@ -17,6 +17,7 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Paperclip,
   RefreshCw,
   Search,
   SendHorizonal,
@@ -36,6 +37,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -47,8 +49,15 @@ import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
-import { ModelPicker } from "./ModelPicker";
+import { MessageImages } from "./MessageImages";
+import { ModelPicker, type ModelOption } from "./ModelPicker";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  fileToChatImage,
+  imagePreviewUrl,
+  type ChatImagePayload,
+} from "@/lib/compress-image";
+import { attachmentUrl, MAX_CHAT_IMAGES } from "@/lib/image-limits";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
@@ -63,7 +72,12 @@ type ChatAppProps = {
   user: User;
 };
 
-type UiMessage = Message & { isStreaming?: boolean };
+type UiMessage = Message & {
+  isStreaming?: boolean;
+  localImages?: ChatImagePayload[];
+};
+
+type PendingImage = ChatImagePayload & { id: string };
 
 type ModelMode = "fast" | "smart" | "custom";
 
@@ -135,14 +149,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
-  const [models, setModels] = useState<
-    Array<{ name: string; display_name?: string; backend?: string }>
-  >([]);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState("");
   const [fastModel, setFastModel] = useState("");
   const [smartModel, setSmartModel] = useState("");
   const [modelMode, setModelMode] = useState<ModelMode>("smart");
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [modelsError, setModelsError] = useState("");
@@ -174,6 +187,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchTimerRef = useRef<number | null>(null);
   const shareBtnRef = useRef<HTMLButtonElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
@@ -264,6 +278,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const modelLabel = (name: string) =>
     models.find((m) => m.name === name)?.display_name || name;
 
+  const supportsVision = Boolean(
+    models.find((m) => m.name === model)?.vision,
+  );
+
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -274,7 +292,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [input]);
+  }, [input, pendingImages.length]);
+
+  useEffect(() => {
+    if (!supportsVision && pendingImages.length) setPendingImages([]);
+  }, [supportsVision, pendingImages.length]);
 
   const loadConversations = useCallback(
     async (query?: string, projectId?: string | null) => {
@@ -309,7 +331,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const loadModels = useCallback(async () => {
     const res = await fetch("/api/models");
     const data = (await res.json()) as {
-      models?: Array<{ name: string; display_name?: string; backend?: string }>;
+      models?: ModelOption[];
       defaultModel?: string;
       fastModel?: string;
       smartModel?: string;
@@ -379,6 +401,35 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       name === fastModel ? "fast" : name === smartModel ? "smart" : "custom";
     setModelMode(mode);
     persistModelChoice(mode, name);
+  };
+
+  const imageErrorMessage = (code: "type" | "size" | "failed") => {
+    if (code === "type") return t("chat.imageType");
+    if (code === "size") return t("chat.imageTooLarge");
+    return t("chat.imageFailed");
+  };
+
+  const addImageFiles = async (files: File[]) => {
+    if (!supportsVision || !files.length) return;
+    const remaining = MAX_CHAT_IMAGES - pendingImages.length;
+    if (remaining <= 0) {
+      setError(t("chat.imageLimit", { n: MAX_CHAT_IMAGES }));
+      return;
+    }
+    const slice = files.slice(0, remaining);
+    const next: PendingImage[] = [];
+    for (const file of slice) {
+      const result = await fileToChatImage(file);
+      if (!result.ok) {
+        setError(imageErrorMessage(result.code));
+        continue;
+      }
+      next.push({ ...result.image, id: `img-${Date.now()}-${Math.random()}` });
+    }
+    if (next.length) {
+      setPendingImages((prev) => [...prev, ...next].slice(0, MAX_CHAT_IMAGES));
+      setError("");
+    }
   };
 
   useEffect(() => {
@@ -721,6 +772,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       tempAssistantId: string;
     };
     restoreOnError?: string;
+    restoreImagesOnError?: PendingImage[];
     /** After rewrite/regenerate/edit failures, reload from DB (server may have deleted the old answer). */
     reloadConversationOnError?: boolean;
   }) => {
@@ -867,6 +919,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         if (opts.restoreOnError != null) {
           setInput(opts.restoreOnError);
         }
+        if (opts.restoreImagesOnError?.length) {
+          setPendingImages(opts.restoreImagesOnError);
+        }
       }
     } finally {
       setIsSending(false);
@@ -879,19 +934,27 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
   const handleSend = async (preset?: string) => {
     const text = (preset ?? input).trim();
-    if (!text || isSending) return;
+    const imagesToSend = preset ? [] : pendingImages;
+    if ((!text && imagesToSend.length === 0) || isSending) return;
 
     setInput("");
+    if (imagesToSend.length) setPendingImages([]);
 
     await runChatRequest({
       body: {
         conversationId: activeId ?? undefined,
         message: text,
+        images: imagesToSend.map(({ mime, data, name }) => ({
+          mime,
+          data,
+          name,
+        })),
         model,
         projectId: activeId ? undefined : activeProjectId,
         mode: "send",
       },
       restoreOnError: text,
+      restoreImagesOnError: imagesToSend,
       prepareMessages: () => {
         const tempUserId = `temp-user-${Date.now()}`;
         const tempAssistantId = `temp-assistant-${Date.now()}`;
@@ -901,6 +964,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           role: "user",
           content: text,
           created_at: new Date().toISOString(),
+          localImages: imagesToSend.length ? imagesToSend : undefined,
         };
         const tempAssistant: UiMessage = {
           id: tempAssistantId,
@@ -1719,9 +1783,26 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             </div>
                           </div>
                         ) : isUser ? (
-                          <p className="whitespace-pre-wrap">
-                            {message.content}
-                          </p>
+                          <div className="space-y-2">
+                            <MessageImages
+                              items={
+                                message.localImages?.map((img) => ({
+                                  src: imagePreviewUrl(img),
+                                  name: img.name,
+                                })) ??
+                                message.attachments?.map((item) => ({
+                                  src: attachmentUrl(message.id, item.index),
+                                  name: item.name,
+                                })) ??
+                                []
+                              }
+                            />
+                            {message.content ? (
+                              <p className="whitespace-pre-wrap">
+                                {message.content}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : message.content ? (
                           <MarkdownMessage content={message.content} />
                         ) : (
@@ -1803,41 +1884,102 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
         <div className="safe-bottom border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div
-            className="composer-shell mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+            className="composer-shell mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
             style={{ boxShadow: "var(--composer-shadow)" }}
           >
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              placeholder={t("chat.messagePlaceholder")}
-              className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-[15px]"
-            />
-            {isSending ? (
-              <button
-                type="button"
-                onClick={handleStop}
-                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
-                aria-label={t("chat.stopGenerating")}
-              >
-                <Square size={14} fill="currentColor" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void handleSend()}
-                disabled={ready && (!input.trim() || !model)}
-                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={t("chat.sendMessage")}
-              >
-                <SendHorizonal size={16} />
-              </button>
-            )}
+            {pendingImages.length ? (
+              <div className="px-2 pt-1">
+                <MessageImages
+                  tone="composer"
+                  items={pendingImages.map((img) => ({
+                    src: imagePreviewUrl(img),
+                    name: img.name,
+                  }))}
+                  onRemove={(index) =>
+                    setPendingImages((prev) =>
+                      prev.filter((_, i) => i !== index),
+                    )
+                  }
+                  removeLabel={t("chat.removeImage")}
+                />
+              </div>
+            ) : null}
+            <div className="flex items-end gap-2">
+              {supportsVision ? (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      event.target.value = "";
+                      void addImageFiles(files);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={ready && (isSending || !model)}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40"
+                    aria-label={t("chat.attachImage")}
+                    title={t("chat.attachImage")}
+                  >
+                    <Paperclip size={16} />
+                  </button>
+                </>
+              ) : null}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
+                  if (!supportsVision) return;
+                  const files = Array.from(event.clipboardData.files).filter(
+                    (file) => file.type.startsWith("image/"),
+                  );
+                  if (!files.length) return;
+                  event.preventDefault();
+                  void addImageFiles(files);
+                }}
+                rows={1}
+                placeholder={
+                  pendingImages.length
+                    ? t("chat.imagePlaceholder")
+                    : t("chat.messagePlaceholder")
+                }
+                className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-[15px]"
+              />
+              {isSending ? (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
+                  aria-label={t("chat.stopGenerating")}
+                >
+                  <Square size={14} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleSend()}
+                  disabled={
+                    ready &&
+                    ((!input.trim() && pendingImages.length === 0) || !model)
+                  }
+                  className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={t("chat.sendMessage")}
+                >
+                  <SendHorizonal size={16} />
+                </button>
+              )}
+            </div>
           </div>
           <p className="mx-auto mt-2 hidden max-w-3xl text-center text-[11px] text-[var(--text-muted)] sm:block">
-            {t("chat.footerHint")}
+            {supportsVision ? t("chat.visionFooterHint") : t("chat.footerHint")}
           </p>
         </div>
       </main>

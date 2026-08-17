@@ -11,27 +11,49 @@ import {
   markApiUsageToken,
   startApiUsage,
 } from "@/lib/api-usage";
+import { decodeImageData, MAX_CHAT_IMAGES } from "@/lib/attachments";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import {
   getChatRuntimeOptions,
   isModelEnabled,
+  modelSupportsVision,
   resolveOllamaModelName,
 } from "@/lib/settings";
 
-const schema = z.object({
-  model: z.string().trim().min(1).max(120),
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant", "system"]),
-        content: z.string().min(1).max(32000),
-      }),
-    )
-    .min(1)
-    .max(40),
-  stream: z.boolean().optional().default(true),
+const imageSchema = z.object({
+  mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  data: z.string().min(32).max(16_000_000),
+  name: z.string().trim().max(200).optional(),
 });
+
+const schema = z
+  .object({
+    model: z.string().trim().min(1).max(120),
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant", "system"]),
+          content: z.string().max(32000).optional().default(""),
+          images: z.array(imageSchema).max(MAX_CHAT_IMAGES).optional(),
+        }),
+      )
+      .min(1)
+      .max(40),
+    stream: z.boolean().optional().default(true),
+  })
+  .superRefine((data, ctx) => {
+    const hasPayload = data.messages.some(
+      (m) => m.content.trim() || (m.images?.length ?? 0) > 0,
+    );
+    if (!hasPayload) {
+      ctx.addIssue({
+        code: "custom",
+        message: "At least one message with text or images is required",
+        path: ["messages"],
+      });
+    }
+  });
 
 type LlmChunk = {
   message?: { content?: string };
@@ -44,7 +66,32 @@ type LlmChunk = {
 
 const promptFromMessages = (messages: ChatMessage[]) => {
   const last = [...messages].reverse().find((m) => m.role === "user");
-  return last?.content ?? messages.map((m) => m.content).join("\n");
+  if (!last) return messages.map((m) => m.content).join("\n");
+  return last.content.trim() || (last.images?.length ? "[image]" : "");
+};
+
+const toChatMessages = (
+  rows: z.infer<typeof schema>["messages"],
+): { messages: ChatMessage[]; error?: string; hasImages: boolean } => {
+  const messages: ChatMessage[] = [];
+  let hasImages = false;
+  for (const row of rows) {
+    const images: string[] = [];
+    for (const image of row.images ?? []) {
+      const decoded = decodeImageData(image);
+      if ("error" in decoded) {
+        return { messages: [], error: decoded.error, hasImages: false };
+      }
+      images.push(decoded.buffer.toString("base64"));
+    }
+    if (images.length) hasImages = true;
+    messages.push({
+      role: row.role,
+      content: row.content,
+      ...(images.length ? { images } : {}),
+    });
+  }
+  return { messages, hasImages };
 };
 
 const jsonWithCors = (
@@ -196,7 +243,11 @@ export async function POST(request: Request) {
   }
 
   const model = resolveOllamaModelName(parsedBody.model);
-  const messages = parsedBody.messages as ChatMessage[];
+  const converted = toChatMessages(parsedBody.messages);
+  if (converted.error) {
+    return reject(request, auth, ip, converted.error, 400);
+  }
+  const messages = converted.messages;
   const prompt = promptFromMessages(messages);
   const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
 
@@ -207,6 +258,17 @@ export async function POST(request: Request) {
       ip,
       "This model is disabled by admin.",
       403,
+      { model, prompt },
+    );
+  }
+
+  if (converted.hasImages && !modelSupportsVision(model)) {
+    return reject(
+      request,
+      auth,
+      ip,
+      "This model does not support images. Choose a vision model.",
+      400,
       { model, prompt },
     );
   }

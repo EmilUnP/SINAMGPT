@@ -120,6 +120,7 @@ export const adminEn = {
       "No models found. Start Ollama (`ollama list`) and/or vLLM, and set LLM_BACKENDS=ollama,vllm in .env.local.",
     colId: "Model id",
     colBackend: "Backend",
+    colCaps: "Capabilities",
     colSize: "Size",
     colDisplay: "Display name",
     colStatus: "Status",
@@ -132,6 +133,8 @@ export const adminEn = {
     nowEnabled: "{name} is now enabled for users",
     nowDisabled: "{name} is now disabled for users",
     resetToId: "Reset “{name}” to its model id",
+    vision: "Vision",
+    tools: "Tools",
   },
   settings: {
     title: "App settings",
@@ -601,6 +604,7 @@ export const adminAz: AdminMessages = {
       "Model tapılmadı. Ollama (`ollama list`) və/və ya vLLM işə salın və .env.local-də LLM_BACKENDS=ollama,vllm təyin edin.",
     colId: "Model id",
     colBackend: "Backend",
+    colCaps: "İmkanlar",
     colSize: "Ölçü",
     colDisplay: "Göstərilən ad",
     colStatus: "Status",
@@ -613,6 +617,8 @@ export const adminAz: AdminMessages = {
     nowEnabled: "{name} indi istifadəçilər üçün aktivdir",
     nowDisabled: "{name} indi istifadəçilər üçün deaktivdir",
     resetToId: "“{name}” model id-yə sıfırlandı",
+    vision: "Görüntü",
+    tools: "Alətlər",
   },
   settings: {
     title: "Tətbiq parametrləri",

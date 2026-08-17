@@ -30,6 +30,8 @@ export async function GET(request: Request) {
         name: m.name,
         displayName: m.display_name,
         backend: m.backend,
+        vision: Boolean(m.vision),
+        tools: Boolean(m.tools),
       })),
       defaultModel,
     });

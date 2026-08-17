@@ -5,27 +5,27 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.9.0](../CHANGELOG.md#190--2026-08-14) (see [README](../README.md)).
+**Current release:** [v1.10.0](../CHANGELOG.md#1100--2026-08-14) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.9.0)
+## Product today (v1.10.0)
 
 What operators and users can rely on right now:
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani |
-| **Chat** | Streaming replies, model picker, Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system) |
-| **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
+| **Chat** | Streaming replies, model picker (Vision / Tools badges), Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system), **attach/paste images** on vision models |
+| **History** | Per-user conversations in SQLite (`data/owngpt.db`); image files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
-| **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
+| **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
-| **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
+| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images; admin middleware by session role |
+| **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`); capabilities from Ollama `/api/show` + name heuristics |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
-| **API gateway** | User keys at `/developer`; custom `POST /api/v1/generate` raw proxy; admin **Dev lab** at `/devlab` |
+| **API gateway** | User keys at `/developer`; custom `POST /api/v1/generate` raw proxy (text + optional images); admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -65,6 +65,16 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.10.0 — Vision chat & mobile polish (2026-08-14)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Image chat on vision models | `done` | Attach/paste JPEG/PNG/WebP/GIF; Ollama `images` + vLLM `image_url` |
+| Capability badges | `done` | Vision / Tools on picker and Admin → Models; tools is display-only |
+| Attachment storage | `done` | `data/attachments/`; owner or shared-chat access via `/api/attachments` |
+| API images | `done` | `/api/v1/models` `vision`/`tools`; `/api/v1/generate` optional `images` |
+| Mobile / EN-AZ chrome | `done` | Overflow More menu, safe-area, 16px composer, attach-image copy |
 
 ### v1.9.0 — Corporate API gateway (2026-08-14)
 

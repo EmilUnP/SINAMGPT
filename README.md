@@ -2,21 +2,22 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.9.0](./CHANGELOG.md#190--2026-08-14) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.10.0](./CHANGELOG.md#1100--2026-08-14) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
 - **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
+- **Vision models** — attach or paste images when the selected model is multimodal (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …)
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
-- **Streaming replies**, Fast/Smart presets, model picker, rewrite shortcuts
+- **Streaming replies**, Fast/Smart presets, model picker (Vision / Tools badges), rewrite shortcuts
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
-- **Share chats** internally (logged-in colleagues, read-only `/share/…` links)
+- **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
-- **Admin** — users, models, live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
+- **Admin** — users, models (capability chips), live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
-- **Developer API** (`/developer`) — generate API keys; call local models from other company apps via `/api/v1/generate`
+- **Developer API** (`/developer`) — generate API keys; call local models from other company apps via `/api/v1/generate` (text and images)
 - **Dev lab** (`/devlab`) — admin view of all keys, API usage, and gateway limits
-- **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited)
+- **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models)
 
 No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
 
@@ -54,9 +55,9 @@ npm run start
 
 | Machine | Suggested models |
 |--------|-------------------|
-| Strong GPU (24GB+ VRAM) | `llama3.1:70b`, `qwen2.5:32b`, `gemma3:27b` |
-| Mid GPU (8–16GB) | `llama3.1:8b`, `qwen2.5:14b`, `gemma3:12b` |
-| Light / laptop | `gemma3:4b`, `gemma3:1b` |
+| Strong GPU (24GB+ VRAM) | `llama3.1:70b`, `qwen2.5:32b`, `gemma4:32b` (vision) |
+| Mid GPU (8–16GB) | `llama3.1:8b`, `qwen2.5:14b`, `gemma3:12b` (vision) |
+| Light / laptop | `gemma3:4b` (vision), `gemma3:1b` (text only) |
 
 ```bash
 ollama pull gemma3:4b
@@ -81,7 +82,7 @@ There you can:
 - **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; event log
 - **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
-- Enable / disable accounts and which models users can use
+- Enable / disable accounts and which models users can use (Vision / Tools chips show what each model can do)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 - **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
@@ -107,8 +108,9 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 ## Data
 
 - SQLite DB: `data/owngpt.db`
-- Tables include users, projects, conversations (share tokens), messages, settings, models, usage events, knowledge docs, guardrail events
-- Delete `data/owngpt.db` to wipe all accounts and chats
+- Tables include users, projects, conversations (share tokens), messages (optional image attachments), settings, models (`vision` / `tools`), usage events, knowledge docs, guardrail events
+- Chat images: `data/attachments/{conversationId}/{messageId}/` (gitignored with `data/`)
+- Delete `data/owngpt.db` to wipe all accounts and chats (also delete `data/attachments/` if you want stored images gone)
 - Never commit `.env.local` or `data/` (already gitignored)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
@@ -141,8 +143,17 @@ curl -N http://localhost:3055/api/v1/generate \
   -d '{"model":"gemma3:4b","stream":true,"messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-- `GET /api/v1/models` — enabled models
-- `POST /api/v1/generate` — `{ model, messages, stream }` → SSE (`token` / `done` / `error`) or JSON when `"stream": false`
+Vision example (model must report `vision: true`):
+
+```bash
+curl -N http://localhost:3055/api/v1/generate \
+  -H "Authorization: Bearer sinam_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemma4:32b","stream":true,"messages":[{"role":"user","content":"What is in this image?","images":[{"mime":"image/jpeg","data":"<base64>"}]}]}'
+```
+
+- `GET /api/v1/models` — enabled models (`name`, `displayName`, `backend`, `vision`, `tools`)
+- `POST /api/v1/generate` — `{ model, messages, stream }` → SSE (`token` / `done` / `error`) or JSON when `"stream": false`. Each message may include optional `images: [{ mime, data }]` (raw or data-URL base64) when the model supports vision.
 - Limits, CORS origins, and a master on/off switch live in admin **Dev lab** (`/devlab`)
 - Default: 5 keys/user, 30 requests/minute/key, 16000 prompt chars; empty CORS list means server-to-server only
 

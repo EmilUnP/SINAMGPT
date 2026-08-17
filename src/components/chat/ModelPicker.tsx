@@ -10,12 +10,15 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
+import { useTranslations } from "@/components/LocaleProvider";
 import { useIsMounted } from "@/lib/use-mounted";
 
 export type ModelOption = {
   name: string;
   display_name?: string;
   backend?: string;
+  vision?: boolean;
+  tools?: boolean;
 };
 
 type ModelPickerProps = {
@@ -52,6 +55,7 @@ export const ModelPicker = ({
   className = "",
 }: ModelPickerProps) => {
   const mounted = useIsMounted();
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [pos, setPos] = useState({ top: 0, left: 0, minWidth: 0 });
@@ -212,6 +216,16 @@ export const ModelPicker = ({
                   <span className="min-w-0 flex-1 truncate">
                     {modelLabel(option)}
                   </span>
+                  {option.vision ? (
+                    <span className="shrink-0 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-300">
+                      {t("chat.vision")}
+                    </span>
+                  ) : null}
+                  {option.tools ? (
+                    <span className="shrink-0 rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-600 dark:text-violet-300">
+                      {t("chat.tools")}
+                    </span>
+                  ) : null}
                   {backend ? (
                     <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-60">
                       {backend}
@@ -246,6 +260,11 @@ export const ModelPicker = ({
         <span className="min-w-0 flex-1 truncate text-left">
           {selected ? modelLabel(selected) : emptyLabel}
         </span>
+        {selected?.vision ? (
+          <span className="hidden shrink-0 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 sm:inline dark:text-sky-300">
+            {t("chat.vision")}
+          </span>
+        ) : null}
         <ChevronDown
           size={size === "sm" ? 13 : 14}
           className={`shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}

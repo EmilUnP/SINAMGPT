@@ -1,3 +1,8 @@
+import {
+  inferCapabilities,
+  parseOllamaCapabilities,
+  type ModelCapabilities,
+} from "./capabilities";
 import type { BackendHealth, ChatMessage, ChatOptions, LlmModel } from "./types";
 
 const getBaseUrl = (): string =>
@@ -30,12 +35,39 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
     models?: Array<{ name: string; size: number; modified_at: string }>;
   };
 
-  return (data.models ?? []).map((m) => ({
+  const listed = data.models ?? [];
+  const caps = await Promise.all(
+    listed.map((m) => inspectOllamaCapabilities(m.name)),
+  );
+
+  return listed.map((m, i) => ({
     name: m.name,
     size: m.size,
     modified_at: m.modified_at,
     backend: "ollama" as const,
+    vision: caps[i]?.vision ?? false,
+    tools: caps[i]?.tools ?? false,
   }));
+};
+
+const inspectOllamaCapabilities = async (
+  name: string,
+): Promise<ModelCapabilities> => {
+  const heuristic = inferCapabilities(name);
+  try {
+    const res = await fetch(`${getBaseUrl()}/api/show`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: name, name }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return heuristic;
+    const data = (await res.json()) as { capabilities?: unknown };
+    return parseOllamaCapabilities(data.capabilities, name);
+  } catch {
+    return heuristic;
+  }
 };
 
 export const streamOllamaChat = async (

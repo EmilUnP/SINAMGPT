@@ -242,6 +242,19 @@ export const az: Messages = {
     suggestionFact: "Maraqlı fakt",
     suggestionFactPrompt:
       "Texnologiya haqqında bir maraqlı fakt de. 2 cümlə ilə məhdudlaşdır.",
+    attachImage: "Şəkil əlavə et",
+    removeImage: "Şəkli sil",
+    vision: "Görüntü",
+    tools: "Alətlər",
+    imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
+    visionFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin və ya yapışdırın",
+    imageTooLarge: "Hər şəkil 8 MB-dan kiçik olmalıdır.",
+    imageType: "JPEG, PNG, WebP və ya GIF istifadə edin.",
+    imageLimit: "Ən çox {n} şəkil əlavə edə bilərsiniz.",
+    imageFailed: "Şəkli oxumaq mümkün olmadı. Başqa fayl yoxlayın.",
+    visionRequired:
+      "Bu model şəkilləri dəstəkləmir. Görüntü modelini seçin.",
   },
   share: {
     back: "Geri",

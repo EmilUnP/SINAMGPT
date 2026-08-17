@@ -7,11 +7,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
   type KeyboardEvent,
 } from "react";
 import {
   Infinity as InfinityIcon,
   MessageSquarePlus,
+  Paperclip,
   SendHorizonal,
   Square,
 } from "lucide-react";
@@ -23,7 +25,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { CopyButton } from "./CopyButton";
 import { KnowledgeCitations } from "./KnowledgeCitations";
 import { MarkdownMessage } from "./MarkdownMessage";
-import { ModelPicker } from "./ModelPicker";
+import { MessageImages } from "./MessageImages";
+import { ModelPicker, type ModelOption } from "./ModelPicker";
+import {
+  fileToChatImage,
+  imagePreviewUrl,
+  type ChatImagePayload,
+} from "@/lib/compress-image";
+import { MAX_GUEST_IMAGES } from "@/lib/image-limits";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";
@@ -34,7 +43,10 @@ type ChatTurn = {
   content: string;
   createdAt: string;
   sources?: KnowledgeCitation[] | null;
+  images?: ChatImagePayload[];
 };
+
+type PendingImage = ChatImagePayload & { id: string };
 
 type Usage = {
   used: number;
@@ -62,17 +74,17 @@ export const HomeTryChat = () => {
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [model, setModel] = useState("");
-  const [models, setModels] = useState<
-    Array<{ name: string; display_name?: string; backend?: string }>
-  >([]);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [guestEnabled, setGuestEnabled] = useState(true);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const ready = useIsMounted();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const suggestions = useMemo(
     () => [
@@ -101,7 +113,7 @@ export const HomeTryChat = () => {
       try {
         const res = await fetch("/api/guest/models");
         const data = (await res.json()) as {
-          models?: Array<{ name: string; display_name?: string; backend?: string }>;
+          models?: ModelOption[];
           defaultModel?: string;
           usage?: Usage;
           guestEnabled?: boolean;
@@ -136,7 +148,15 @@ export const HomeTryChat = () => {
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [input]);
+  }, [input, pendingImages.length]);
+
+  const supportsVision = Boolean(
+    models.find((m) => m.name === model)?.vision,
+  );
+
+  useEffect(() => {
+    if (!supportsVision && pendingImages.length) setPendingImages([]);
+  }, [supportsVision, pendingImages.length]);
 
   const handleStop = () => abortRef.current?.abort();
 
@@ -144,13 +164,44 @@ export const HomeTryChat = () => {
     abortRef.current?.abort();
     setMessages([]);
     setInput("");
+    setPendingImages([]);
     setError("");
     textareaRef.current?.focus();
   };
 
+  const imageErrorMessage = (code: "type" | "size" | "failed") => {
+    if (code === "type") return t("chat.imageType");
+    if (code === "size") return t("chat.imageTooLarge");
+    return t("chat.imageFailed");
+  };
+
+  const addImageFiles = async (files: File[]) => {
+    if (!supportsVision || !files.length) return;
+    const remaining = MAX_GUEST_IMAGES - pendingImages.length;
+    if (remaining <= 0) {
+      setError(t("chat.imageLimit", { n: MAX_GUEST_IMAGES }));
+      return;
+    }
+    const slice = files.slice(0, remaining);
+    const next: PendingImage[] = [];
+    for (const file of slice) {
+      const result = await fileToChatImage(file);
+      if (!result.ok) {
+        setError(imageErrorMessage(result.code));
+        continue;
+      }
+      next.push({ ...result.image, id: `img-${Date.now()}-${Math.random()}` });
+    }
+    if (next.length) {
+      setPendingImages((prev) => [...prev, ...next].slice(0, MAX_GUEST_IMAGES));
+      setError("");
+    }
+  };
+
   const handleSend = async (preset?: string) => {
     const text = (preset ?? input).trim();
-    if (!text || isSending) return;
+    const imagesToSend = preset ? [] : pendingImages;
+    if ((!text && imagesToSend.length === 0) || isSending) return;
     if (!guestEnabled) {
       setError(t("home.guestDisabledError"));
       return;
@@ -166,6 +217,7 @@ export const HomeTryChat = () => {
 
     setError("");
     setInput("");
+    if (imagesToSend.length) setPendingImages([]);
     setIsSending(true);
 
     const nowIso = new Date().toISOString();
@@ -174,6 +226,7 @@ export const HomeTryChat = () => {
       role: "user",
       content: text,
       createdAt: nowIso,
+      images: imagesToSend.length ? imagesToSend : undefined,
     };
     const assistantId = makeTurnId("a");
     const assistantTurn: ChatTurn = {
@@ -186,10 +239,11 @@ export const HomeTryChat = () => {
     setMessages((prev) => [...prev, userTurn, assistantTurn]);
 
     const history = messages
-      .filter((m) => m.content.trim().length > 0)
+      .filter((m) => m.content.trim().length > 0 || (m.images?.length ?? 0) > 0)
       .map((m) => ({
         role: m.role,
         content: m.content,
+        images: m.images?.map(({ mime, data, name }) => ({ mime, data, name })),
       }));
 
     const controller = new AbortController();
@@ -200,7 +254,16 @@ export const HomeTryChat = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ message: text, model, history }),
+        body: JSON.stringify({
+          message: text,
+          model,
+          history,
+          images: imagesToSend.map(({ mime, data, name }) => ({
+            mime,
+            data,
+            name,
+          })),
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -278,6 +341,7 @@ export const HomeTryChat = () => {
           prev.filter((m) => m.id !== userTurn.id && m.id !== assistantId),
         );
         setInput(text);
+        if (imagesToSend.length) setPendingImages(imagesToSend);
       }
     } finally {
       setIsSending(false);
@@ -526,7 +590,21 @@ export const HomeTryChat = () => {
                       }`}
                     >
                       {isUser ? (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <div className="space-y-2">
+                          <MessageImages
+                            items={
+                              message.images?.map((img) => ({
+                                src: imagePreviewUrl(img),
+                                name: img.name,
+                              })) ?? []
+                            }
+                          />
+                          {message.content ? (
+                            <p className="whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                          ) : null}
+                        </div>
                       ) : message.content ? (
                         <div className="home-markdown">
                           <MarkdownMessage content={message.content} />
@@ -630,7 +708,48 @@ export const HomeTryChat = () => {
           className="composer-shell rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
+          {pendingImages.length ? (
+            <div className="px-3 pt-2">
+              <MessageImages
+                tone="composer"
+                items={pendingImages.map((img) => ({
+                  src: imagePreviewUrl(img),
+                  name: img.name,
+                }))}
+                onRemove={(index) =>
+                  setPendingImages((prev) => prev.filter((_, i) => i !== index))
+                }
+                removeLabel={t("chat.removeImage")}
+              />
+            </div>
+          ) : null}
           <div className="flex items-end gap-2">
+            {supportsVision && guestEnabled && !limitHit ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = "";
+                    void addImageFiles(files);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={actionsLocked}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mb-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] disabled:opacity-40 sm:h-10 sm:w-10"
+                  aria-label={t("chat.attachImage")}
+                  title={t("chat.attachImage")}
+                >
+                  <Paperclip size={16} />
+                </button>
+              </>
+            ) : null}
             {/* text-base (16px) on phones — anything smaller makes iOS Safari
                 zoom the page when the field takes focus. */}
             <textarea
@@ -638,13 +757,24 @@ export const HomeTryChat = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
+                if (!supportsVision) return;
+                const files = Array.from(event.clipboardData.files).filter(
+                  (file) => file.type.startsWith("image/"),
+                );
+                if (!files.length) return;
+                event.preventDefault();
+                void addImageFiles(files);
+              }}
               rows={1}
               placeholder={
                 !guestEnabled
                   ? t("home.placeholderDisabled")
                   : limitHit
                     ? t("home.placeholderLimit")
-                    : t("home.placeholderAsk")
+                    : pendingImages.length
+                      ? t("chat.imagePlaceholder")
+                      : t("home.placeholderAsk")
               }
               disabled={limitHit || !guestEnabled}
               className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-base text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50 sm:text-[15px]"
@@ -662,7 +792,10 @@ export const HomeTryChat = () => {
               <button
                 type="button"
                 onClick={() => void handleSend()}
-                disabled={actionsLocked || (ready && !input.trim())}
+                disabled={
+                  actionsLocked ||
+                  (ready && !input.trim() && pendingImages.length === 0)
+                }
                 className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                 aria-label={t("home.send")}
               >
@@ -673,7 +806,7 @@ export const HomeTryChat = () => {
         </div>
 
         <p className="mt-3 hidden text-center text-[11px] text-[var(--home-faint)] sm:block">
-          {t("home.footerHint")}
+          {supportsVision ? t("chat.visionFooterHint") : t("home.footerHint")}
         </p>
       </main>
     </div>
