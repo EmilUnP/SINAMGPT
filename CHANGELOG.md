@@ -7,6 +7,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Changed
+- **Model lab** — suites match the current product: Russian cases, cross-language company knowledge, fewer duplicate EN/AZ twins. Quick 18 / Assist 20 / Guardrails 17. AZ/RU replies are scored on the expected language.
+
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 

@@ -97,7 +97,7 @@ There you can:
 - **Settings** — Features On/Off (Developer API, Dev lab, File upload, File import, Microphone — chat inputs start **off**), default model, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Text / Image you can send; Audio follows Ollama; Functions not used in chat)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
-- **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
+- **Model lab** (`/lab`) — Quick (18) / Assist (20) / Guardrails (17) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 - **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
 
 ## Config

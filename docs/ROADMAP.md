@@ -26,7 +26,7 @@ What operators and users can rely on in the current tree (**v1.14.1**):
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
-| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
+| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
 

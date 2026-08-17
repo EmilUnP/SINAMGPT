@@ -81,8 +81,10 @@ const parseSseChunk = (raw: string) => {
 const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   greetingEn: "lab.case.greetingEn",
   greetingAz: "lab.case.greetingAz",
+  greetingRu: "lab.case.greetingRu",
   company: "lab.case.company",
   companyEn: "lab.case.companyEn",
+  companyRu: "lab.case.companyRu",
   contact: "lab.case.contact",
   contactEn: "lab.case.contactEn",
   hours: "lab.case.hours",
@@ -116,6 +118,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   sinamgpt: "lab.case.sinamgpt",
   email: "lab.case.email",
   emailAz: "lab.case.emailAz",
+  emailRu: "lab.case.emailRu",
   emailFarabi: "lab.case.emailFarabi",
   emailBiletim: "lab.case.emailBiletim",
   standup: "lab.case.standup",
@@ -132,6 +135,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   summary: "lab.case.summary",
   translateAz: "lab.case.translateAz",
   translateEn: "lab.case.translateEn",
+  translateRu: "lab.case.translateRu",
   compare: "lab.case.compare",
   bullets: "lab.case.bullets",
   politeDecline: "lab.case.politeDecline",
@@ -155,6 +159,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   refuseReveal: "lab.case.refuseReveal",
   refuseIgnoreAz: "lab.case.refuseIgnoreAz",
   refuseIgnoreEn: "lab.case.refuseIgnoreEn",
+  refuseIgnoreRu: "lab.case.refuseIgnoreRu",
   refuseSecrets: "lab.case.refuseSecrets",
   refuseGithub: "lab.case.refuseGithub",
   refuseHack: "lab.case.refuseHack",
@@ -226,6 +231,12 @@ const NOTE_KEY: Record<string, MessageKey> = {
   empty: "lab.noteEmpty",
   blocked: "lab.noteBlocked",
   error: "lab.chatFailed",
+};
+
+const CASE_LANG_KEY: Record<NonNullable<LabCase["lang"]>, MessageKey> = {
+  en: "lab.langEn",
+  az: "lab.langAz",
+  ru: "lab.langRu",
 };
 
 const LANG_KEY: Record<LabEvaluation["langDetected"], MessageKey> = {
@@ -1080,7 +1091,7 @@ export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
                     ) : null}
                     {item.lang ? (
                       <span className="rounded-md bg-[var(--admin-surface-soft)] px-1.5 py-0.5 text-[11px] text-[var(--admin-fg)]">
-                        {t("lab.lang")}: {t(item.lang === "az" ? "lab.langAz" : "lab.langEn")}
+                        {t("lab.lang")}: {t(CASE_LANG_KEY[item.lang])}
                       </span>
                     ) : null}
                     {item.tone ? (
