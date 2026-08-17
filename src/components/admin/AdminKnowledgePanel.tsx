@@ -846,7 +846,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <input
                   type="number"
                   min={500}
-                  max={12000}
+                  max={5000}
                   value={settings.maxChars}
                   onChange={(e) =>
                     setSettings({

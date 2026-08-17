@@ -1,5 +1,12 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import path from "path";
+import {
+  AUDIO_MIME,
+  MAX_AUDIO_BYTES,
+  MAX_CHAT_AUDIO,
+  inspectWavPcm,
+  isAllowedAudioMime,
+} from "@/lib/audio-limits";
 import { getDb } from "@/lib/db";
 import {
   MAX_CHAT_IMAGES,
@@ -18,6 +25,12 @@ export {
 } from "@/lib/image-limits";
 
 export type IncomingImage = {
+  mime: string;
+  data: string;
+  name?: string;
+};
+
+export type IncomingAudio = {
   mime: string;
   data: string;
   name?: string;
@@ -63,26 +76,62 @@ export const decodeImageData = (
   return { mime, buffer, name: name || "image" };
 };
 
+export const decodeAudioData = (
+  incoming: IncomingAudio,
+): { mime: typeof AUDIO_MIME; buffer: Buffer; name: string } | { error: string } => {
+  const mime = incoming.mime.trim().toLowerCase();
+  if (!isAllowedAudioMime(mime)) {
+    return { error: "Use WAV audio from the microphone." };
+  }
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(stripBase64Prefix(incoming.data), "base64");
+  } catch {
+    return { error: "Invalid audio data" };
+  }
+  if (!buffer.length) return { error: "Invalid audio data" };
+  if (buffer.length > MAX_AUDIO_BYTES) {
+    return { error: "Recording is too large. Keep it under 30 seconds." };
+  }
+  const wav = inspectWavPcm(buffer);
+  if ("error" in wav) return { error: wav.error };
+  const name = (incoming.name || "voice.wav")
+    .replace(/[^\w.\-]+/g, "_")
+    .slice(0, 120);
+  return { mime, buffer, name: name || "voice.wav" };
+};
+
+const isStoredAttachment = (item: unknown): item is MessageAttachment => {
+  if (!item || typeof item !== "object") return false;
+  const row = item as MessageAttachment;
+  if (
+    typeof row.mime !== "string" ||
+    typeof row.name !== "string" ||
+    !Number.isInteger(row.index) ||
+    row.index < 0
+  ) {
+    return false;
+  }
+  if (row.type === "image") return isAllowedImageMime(row.mime);
+  if (row.type === "audio") return isAllowedAudioMime(row.mime);
+  return false;
+};
+
 export const parseAttachments = (raw: string | null | undefined): MessageAttachment[] => {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is MessageAttachment => {
-      if (!item || typeof item !== "object") return false;
-      const row = item as MessageAttachment;
-      return (
-        row.type === "image" &&
-        typeof row.mime === "string" &&
-        isAllowedImageMime(row.mime) &&
-        typeof row.name === "string" &&
-        Number.isInteger(row.index) &&
-        row.index >= 0
-      );
-    });
+    return parsed.filter(isStoredAttachment);
   } catch {
     return [];
   }
+};
+
+const extForMime = (mime: string): string => {
+  if (isAllowedAudioMime(mime)) return "wav";
+  if (isAllowedImageMime(mime)) return EXT[mime];
+  return "bin";
 };
 
 const filePathFor = (
@@ -95,15 +144,16 @@ const filePathFor = (
     attachmentsRoot(),
     conversationId,
     messageId,
-    `${index}.${isAllowedImageMime(mime) ? EXT[mime] : "jpg"}`,
+    `${index}.${extForMime(mime)}`,
   );
 
 export const saveMessageImages = (
   conversationId: string,
   messageId: string,
   images: IncomingImage[],
+  audio?: IncomingAudio | null,
 ): { attachments: MessageAttachment[]; error?: string } => {
-  if (!images.length) return { attachments: [] };
+  if (!images.length && !audio) return { attachments: [] };
   if (images.length > MAX_CHAT_IMAGES) {
     return {
       attachments: [],
@@ -111,7 +161,7 @@ export const saveMessageImages = (
     };
   }
 
-  const decoded: Array<{
+  const decodedImages: Array<{
     mime: AllowedImageMime;
     buffer: Buffer;
     name: string;
@@ -119,13 +169,27 @@ export const saveMessageImages = (
   for (const image of images) {
     const result = decodeImageData(image);
     if ("error" in result) return { attachments: [], error: result.error };
-    decoded.push(result);
+    decodedImages.push(result);
+  }
+
+  let decodedAudio: {
+    mime: typeof AUDIO_MIME;
+    buffer: Buffer;
+    name: string;
+  } | null = null;
+  if (audio) {
+    if (MAX_CHAT_AUDIO < 1) {
+      return { attachments: [], error: "Audio is not allowed." };
+    }
+    const result = decodeAudioData(audio);
+    if ("error" in result) return { attachments: [], error: result.error };
+    decodedAudio = result;
   }
 
   const dir = path.join(attachmentsRoot(), conversationId, messageId);
   mkdirSync(dir, { recursive: true });
 
-  const attachments: MessageAttachment[] = decoded.map((item, index) => {
+  const attachments: MessageAttachment[] = decodedImages.map((item, index) => {
     writeFileSync(filePathFor(conversationId, messageId, index, item.mime), item.buffer);
     return {
       type: "image",
@@ -134,6 +198,20 @@ export const saveMessageImages = (
       index,
     };
   });
+
+  if (decodedAudio) {
+    const index = attachments.length;
+    writeFileSync(
+      filePathFor(conversationId, messageId, index, decodedAudio.mime),
+      decodedAudio.buffer,
+    );
+    attachments.push({
+      type: "audio",
+      mime: decodedAudio.mime,
+      name: decodedAudio.name,
+      index,
+    });
+  }
 
   return { attachments };
 };

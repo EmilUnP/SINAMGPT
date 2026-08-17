@@ -117,7 +117,7 @@ export const adminEn = {
     subtitle:
       "New Ollama models show up here after a refresh. They stay inactive for users until you Activate them.",
     capsLegend:
-      "Inputs: Text, Image, Audio, Video. Functions = can call extra functions (not used in chat yet).",
+      "You can send Text and Image. Ollama may also list Audio. Functions = not used in chat yet.",
     empty:
       "No models found. Start Ollama and run `ollama list`.",
     colId: "Model id",
@@ -330,7 +330,7 @@ export const adminEn = {
     maxDocs: "Max documents per reply",
     maxDocsHint: "How many top-scoring docs can enter the prompt (1–10)",
     maxChars: "Max characters injected",
-    maxCharsHint: "Total context budget for knowledge text (500–12000)",
+    maxCharsHint: "Total context budget for knowledge text (500–5000)",
     starterPack: "Starter pack",
     starterHint:
       "is a template only. After first load, keep the library current by editing entries — you should not need a code deploy for product facts. “Add missing” never overwrites admin edits.",
@@ -612,7 +612,7 @@ export const adminAz: AdminMessages = {
     subtitle:
       "Yeni Ollama modelləri yeniləyəndə burada görünür. Aktiv et basana qədər istifadəçilər üçün qeyri-aktiv qalır.",
     capsLegend:
-      "Giriş: Mətn, Şəkil, Audio, Video. Funksiya = əlavə funksiya çağırışı (söhbətdə hələ yoxdur).",
+      "Mətn və Şəkil göndərə bilərsiniz. Ollama Audio da göstərə bilər. Funksiya söhbətdə hələ yoxdur.",
     empty:
       "Model tapılmadı. Ollama-nı işə salın və `ollama list` işlədin.",
     colId: "Model id",

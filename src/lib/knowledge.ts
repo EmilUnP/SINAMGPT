@@ -97,7 +97,7 @@ export const setKnowledgeSettings = (
     ...next,
   };
   merged.maxDocs = Math.max(1, Math.min(10, Math.floor(merged.maxDocs)));
-  merged.maxChars = Math.max(500, Math.min(12000, Math.floor(merged.maxChars)));
+  merged.maxChars = Math.max(500, Math.min(5000, Math.floor(merged.maxChars)));
 
   getDb()
     .prepare(

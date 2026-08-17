@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from "react";
 import {
@@ -32,6 +33,7 @@ import {
   imagePreviewUrl,
   type ChatImagePayload,
 } from "@/lib/compress-image";
+import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
 import { MAX_GUEST_IMAGES } from "@/lib/image-limits";
 import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
@@ -80,11 +82,13 @@ export const HomeTryChat = () => {
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const ready = useIsMounted();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dragDepthRef = useRef(0);
 
   const suggestions = useMemo(
     () => [
@@ -196,6 +200,60 @@ export const HomeTryChat = () => {
       setPendingImages((prev) => [...prev, ...next].slice(0, MAX_GUEST_IMAGES));
       setError("");
     }
+  };
+
+  const canDropImages = Boolean(
+    supportsVision && guestEnabled && !(usage && usage.remaining <= 0),
+  );
+
+  const addDroppedFiles = async (files: File[]) => {
+    if (!files.length || isSending) return;
+    const images = files.filter(isDroppedImageFile);
+    if (!images.length) {
+      setError(t("chat.dropUnsupported"));
+      return;
+    }
+    if (!supportsVision) {
+      setError(t("chat.visionRequired"));
+      return;
+    }
+    if (!guestEnabled) {
+      setError(t("home.guestDisabledError"));
+      return;
+    }
+    if (usage && usage.remaining <= 0) {
+      setError(t("home.guestLimitReached", { limit: usage.limit }));
+      return;
+    }
+    await addImageFiles(images);
+  };
+
+  const handleComposerDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    if (canDropImages) setIsDraggingOver(true);
+  };
+
+  const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = canDropImages ? "copy" : "none";
+  };
+
+  const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDraggingOver(false);
+  };
+
+  const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDraggingOver(false);
+    void addDroppedFiles(Array.from(event.dataTransfer.files));
   };
 
   const handleSend = async (preset?: string) => {
@@ -705,9 +763,22 @@ export const HomeTryChat = () => {
         ) : null}
 
         <div
-          className="composer-shell sticky bottom-0 z-20 rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+          className={`composer-shell relative sticky bottom-0 z-20 rounded-[28px] border bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
+            isDraggingOver
+              ? "border-[var(--accent)] ring-4 ring-[var(--ring)]"
+              : "border-[var(--home-card-border)]"
+          }`}
           style={{ boxShadow: "var(--home-card-shadow)" }}
+          onDragEnter={handleComposerDragEnter}
+          onDragOverCapture={handleComposerDragOver}
+          onDragLeave={handleComposerDragLeave}
+          onDropCapture={handleComposerDrop}
         >
+          {isDraggingOver ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[28px] bg-sky-500/15 text-sm font-medium text-sky-800 dark:text-sky-100">
+              {t("chat.dropImages")}
+            </div>
+          ) : null}
           {pendingImages.length ? (
             <div className="px-3 pt-2">
               <MessageImages
@@ -758,13 +829,10 @@ export const HomeTryChat = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
-                if (!supportsVision) return;
-                const files = Array.from(event.clipboardData.files).filter(
-                  (file) => file.type.startsWith("image/"),
-                );
+                const files = Array.from(event.clipboardData.files);
                 if (!files.length) return;
                 event.preventDefault();
-                void addImageFiles(files);
+                void addDroppedFiles(files);
               }}
               rows={1}
               placeholder={

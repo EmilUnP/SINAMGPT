@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       applyToUsers: z.boolean().optional(),
       showCitations: z.boolean().optional(),
       maxDocs: z.number().int().min(1).max(10).optional(),
-      maxChars: z.number().int().min(500).max(12000).optional(),
+      maxChars: z.number().int().min(500).max(5000).optional(),
     });
     const parsed = settingsSchema.safeParse(body.settings ?? body);
     if (!parsed.success) {

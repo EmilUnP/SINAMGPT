@@ -267,6 +267,7 @@ export const ModelPicker = ({
               vision={selected.vision}
               audio={selected.audio}
               video={selected.video}
+              tools={selected.tools}
             />
           </span>
         ) : null}

@@ -2,7 +2,9 @@
 
 import {
   Check,
+  Boxes,
   Cable,
+  ChevronDown,
   FlaskConical,
   KeyRound,
   Folder,
@@ -26,6 +28,7 @@ import {
   LogOut,
   Shield,
   Sparkles,
+  Mic,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -38,6 +41,7 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -49,6 +53,7 @@ import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { MessageAudio } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";
 import { ModelPicker, type ModelOption } from "./ModelPicker";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -57,7 +62,22 @@ import {
   imagePreviewUrl,
   type ChatImagePayload,
 } from "@/lib/compress-image";
+import { AUDIO_MIME, MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
+import {
+  dropHasFiles,
+  isDroppedAudioFile,
+  isDroppedImageFile,
+} from "@/lib/chat-drop";
 import { attachmentUrl, MAX_CHAT_IMAGES } from "@/lib/image-limits";
+import {
+  ensureMicPermission,
+  fileToWavClip,
+  listMicDevices,
+  startMicRecording,
+  type MicDevice,
+  type MicSession,
+  type RecordedWav,
+} from "@/lib/record-mic";
 import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
@@ -76,14 +96,24 @@ type ChatAppProps = {
   };
 };
 
+type PendingImage = ChatImagePayload & { id: string };
+
+type PendingAudio = {
+  mime: typeof AUDIO_MIME;
+  data: string;
+  name: string;
+  durationMs: number;
+  previewUrl: string;
+};
+
 type UiMessage = Message & {
   isStreaming?: boolean;
   localImages?: ChatImagePayload[];
+  localAudio?: PendingAudio;
 };
 
-type PendingImage = ChatImagePayload & { id: string };
-
 const LS_LAST_MODEL = "sinamgpt_last_model";
+const LS_LAST_MIC = "sinamgpt_last_mic";
 
 const readStoredModel = (): string => {
   try {
@@ -96,6 +126,23 @@ const readStoredModel = (): string => {
 const persistModelChoice = (modelName: string) => {
   try {
     if (modelName) localStorage.setItem(LS_LAST_MODEL, modelName);
+  } catch {
+    /* ignore */
+  }
+};
+
+const readStoredMic = (): string => {
+  try {
+    return localStorage.getItem(LS_LAST_MIC)?.trim() || "";
+  } catch {
+    return "";
+  }
+};
+
+const persistMicChoice = (deviceId: string) => {
+  try {
+    if (deviceId) localStorage.setItem(LS_LAST_MIC, deviceId);
+    else localStorage.removeItem(LS_LAST_MIC);
   } catch {
     /* ignore */
   }
@@ -146,6 +193,15 @@ export const ChatApp = ({
   const [model, setModel] = useState("");
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [recordElapsedMs, setRecordElapsedMs] = useState(0);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micDevices, setMicDevices] = useState<MicDevice[]>([]);
+  const [micDeviceId, setMicDeviceId] = useState("");
+  const [micPickerOpen, setMicPickerOpen] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [modelsError, setModelsError] = useState("");
@@ -180,8 +236,13 @@ export const ChatApp = ({
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sendLockRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recorderRef = useRef<MicSession | null>(null);
+  const micPickerRef = useRef<HTMLDivElement | null>(null);
+  const micDeviceIdRef = useRef("");
+  const dragDepthRef = useRef(0);
   const searchTimerRef = useRef<number | null>(null);
   const shareBtnRef = useRef<HTMLButtonElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
@@ -288,6 +349,11 @@ export const ChatApp = ({
   const supportsVision = Boolean(
     models.find((m) => m.name === model)?.vision,
   );
+  const supportsAudio = Boolean(
+    models.find((m) => m.name === model)?.audio,
+  );
+  const currentMicLabel =
+    micDevices.find((device) => device.deviceId === micDeviceId)?.label || "";
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -299,11 +365,131 @@ export const ChatApp = ({
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [input, pendingImages.length]);
+  }, [input, pendingImages.length, pendingAudio]);
 
   useEffect(() => {
     if (!supportsVision && pendingImages.length) setPendingImages([]);
   }, [supportsVision, pendingImages.length]);
+
+  const clearPendingAudio = useCallback(() => {
+    setPendingAudio(null);
+  }, []);
+
+  const applyRecordedClip = useCallback(
+    (clip: RecordedWav): PendingAudio => {
+      const next: PendingAudio = {
+        mime: clip.mime,
+        data: clip.data,
+        name: clip.name,
+        durationMs: clip.durationMs,
+        previewUrl: `data:${clip.mime};base64,${clip.data}`,
+      };
+      setPendingAudio(next);
+      if (clip.peak < 0.02) setError(t("chat.micQuiet"));
+      return next;
+    },
+    [t],
+  );
+
+  const stopMicSession = useCallback(async (): Promise<PendingAudio | null> => {
+    const session = recorderRef.current;
+    recorderRef.current = null;
+    if (!session) {
+      setIsRecording(false);
+      return pendingAudio;
+    }
+    setIsRecording(false);
+    setIsProcessingAudio(true);
+    setMicLevel(0);
+    try {
+      const clip = await session.stop();
+      return applyRecordedClip(clip);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("chat.micFailed"),
+      );
+      return null;
+    } finally {
+      setIsProcessingAudio(false);
+      setRecordElapsedMs(0);
+    }
+  }, [applyRecordedClip, pendingAudio, t]);
+
+  const cancelMicSession = useCallback(() => {
+    recorderRef.current?.cancel();
+    recorderRef.current = null;
+    setIsRecording(false);
+    setIsProcessingAudio(false);
+    setRecordElapsedMs(0);
+    setMicLevel(0);
+  }, []);
+
+  const refreshMicDevices = useCallback(async (preferred?: string) => {
+    const list = await listMicDevices();
+    setMicDevices(list);
+    setMicDeviceId((current) => {
+      const want = preferred || current || readStoredMic();
+      if (want && list.some((device) => device.deviceId === want)) {
+        micDeviceIdRef.current = want;
+        return want;
+      }
+      const next = list[0]?.deviceId ?? "";
+      micDeviceIdRef.current = next;
+      return next;
+    });
+    return list;
+  }, []);
+
+  useEffect(() => {
+    if (!supportsAudio) {
+      setMicDevices([]);
+      setMicPickerOpen(false);
+      return;
+    }
+    void refreshMicDevices();
+    const media = navigator.mediaDevices;
+    if (!media?.addEventListener) return;
+    const onChange = () => {
+      void refreshMicDevices();
+    };
+    media.addEventListener("devicechange", onChange);
+    return () => media.removeEventListener("devicechange", onChange);
+  }, [supportsAudio, refreshMicDevices]);
+
+  useEffect(() => {
+    if (!micPickerOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (micPickerRef.current?.contains(target)) return;
+      setMicPickerOpen(false);
+    };
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMicPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [micPickerOpen]);
+
+  useEffect(() => {
+    micDeviceIdRef.current = micDeviceId;
+  }, [micDeviceId]);
+
+  useEffect(() => {
+    if (supportsAudio) return;
+    cancelMicSession();
+    if (pendingAudio) clearPendingAudio();
+  }, [supportsAudio, pendingAudio, cancelMicSession, clearPendingAudio]);
+
+  useEffect(
+    () => () => {
+      recorderRef.current?.cancel();
+    },
+    [],
+  );
 
   const loadConversations = useCallback(
     async (query?: string, projectId?: string | null) => {
@@ -395,6 +581,157 @@ export const ChatApp = ({
       setPendingImages((prev) => [...prev, ...next].slice(0, MAX_CHAT_IMAGES));
       setError("");
     }
+  };
+
+  const addAudioFile = async (file: File) => {
+    if (!supportsAudio) {
+      setError(t("chat.audioRequired"));
+      return;
+    }
+    if (isRecording) cancelMicSession();
+    setIsProcessingAudio(true);
+    try {
+      const clip = await fileToWavClip(file);
+      applyRecordedClip(clip);
+      setError("");
+    } catch (err) {
+      if (err instanceof Error && err.message === "too-large") {
+        setError(t("chat.audioTooLarge"));
+      } else {
+        setError(t("chat.audioFileFailed"));
+      }
+    } finally {
+      setIsProcessingAudio(false);
+    }
+  };
+
+  const addDroppedFiles = async (files: File[]) => {
+    if (!files.length || isSending) return;
+    const images = files.filter(isDroppedImageFile);
+    const audios = files.filter(isDroppedAudioFile);
+    const unsupported = files.filter(
+      (file) => !isDroppedImageFile(file) && !isDroppedAudioFile(file),
+    );
+
+    if (!images.length && !audios.length) {
+      setError(t("chat.dropUnsupported"));
+      return;
+    }
+
+    let warning = "";
+    if (unsupported.length) warning = t("chat.dropUnsupported");
+    if (images.length) {
+      if (supportsVision) await addImageFiles(images);
+      else warning = t("chat.visionRequired");
+    }
+    if (audios.length) {
+      if (supportsAudio) {
+        await addAudioFile(audios[0]);
+        if (audios.length > 1) warning = t("chat.audioLimit");
+      } else warning = t("chat.audioRequired");
+    }
+    if (warning) setError(warning);
+  };
+
+  const canDropFiles = supportsVision || supportsAudio;
+
+  const handleComposerDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    if (canDropFiles) setIsDraggingOver(true);
+  };
+
+  const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = canDropFiles ? "copy" : "none";
+  };
+
+  const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDraggingOver(false);
+  };
+
+  const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDraggingOver(false);
+    const files = Array.from(event.dataTransfer.files);
+    void addDroppedFiles(files);
+  };
+
+  const micErrorMessage = (err: unknown) => {
+    const name = err instanceof DOMException ? err.name : "";
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return t("chat.micDenied");
+    }
+    if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+      return t("chat.micSwitchFailed");
+    }
+    if (err instanceof Error && err.message) return err.message;
+    return t("chat.micFailed");
+  };
+
+  const handleToggleMic = async () => {
+    if (!supportsAudio || isSending) return;
+    if (isProcessingAudio) return;
+    if (isRecording) {
+      await stopMicSession();
+      return;
+    }
+    try {
+      setError("");
+      setRecordElapsedMs(0);
+      setMicLevel(0);
+      setMicPickerOpen(false);
+      const chosenId = micDeviceIdRef.current || micDeviceId || undefined;
+      const session = await startMicRecording({
+        deviceId: chosenId,
+        onTick: (elapsedMs, level) => {
+          setRecordElapsedMs(elapsedMs);
+          setMicLevel(level);
+        },
+        onAutoStop: (clip) => {
+          recorderRef.current = null;
+          setIsRecording(false);
+          setMicLevel(0);
+          applyRecordedClip(clip);
+          setRecordElapsedMs(0);
+        },
+      });
+      recorderRef.current = session;
+      setIsRecording(true);
+      void refreshMicDevices(chosenId);
+    } catch (err) {
+      setError(micErrorMessage(err));
+    }
+  };
+
+  const handleOpenMicPicker = async () => {
+    if (isRecording || isSending || isProcessingAudio) return;
+    if (micPickerOpen) {
+      setMicPickerOpen(false);
+      return;
+    }
+    try {
+      setError("");
+      await ensureMicPermission(micDeviceIdRef.current || micDeviceId);
+      await refreshMicDevices(micDeviceId);
+      setMicPickerOpen(true);
+    } catch (err) {
+      setError(micErrorMessage(err));
+    }
+  };
+
+  const handleSelectMic = (deviceId: string) => {
+    micDeviceIdRef.current = deviceId;
+    setMicDeviceId(deviceId);
+    persistMicChoice(deviceId);
+    setMicPickerOpen(false);
   };
 
   useEffect(() => {
@@ -717,6 +1054,7 @@ export const ChatApp = ({
     };
     restoreOnError?: string;
     restoreImagesOnError?: PendingImage[];
+    restoreAudioOnError?: PendingAudio | null;
     /** After rewrite/regenerate/edit failures, reload from DB (server may have deleted the old answer). */
     reloadConversationOnError?: boolean;
   }) => {
@@ -866,6 +1204,9 @@ export const ChatApp = ({
         if (opts.restoreImagesOnError?.length) {
           setPendingImages(opts.restoreImagesOnError);
         }
+        if (opts.restoreAudioOnError) {
+          setPendingAudio(opts.restoreAudioOnError);
+        }
       }
     } finally {
       setIsSending(false);
@@ -877,28 +1218,46 @@ export const ChatApp = ({
   };
 
   const handleSend = async (preset?: string) => {
+    if (sendLockRef.current || isSending) return;
+    sendLockRef.current = true;
+    try {
+    let audioToSend = preset ? null : pendingAudio;
+    if (!preset && isRecording) {
+      audioToSend = await stopMicSession();
+    }
     const text = (preset ?? input).trim();
     const imagesToSend = preset ? [] : pendingImages;
-    if ((!text && imagesToSend.length === 0) || isSending) return;
+    const messageText =
+      text || (audioToSend ? t("chat.audioDefaultPrompt") : "");
+    if ((!messageText && imagesToSend.length === 0) || !model) return;
 
     setInput("");
     if (imagesToSend.length) setPendingImages([]);
+    if (audioToSend) setPendingAudio(null);
 
     await runChatRequest({
       body: {
         conversationId: activeId ?? undefined,
-        message: text,
+        message: messageText,
         images: imagesToSend.map(({ mime, data, name }) => ({
           mime,
           data,
           name,
         })),
+        audio: audioToSend
+          ? {
+              mime: audioToSend.mime,
+              data: audioToSend.data,
+              name: audioToSend.name,
+            }
+          : undefined,
         model,
         projectId: activeId ? undefined : activeProjectId,
         mode: "send",
       },
       restoreOnError: text,
       restoreImagesOnError: imagesToSend,
+      restoreAudioOnError: audioToSend,
       prepareMessages: () => {
         const tempUserId = `temp-user-${Date.now()}`;
         const tempAssistantId = `temp-assistant-${Date.now()}`;
@@ -906,9 +1265,10 @@ export const ChatApp = ({
           id: tempUserId,
           conversation_id: activeId ?? "pending",
           role: "user",
-          content: text,
+          content: messageText,
           created_at: new Date().toISOString(),
           localImages: imagesToSend.length ? imagesToSend : undefined,
+          localAudio: audioToSend ?? undefined,
         };
         const tempAssistant: UiMessage = {
           id: tempAssistantId,
@@ -922,6 +1282,9 @@ export const ChatApp = ({
         return { tempUserId, tempAssistantId };
       },
     });
+    } finally {
+      sendLockRef.current = false;
+    }
   };
 
   const handleRegenerate = async () => {
@@ -1337,18 +1700,20 @@ export const ChatApp = ({
         )}
       </div>
 
-      <div className="safe-bottom flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
-        <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
-          {user.username}
-        </p>
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
-        >
-          <LogOut size={14} />
-          {t("chat.signOut")}
-        </button>
+      <div className="safe-bottom border-t border-[var(--sidebar-border)] p-3">
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
+            {user.username}
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
+          >
+            <LogOut size={14} />
+            {t("chat.signOut")}
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -1433,6 +1798,15 @@ export const ChatApp = ({
               </div>
             </div>
 
+            <Link
+              href="/models"
+              title={t("chat.modelsGuideHint")}
+              aria-label={t("chat.modelsGuide")}
+              className="touch-target inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-info-border)] bg-[var(--chip-info-bg)] px-2 py-1.5 text-xs font-medium text-[var(--chip-info-text)] transition hover:border-[var(--accent)]/50 hover:opacity-90 sm:px-2.5"
+            >
+              <Boxes size={14} />
+              <span>{t("chat.modelsGuide")}</span>
+            </Link>
             {activeId ? (
               <button
                 ref={shareBtnRef}
@@ -1710,13 +2084,31 @@ export const ChatApp = ({
                                   src: imagePreviewUrl(img),
                                   name: img.name,
                                 })) ??
-                                message.attachments?.map((item) => ({
-                                  src: attachmentUrl(message.id, item.index),
-                                  name: item.name,
-                                })) ??
+                                message.attachments
+                                  ?.filter((item) => item.type === "image")
+                                  .map((item) => ({
+                                    src: attachmentUrl(message.id, item.index),
+                                    name: item.name,
+                                  })) ??
                                 []
                               }
                             />
+                            {message.localAudio ? (
+                              <MessageAudio
+                                src={message.localAudio.previewUrl}
+                                name={message.localAudio.name}
+                              />
+                            ) : (
+                              message.attachments
+                                ?.filter((item) => item.type === "audio")
+                                .map((item) => (
+                                  <MessageAudio
+                                    key={item.index}
+                                    src={attachmentUrl(message.id, item.index)}
+                                    name={item.name}
+                                  />
+                                ))
+                            )}
                             {message.content ? (
                               <p className="whitespace-pre-wrap">
                                 {message.content}
@@ -1804,9 +2196,26 @@ export const ChatApp = ({
 
         <div className="safe-bottom border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div
-            className="composer-shell mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+            className={`composer-shell relative mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
+              isDraggingOver
+                ? "border-sky-400 ring-4 ring-[var(--ring)]"
+                : "border-[var(--border)]"
+            }`}
             style={{ boxShadow: "var(--composer-shadow)" }}
+            onDragEnter={handleComposerDragEnter}
+            onDragOverCapture={handleComposerDragOver}
+            onDragLeave={handleComposerDragLeave}
+            onDropCapture={handleComposerDrop}
           >
+            {isDraggingOver ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-sky-500/15 text-sm font-medium text-sky-800 dark:text-sky-100">
+                {supportsAudio && supportsVision
+                  ? t("chat.dropImagesOrAudio")
+                  : supportsAudio
+                    ? t("chat.dropAudio")
+                    : t("chat.dropImages")}
+              </div>
+            ) : null}
             {pendingImages.length ? (
               <div className="px-2 pt-1">
                 <MessageImages
@@ -1822,6 +2231,46 @@ export const ChatApp = ({
                   }
                   removeLabel={t("chat.removeImage")}
                 />
+              </div>
+            ) : null}
+            {pendingAudio ? (
+              <div className="px-2 pt-1">
+                <MessageAudio
+                  tone="composer"
+                  src={pendingAudio.previewUrl}
+                  name={pendingAudio.name}
+                  onRemove={clearPendingAudio}
+                  removeLabel={t("chat.removeAudio")}
+                />
+              </div>
+            ) : null}
+            {isRecording ? (
+              <div className="flex items-center gap-2 px-3 pt-1 text-xs text-red-600">
+                <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                <span>
+                  {t("chat.recording", {
+                    n: Math.min(
+                      MAX_AUDIO_SECONDS,
+                      Math.ceil(recordElapsedMs / 1000),
+                    ),
+                  })}
+                </span>
+                <span
+                  className="h-1.5 w-16 overflow-hidden rounded-full bg-red-900/20"
+                  title={t("chat.micLevel")}
+                >
+                  <span
+                    className="block h-full bg-red-500 transition-[width] duration-100"
+                    style={{
+                      width: `${Math.min(100, Math.round(micLevel * 160))}%`,
+                    }}
+                  />
+                </span>
+                {currentMicLabel ? (
+                  <span className="min-w-0 truncate text-[var(--text-muted)]">
+                    {currentMicLabel}
+                  </span>
+                ) : null}
               </div>
             ) : null}
             <div className="flex items-end gap-2">
@@ -1851,25 +2300,104 @@ export const ChatApp = ({
                   </button>
                 </>
               ) : null}
+              {supportsAudio ? (
+                <div className="relative mb-0.5 flex shrink-0 items-center" ref={micPickerRef}>
+                  <button
+                    type="button"
+                    disabled={ready && (isSending || isProcessingAudio || !model)}
+                    onClick={() => void handleToggleMic()}
+                    className={`touch-target inline-flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 sm:h-10 sm:w-10 ${
+                      isRecording
+                        ? "bg-red-600 text-white hover:bg-red-500"
+                        : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                    }`}
+                    aria-label={
+                      isRecording
+                        ? t("chat.stopRecording")
+                        : t("chat.recordAudio")
+                    }
+                    title={
+                      isRecording
+                        ? t("chat.stopRecording")
+                        : currentMicLabel || t("chat.recordAudio")
+                    }
+                  >
+                    {isRecording ? (
+                      <Square size={14} fill="currentColor" />
+                    ) : (
+                      <Mic size={16} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      ready &&
+                      (isSending || isRecording || isProcessingAudio || !model)
+                    }
+                    onClick={() => void handleOpenMicPicker()}
+                    className="touch-target inline-flex h-11 w-7 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40 sm:h-10"
+                    aria-label={t("chat.chooseMic")}
+                    title={t("chat.chooseMic")}
+                    aria-expanded={micPickerOpen}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                  {micPickerOpen ? (
+                    <div className="absolute bottom-full left-0 z-30 mb-2 min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-1 shadow-lg">
+                      <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                        {t("chat.chooseMic")}
+                      </p>
+                      {micDevices.length ? (
+                        micDevices.map((device) => {
+                          const selected = device.deviceId === micDeviceId;
+                          return (
+                            <button
+                              key={device.deviceId}
+                              type="button"
+                              onClick={() => handleSelectMic(device.deviceId)}
+                              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--text)] hover:bg-[var(--hover)] ${
+                                selected ? "font-medium" : ""
+                              }`}
+                            >
+                              <Check
+                                size={12}
+                                className={
+                                  selected ? "opacity-100" : "opacity-0"
+                                }
+                              />
+                              <span className="min-w-0 truncate">
+                                {device.label}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="px-3 py-2 text-xs text-[var(--text-muted)]">
+                          {t("chat.micNotFound")}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
-                  if (!supportsVision) return;
-                  const files = Array.from(event.clipboardData.files).filter(
-                    (file) => file.type.startsWith("image/"),
-                  );
+                  const files = Array.from(event.clipboardData.files);
                   if (!files.length) return;
                   event.preventDefault();
-                  void addImageFiles(files);
+                  void addDroppedFiles(files);
                 }}
                 rows={1}
                 placeholder={
-                  pendingImages.length
-                    ? t("chat.imagePlaceholder")
-                    : t("chat.messagePlaceholder")
+                  pendingAudio
+                    ? t("chat.audioPlaceholder")
+                    : pendingImages.length
+                      ? t("chat.imagePlaceholder")
+                      : t("chat.messagePlaceholder")
                 }
                 className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-[15px]"
               />
@@ -1888,7 +2416,12 @@ export const ChatApp = ({
                   onClick={() => void handleSend()}
                   disabled={
                     ready &&
-                    ((!input.trim() && pendingImages.length === 0) || !model)
+                    (isProcessingAudio ||
+                      (!input.trim() &&
+                        pendingImages.length === 0 &&
+                        !pendingAudio &&
+                        !isRecording) ||
+                      !model)
                   }
                   className="touch-target mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                   aria-label={t("chat.sendMessage")}
@@ -1899,7 +2432,13 @@ export const ChatApp = ({
             </div>
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] leading-snug text-[var(--text-muted)] sm:text-[11px]">
-            {supportsVision ? t("chat.visionFooterHint") : t("chat.footerHint")}
+            {supportsAudio && supportsVision
+              ? t("chat.audioVisionFooterHint")
+              : supportsAudio
+                ? t("chat.audioFooterHint")
+                : supportsVision
+                  ? t("chat.visionFooterHint")
+                  : t("chat.footerHint")}
           </p>
         </div>
       </main>

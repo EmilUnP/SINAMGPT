@@ -6,6 +6,7 @@ import { ArrowLeft, Lock, UserRound } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { KnowledgeCitations } from "@/components/chat/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
+import { MessageAudio } from "@/components/chat/MessageAudio";
 import { MessageImages } from "@/components/chat/MessageImages";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
@@ -99,12 +100,23 @@ export const SharedChatView = ({
                         <div className="space-y-2">
                           <MessageImages
                             items={
-                              message.attachments?.map((item) => ({
-                                src: attachmentUrl(message.id, item.index),
-                                name: item.name,
-                              })) ?? []
+                              message.attachments
+                                ?.filter((item) => item.type === "image")
+                                .map((item) => ({
+                                  src: attachmentUrl(message.id, item.index),
+                                  name: item.name,
+                                })) ?? []
                             }
                           />
+                          {message.attachments
+                            ?.filter((item) => item.type === "audio")
+                            .map((item) => (
+                              <MessageAudio
+                                key={item.index}
+                                src={attachmentUrl(message.id, item.index)}
+                                name={item.name}
+                              />
+                            ))}
                           {message.content ? (
                             <p className="whitespace-pre-wrap">
                               {message.content}

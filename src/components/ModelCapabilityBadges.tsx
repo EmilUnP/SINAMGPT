@@ -10,7 +10,7 @@ export type ModelCapabilityFlags = {
 };
 
 type Props = ModelCapabilityFlags & {
-  /** Admin table shows Text; the chat picker skips it to save space. */
+  /** Admin table and Models guide show Text; the chat picker skips it to save space. */
   showText?: boolean;
   size?: "sm" | "md";
 };
@@ -29,8 +29,7 @@ export const ModelCapabilityBadges = ({
   size = "md",
 }: Props) => {
   const t = useTranslations();
-  const hasInputs = Boolean(vision || audio || video);
-  if (!showText && !hasInputs && !tools) return null;
+  if (!showText && !vision && !tools && !audio && !video) return null;
 
   return (
     <>

@@ -243,13 +243,45 @@ export const en = {
     inputImage: "Image",
     inputAudio: "Audio",
     inputVideo: "Video",
-    inputTextHint: "Accepts typed messages.",
-    inputImageHint: "Accepts attached or pasted images.",
-    inputAudioHint: "Can take audio input (not used in this chat yet).",
-    inputVideoHint: "Can take video input (not used in this chat yet).",
+    inputTextHint: "You can type messages in this chat.",
+    inputImageHint: "You can attach, paste, or drop images in this chat.",
+    inputAudioHint:
+      "You can record or drop audio in this chat (up to 30 seconds).",
+    inputVideoHint:
+      "Ollama lists this model as video-capable. This chat cannot send video yet.",
     imagePlaceholder: "Add a caption, or send the image…",
+    audioPlaceholder: "Add a question, or send the recording…",
     visionFooterHint:
-      "Enter to send · Shift+Enter for new line · Attach or paste images",
+      "Enter to send · Shift+Enter for new line · Attach, paste, or drop images",
+    audioFooterHint:
+      "Enter to send · Shift+Enter for new line · Record or drop audio",
+    audioVisionFooterHint:
+      "Enter to send · Shift+Enter for new line · Drop images or audio",
+    recordAudio: "Record audio",
+    stopRecording: "Stop recording",
+    removeAudio: "Remove recording",
+    recording: "Recording… {n}s",
+    audioDefaultPrompt: "Listen to this recording and respond.",
+    micDenied:
+      "Microphone access was blocked. Allow it in the browser, then try again.",
+    micNotFound: "No microphone was found.",
+    micSwitchFailed:
+      "Could not switch to that microphone. Pick another one from the list.",
+    micFailed: "Could not start the microphone.",
+    micQuiet:
+      "That recording is very quiet. Click the arrow next to the mic and pick the laptop or headset microphone you actually speak into.",
+    chooseMic: "Choose microphone",
+    micLevel: "Microphone level",
+    dropImages: "Drop images here",
+    dropAudio: "Drop audio here",
+    dropImagesOrAudio: "Drop images or audio here",
+    dropUnsupported:
+      "This chat accepts JPEG, PNG, WebP, or GIF images, and audio files on audio models.",
+    audioRequired:
+      "This model does not support audio. Choose an audio model.",
+    audioLimit: "You can attach one audio clip per message.",
+    audioTooLarge: "That audio file is too large. Try a shorter clip.",
+    audioFileFailed: "Could not read that audio file. Try WAV, MP3, or M4A.",
     imageTooLarge: "Each image must be under 8 MB.",
     imageType: "Use JPEG, PNG, WebP, or GIF.",
     imageLimit: "You can attach up to {n} images.",

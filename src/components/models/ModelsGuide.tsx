@@ -30,16 +30,27 @@ type Props = {
   defaultModel: string;
 };
 
-const tipFor = (model: GuideModel): MessageKey => {
-  if (model.vision && (model.audio || model.video)) {
-    return "models.tipMultimodal";
-  }
-  if (model.vision) return "models.tipVision";
+type ProfileKind = "tiny" | "vision" | "strong" | "general";
+
+const profileFor = (model: GuideModel): ProfileKind => {
+  if (model.vision) return "vision";
   const gb = model.size / (1024 * 1024 * 1024);
-  if (model.size > 0 && gb < 4) return "models.tipFast";
-  if (gb >= 20) return "models.tipStrong";
-  return "models.tipGeneral";
+  if (model.size > 0 && gb < 4) return "tiny";
+  if (gb >= 20) return "strong";
+  return "general";
 };
+
+const profileKeys = (kind: ProfileKind) =>
+  ({
+    summary: `models.${kind}.summary`,
+    use1: `models.${kind}.use1`,
+    use2: `models.${kind}.use2`,
+    use3: `models.${kind}.use3`,
+    pro1: `models.${kind}.pro1`,
+    pro2: `models.${kind}.pro2`,
+    con1: `models.${kind}.con1`,
+    con2: `models.${kind}.con2`,
+  }) as const satisfies Record<string, MessageKey>;
 
 export const ModelsGuide = ({
   user,
@@ -78,6 +89,20 @@ export const ModelsGuide = ({
             <p className="text-sm leading-relaxed text-[var(--admin-muted)]">
               {t("models.description")}
             </p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
+                {t("models.pickTitle")}
+              </p>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--admin-fg)]">
+                <li>{t("models.pick1")}</li>
+                <li>{t("models.pick2")}</li>
+                <li>{t("models.pick3")}</li>
+                <li>{t("models.pick4")}</li>
+              </ol>
+            </div>
+            <p className="text-xs leading-relaxed text-[var(--admin-muted)]">
+              {t("models.noteLimits")}
+            </p>
             {sorted.length ? (
               <p className="text-xs font-medium text-[var(--admin-muted)]">
                 {t("models.count", { n: sorted.length })}
@@ -89,9 +114,11 @@ export const ModelsGuide = ({
         </AdminPanelCard>
 
         {sorted.length ? (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {sorted.map((model) => {
               const isDefault = model.name === defaultModel;
+              const title = model.display_name || model.name;
+              const keys = profileKeys(profileFor(model));
 
               return (
                 <article
@@ -101,11 +128,13 @@ export const ModelsGuide = ({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h2 className="truncate text-sm font-semibold text-[var(--admin-fg)]">
-                        {model.display_name || model.name}
+                        {title}
                       </h2>
-                      <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--admin-muted)]">
-                        {model.name}
-                      </p>
+                      {title !== model.name ? (
+                        <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--admin-muted)]">
+                          {model.name}
+                        </p>
+                      ) : null}
                     </div>
                     {isDefault ? (
                       <span className="status-pill status-info">
@@ -115,7 +144,7 @@ export const ModelsGuide = ({
                   </div>
 
                   <p className="mt-3 text-sm leading-relaxed text-[var(--admin-fg)]">
-                    {t(tipFor(model))}
+                    {t(keys.summary)}
                   </p>
 
                   <dl className="mt-3 space-y-2 text-xs text-[var(--admin-muted)]">
@@ -126,18 +155,59 @@ export const ModelsGuide = ({
                       </dd>
                     </div>
                     <div>
-                      <dt className="mb-1.5">{t("models.inputs")}</dt>
+                      <dt className="mb-1.5">{t("models.chatCanSend")}</dt>
                       <dd className="flex flex-wrap gap-1">
                         <ModelCapabilityBadges
                           showText
                           vision={model.vision}
                           audio={model.audio}
-                          video={model.video}
-                          tools={model.tools}
                         />
                       </dd>
                     </div>
+                    {model.video || model.tools ? (
+                      <div>
+                        <dt className="mb-1.5">{t("models.ollamaLists")}</dt>
+                        <dd className="flex flex-wrap gap-1">
+                          <ModelCapabilityBadges
+                            video={model.video}
+                            tools={model.tools}
+                          />
+                        </dd>
+                      </div>
+                    ) : null}
                   </dl>
+
+                  <div className="mt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--admin-muted)]">
+                      {t("models.bestFor")}
+                    </p>
+                    <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed text-[var(--admin-fg)]">
+                      <li>{t(keys.use1)}</li>
+                      <li>{t(keys.use2)}</li>
+                      <li>{t(keys.use3)}</li>
+                    </ul>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                        {t("models.pros")}
+                      </p>
+                      <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed text-[var(--admin-fg)]">
+                        <li>{t(keys.pro1)}</li>
+                        <li>{t(keys.pro2)}</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">
+                        {t("models.cons")}
+                      </p>
+                      <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm leading-relaxed text-[var(--admin-fg)]">
+                        <li>{t(keys.con1)}</li>
+                        <li>{t(keys.con2)}</li>
+                      </ul>
+                    </div>
+                  </div>
                 </article>
               );
             })}

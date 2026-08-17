@@ -165,7 +165,7 @@ export const setDefaultModelSetting = (model: string) => {
 };
 
 export const getUserMaxCharsSetting = (): number =>
-  parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 12000, 500, 32000);
+  parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 5000, 500, 32000);
 
 export const setUserMaxCharsSetting = (chars: number) => {
   const safe = Math.max(500, Math.min(32000, Math.floor(chars)));
@@ -428,6 +428,15 @@ export const modelSupportsVision = (name: string): boolean => {
     .get(resolved) as { vision: number } | undefined;
   if (row) return row.vision === 1;
   return inferCapabilities(resolved).vision;
+};
+
+export const modelSupportsAudio = (name: string): boolean => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT audio FROM models WHERE name = ?`)
+    .get(resolved) as { audio: number } | undefined;
+  if (row) return row.audio === 1;
+  return inferCapabilities(resolved).audio;
 };
 
 export const getEnabledModels = async (): Promise<{

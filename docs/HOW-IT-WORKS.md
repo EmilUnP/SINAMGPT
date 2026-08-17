@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.12.0
+**Current product:** v1.13.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -41,7 +41,7 @@ Three promises:
 This is the same path for signed-in chat and for guest try-chat.
 
 ```text
-You type a question (any language)  + optional image
+You type a question (any language)  + optional image or short voice clip
         │
         ▼
 ┌─────────────────────┐
@@ -69,7 +69,9 @@ You type a question (any language)  + optional image
 
 **If step 3 finds nothing:** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes.
 
-**Images:** only if the **selected model** can see pictures (Gemma 4, Gemma 3 4B+, LLaVA, …). Text-only models stay text-only. Pick the model in the chat header; **Models** explains size and inputs.
+**Images:** only if the **selected model** can see pictures (Gemma 4, Gemma 3 4B+, LLaVA, …). Attach, paste, or drop a file onto the chat box. Text-only models stay text-only.
+
+**Voice:** only if the model lists **Audio** (for example Gemma 4 E2B / E4B, not the 31B dense card). Use the microphone (arrow next to it picks which laptop/headset mic) or drop a short audio file. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
 
 ---
 
@@ -114,7 +116,7 @@ Everything is on the company PC (or the LAN host):
 | What | Where |
 |------|--------|
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
-| Chat images | `data/attachments/` |
+| Chat images and voice clips | `data/attachments/` |
 | Models | Ollama on that machine |
 | Passwords | Hashed (not stored as plain text) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
@@ -147,6 +149,7 @@ Say this clearly to the business:
 - We do **not** have departments, billing, or public internet share links. Share links work only for **logged-in** colleagues.  
 - We do **not** automatically read PDFs into knowledge yet (you paste or type docs in Admin).  
 - Vision is **not** every model — only those marked as image-capable.  
+- Voice is **not** every model — only those marked as audio-capable. Video still cannot be sent.  
 - **Functions** on a model badge means the model *could* call extra functions; SINAMGPT **does not run that yet**.
 
 ---

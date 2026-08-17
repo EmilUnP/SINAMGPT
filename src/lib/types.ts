@@ -39,7 +39,7 @@ export type KnowledgeCitation = {
 };
 
 export type MessageAttachment = {
-  type: "image";
+  type: "image" | "audio";
   mime: string;
   name: string;
   index: number;
@@ -53,7 +53,7 @@ export type Message = {
   created_at: string;
   /** Knowledge docs used for this assistant reply (JSON in DB) */
   sources?: KnowledgeCitation[] | null;
-  /** Image attachments on user messages (vision models) */
+  /** Image / audio attachments on user messages */
   attachments?: MessageAttachment[] | null;
 };
 

@@ -7,24 +7,24 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.12.0](../CHANGELOG.md#1120--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.13.0](../CHANGELOG.md#1130--2026-08-17) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.12.0**):
+What operators and users can rely on in the current tree (**v1.13.0**):
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language |
-| **Chat** | Streaming replies, model picker (input badges), rewrite, theme, **attach/paste images** on vision models; **Models guide** at `/models` (header + sidebar). No Fast/Smart toggle — pick a model in the header |
-| **History** | Per-user conversations in SQLite (`data/owngpt.db`); image files under `data/attachments/` |
+| **Chat** | Streaming replies, model picker (input badges), rewrite, theme; **attach / paste / drop images** on vision models; **microphone or drop audio** (up to 30s) on audio models with a hardware mic picker; **Models guide** at `/models` (header + sidebar). No Fast/Smart toggle — pick a model in the header |
+| **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
-| **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images); owner can revoke or rotate (“New link”) |
+| **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; citations; pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images; admin middleware by session role |
+| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images (attach/paste/drop); admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
@@ -57,7 +57,6 @@ Ideas kept for later — not a commitment.
 | Chat modes (Ask SINAM / Work / Write) | Productized feel |
 | Departments / knowledge visibility | Multi-team beyond personal projects |
 | Export chat (Markdown / PDF) | Manager handoffs |
-| Voice input | Quick questions |
 | ⌘K command palette | Power users |
 | First-login onboarding | Reduce confusion |
 | Project archive (soft-delete) | Schema has `is_archived`; UI today **hard-deletes** and untags knowledge |
@@ -68,12 +67,21 @@ Ideas kept for later — not a commitment.
 
 Closed tracks — keep for context; do not re-open unless regressing.
 
+### v1.13.0 — Voice, mic picker & drag-and-drop (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Microphone audio | `done` | Audio models; 16 kHz mono WAV, 30s; playback in chat and shared links |
+| Microphone picker | `done` | Hardware devices only; recording uses the selected mic |
+| Drag and drop | `done` | Images on vision models; audio files on audio models; guest images too |
+| Models guide cards | `done` | How-to-pick, use cases, pros/cons; Audio is sendable; card spec block removed |
+
 ### v1.12.0 — Models guide & clearer picker (2026-08-17)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Models guide `/models` | `done` | Size, inputs, Default, when to use; header + sidebar |
-| Capability badges | `done` | Text / Image / Audio / Video + Functions; readable light-mode chips |
+| Capability badges | `done` | Text / Image you can send; Audio follows Ollama tags; Functions display-only |
 | Cross-language keyword search | `done` | Query gloss EN / AZ / RU before RAG and hard-block match |
 | Fast / Smart presets | `removed` | Header picker + admin default only |
 

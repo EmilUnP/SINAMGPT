@@ -65,6 +65,22 @@ const inspectOllamaCapabilities = async (
   }
 };
 
+const isWavBase64 = (b64: string): boolean => {
+  try {
+    const buf = Buffer.from(b64.slice(0, 24), "base64");
+    return (
+      buf.length >= 12 &&
+      buf.toString("ascii", 0, 4) === "RIFF" &&
+      buf.toString("ascii", 8, 12) === "WAVE"
+    );
+  } catch {
+    return false;
+  }
+};
+
+const messagesHaveAudio = (messages: ChatMessage[]): boolean =>
+  messages.some((message) => message.images?.some(isWavBase64));
+
 export const streamOllamaChat = async (
   model: string,
   messages: ChatMessage[],
@@ -81,6 +97,9 @@ export const streamOllamaChat = async (
     ollamaOptions.top_p = options.topP;
   }
 
+  const think =
+    options?.think === false || messagesHaveAudio(messages) ? false : options?.think;
+
   const res = await fetch(`${getBaseUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -89,6 +108,7 @@ export const streamOllamaChat = async (
       messages,
       stream: true,
       keep_alive: getKeepAlive(),
+      ...(think === false ? { think: false } : {}),
       ...(Object.keys(ollamaOptions).length
         ? { options: ollamaOptions }
         : {}),
@@ -119,6 +139,9 @@ export const completeOllamaChat = async (
     ollamaOptions.top_p = options.topP;
   }
 
+  const think =
+    options?.think === false || messagesHaveAudio(messages) ? false : options?.think;
+
   const res = await fetch(`${getBaseUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -127,6 +150,7 @@ export const completeOllamaChat = async (
       messages,
       stream: false,
       keep_alive: getKeepAlive(),
+      ...(think === false ? { think: false } : {}),
       ...(Object.keys(ollamaOptions).length
         ? { options: ollamaOptions }
         : {}),

@@ -25,6 +25,8 @@ export type ChatOptions = {
   temperature?: number;
   numPredict?: number;
   topP?: number;
+  /** Ollama thinking. Audio turns must send false or Gemma 4 may swallow the reply. */
+  think?: boolean;
 };
 
 export type BackendHealth = {

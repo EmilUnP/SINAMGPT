@@ -6,6 +6,7 @@ import {
   saveMessageImages,
   toLlmHistory,
 } from "@/lib/attachments";
+import { AUDIO_MIME } from "@/lib/audio-limits";
 import { getDb } from "@/lib/db";
 import {
   checkInputGuardrails,
@@ -18,6 +19,7 @@ import {
   getUserHistoryLimitSetting,
   getUserMaxCharsSetting,
   isModelEnabled,
+  modelSupportsAudio,
   modelSupportsVision,
   resolveOllamaModelName,
 } from "@/lib/settings";
@@ -34,11 +36,18 @@ const imageSchema = z.object({
   name: z.string().trim().max(200).optional(),
 });
 
+const audioSchema = z.object({
+  mime: z.literal(AUDIO_MIME),
+  data: z.string().min(32).max(3_000_000),
+  name: z.string().trim().max(200).optional(),
+});
+
 const schema = z
   .object({
     conversationId: z.string().min(1).optional(),
     message: z.string().max(32000).optional(),
     images: z.array(imageSchema).max(MAX_CHAT_IMAGES).optional(),
+    audio: audioSchema.optional(),
     model: z.string().trim().min(1).max(120),
     projectId: z.string().trim().min(1).max(64).nullable().optional(),
     mode: z
@@ -50,7 +59,8 @@ const schema = z
   .superRefine((data, ctx) => {
     const text = data.message?.trim() ?? "";
     const imageCount = data.images?.length ?? 0;
-    if (data.mode === "send" && !text && imageCount === 0) {
+    const hasAudio = Boolean(data.audio);
+    if (data.mode === "send" && !text && imageCount === 0 && !hasAudio) {
       ctx.addIssue({
         code: "custom",
         message: "Message is required",
@@ -106,11 +116,16 @@ const CONVERSATION_SELECT =
 
 const MESSAGE_SELECT = "id, role, content, created_at, attachments";
 
-const titleFromPrompt = (text: string, hasImages: boolean): string => {
+const titleFromPrompt = (
+  text: string,
+  hasImages: boolean,
+  hasAudio = false,
+): string => {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (cleaned) {
     return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
   }
+  if (hasAudio) return "Voice";
   return hasImages ? "Image" : "New chat";
 };
 
@@ -382,11 +397,21 @@ export async function POST(request: Request) {
     }
 
     const incomingImages = parsed.data.images ?? [];
+    const incomingAudio = parsed.data.audio ?? null;
     if (incomingImages.length && !modelSupportsVision(model)) {
       return Response.json(
         {
           error:
             "This model does not support images. Choose a vision model.",
+        },
+        { status: 400 },
+      );
+    }
+    if (incomingAudio && !modelSupportsAudio(model)) {
+      return Response.json(
+        {
+          error:
+            "This model does not support audio. Choose an audio model.",
         },
         { status: 400 },
       );
@@ -750,7 +775,9 @@ export async function POST(request: Request) {
     }
 
     // ——— Normal send ———
-    const message = (parsed.data.message ?? "").trim();
+    const message =
+      (parsed.data.message ?? "").trim() ||
+      (incomingAudio ? "Listen to this recording and respond." : "");
 
     if (message.length > maxChars) {
       return Response.json(
@@ -820,7 +847,11 @@ export async function POST(request: Request) {
       ).run(
         conversationId,
         user.id,
-        titleFromPrompt(message, incomingImages.length > 0),
+        titleFromPrompt(
+          message,
+          incomingImages.length > 0,
+          Boolean(incomingAudio),
+        ),
         model,
         projectCheck.projectId,
       );
@@ -831,6 +862,7 @@ export async function POST(request: Request) {
       conversationId,
       userMessageId,
       incomingImages,
+      incomingAudio,
     );
     if (saved.error) {
       return Response.json({ error: saved.error }, { status: 400 });
@@ -865,7 +897,11 @@ export async function POST(request: Request) {
       historyRows.filter((m) => m.role === "user").length === 1;
 
     if (isFirstExchange && conversation.title === "New chat") {
-      const title = titleFromPrompt(message, incomingImages.length > 0);
+      const title = titleFromPrompt(
+        message,
+        incomingImages.length > 0,
+        Boolean(incomingAudio),
+      );
       db.prepare(
         `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
       ).run(title, conversationId);
@@ -890,7 +926,7 @@ export async function POST(request: Request) {
       conversationId,
       conversation,
       model,
-      promptText: message || "[image]",
+      promptText: message || (incomingAudio ? "[audio]" : "[image]"),
       userMessage,
       history,
     });

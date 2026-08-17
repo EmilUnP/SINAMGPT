@@ -35,11 +35,23 @@ const safeName = (name: string, fallback: string): string => {
   return cleaned || fallback;
 };
 
+const mimeFromFile = (file: File): AllowedImageMime | null => {
+  const type = file.type.trim().toLowerCase();
+  if (type === "image/jpg") return "image/jpeg";
+  if (isAllowedImageMime(type)) return type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  if (name.endsWith(".gif")) return "image/gif";
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  return null;
+};
+
 export const fileToChatImage = async (
   file: File,
 ): Promise<CompressImageResult> => {
-  const type = file.type.trim().toLowerCase();
-  if (!isAllowedImageMime(type)) return { ok: false, code: "type" };
+  const type = mimeFromFile(file);
+  if (!type) return { ok: false, code: "type" };
 
   if (type === "image/gif") {
     if (file.size > MAX_IMAGE_BYTES) return { ok: false, code: "size" };

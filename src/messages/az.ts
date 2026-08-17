@@ -252,13 +252,47 @@ export const az: Messages = {
     inputImage: "Şəkil",
     inputAudio: "Audio",
     inputVideo: "Video",
-    inputTextHint: "Yazılı mesaj qəbul edir.",
-    inputImageHint: "Əlavə edilən və ya yapışdırılan şəkilləri qəbul edir.",
-    inputAudioHint: "Audio qəbul edə bilər (bu söhbətdə hələ yoxdur).",
-    inputVideoHint: "Video qəbul edə bilər (bu söhbətdə hələ yoxdur).",
+    inputTextHint: "Bu söhbətdə mesaj yaza bilərsiniz.",
+    inputImageHint:
+      "Bu söhbətdə şəkil əlavə edə, yapışdıra və ya buraxa bilərsiniz.",
+    inputAudioHint:
+      "Bu söhbətdə mikrofonla və ya fayl buraxaraq audio göndərə bilərsiniz (ən çox 30 saniyə).",
+    inputVideoHint:
+      "Ollama bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
     imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
+    audioPlaceholder: "Sual yazın və ya yazını göndərin…",
     visionFooterHint:
-      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin və ya yapışdırın",
+      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin, yapışdırın və ya buraxın",
+    audioFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofonla yazın və ya audio buraxın",
+    audioVisionFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil və ya audio buraxın",
+    recordAudio: "Səs yaz",
+    stopRecording: "Yazını dayandır",
+    removeAudio: "Yazını sil",
+    recording: "Yazılır… {n}s",
+    audioDefaultPrompt: "Bu yazıya qulaq as və cavab ver.",
+    micDenied:
+      "Mikrofon icazəsi bağlanıb. Brauzerdə icazə verin, sonra yenidən yoxlayın.",
+    micNotFound: "Mikrofon tapılmadı.",
+    micSwitchFailed:
+      "Həmin mikrofona keçmək alınmadı. Siyahıdan başqasını seçin.",
+    micFailed: "Mikrofonu işə salmaq alınmadı.",
+    micQuiet:
+      "Yazı çox sakitdir. Mikrofonun yanındakı oxa klikləyin və danışdığınız noutbuk və ya qulaqlıq mikrofonunu seçin.",
+    chooseMic: "Mikrofon seç",
+    micLevel: "Mikrofon səviyyəsi",
+    dropImages: "Şəkilləri bura buraxın",
+    dropAudio: "Audionu bura buraxın",
+    dropImagesOrAudio: "Şəkil və ya audionu bura buraxın",
+    dropUnsupported:
+      "Bu söhbət JPEG, PNG, WebP və ya GIF şəkillərini, audio modellərdə isə audio faylları qəbul edir.",
+    audioRequired:
+      "Bu model audionu dəstəkləmir. Audio modelini seçin.",
+    audioLimit: "Hər mesaja bir audio yazı əlavə edə bilərsiniz.",
+    audioTooLarge: "Audio faylı çox böyükdür. Daha qısa yazı yoxlayın.",
+    audioFileFailed:
+      "Audio faylını oxumaq mümkün olmadı. WAV, MP3 və ya M4A yoxlayın.",
     imageTooLarge: "Hər şəkil 8 MB-dan kiçik olmalıdır.",
     imageType: "JPEG, PNG, WebP və ya GIF istifadə edin.",
     imageLimit: "Ən çox {n} şəkil əlavə edə bilərsiniz.",
