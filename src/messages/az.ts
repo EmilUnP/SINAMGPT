@@ -36,6 +36,7 @@ export const az: Messages = {
     more: "Daha çox",
     moreMenu: "Digər səhifələr",
     ms: "{n} ms",
+    sec: "{n} san",
     rpmShort: "{n}/dəq",
     statusOk: "ok",
     statusError: "xəta",
@@ -270,6 +271,7 @@ export const az: Messages = {
     recordAudio: "Səs yaz",
     stopRecording: "Yazını dayandır",
     removeAudio: "Yazını sil",
+    voiceRecording: "Səs yazısı",
     recording: "Yazılır… {n}s",
     audioDefaultPrompt:
       "Bu yazıda nə deyildiyini yaz, sonra deyilənə cavab ver.",

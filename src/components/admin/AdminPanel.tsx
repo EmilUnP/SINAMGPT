@@ -141,12 +141,6 @@ const formatSize = (bytes: number) => {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 };
 
-const fmtMs = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return "—";
-  if (value < 1000) return `${Math.round(value)} ms`;
-  return `${(value / 1000).toFixed(1)} s`;
-};
-
 const fmtNum = (value: number | null | undefined) => {
   if (value == null || Number.isNaN(value)) return "—";
   return String(value);
@@ -170,6 +164,11 @@ const withinDays = (value: string | null, days: number) => {
 
 export const AdminPanel = ({ admin }: AdminPanelProps) => {
   const { locale, t } = useLocale();
+  const fmtMs = (value: number | null | undefined) => {
+    if (value == null || Number.isNaN(value)) return "—";
+    if (value < 1000) return t("common.ms", { n: Math.round(value) });
+    return t("common.sec", { n: (value / 1000).toFixed(1) });
+  };
   const tabs: Array<{ id: TabId; label: string; icon: typeof LayoutDashboard }> =
     [
       { id: "overview", label: t("admin.tabs.overview"), icon: LayoutDashboard },
@@ -866,7 +865,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {meta?.guardrailsOn
                   ? t("admin.overview.guardrailsOn")
                   : t("admin.overview.guardrailsOff")}
-                {meta ? ` · ${meta.keywordRules} hard rules` : ""}
+                {meta
+                  ? t("admin.overview.hardRules", { n: meta.keywordRules })
+                  : ""}
               </span>
               <span
                 className={`status-pill ${
@@ -878,7 +879,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   ? t("admin.overview.knowledgeOn")
                   : t("admin.overview.knowledgeOff")}
                 {meta
-                  ? ` · ${meta.knowledgeEnabled}/${meta.knowledgeDocs} docs`
+                  ? t("admin.overview.docsRatio", {
+                      enabled: meta.knowledgeEnabled,
+                      total: meta.knowledgeDocs,
+                    })
                   : ""}
               </span>
             </div>
@@ -909,13 +913,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           n: pulse.summary.avg_tokens_per_sec,
                         })
                       : "—",
-                  hint: `${fmtNum(pulse?.summary.requests_7d)} requests / 7d`,
+                  hint: t("admin.overview.requests7d", {
+                    n: fmtNum(pulse?.summary.requests_7d),
+                  }),
                   icon: Gauge,
                 },
                 {
                   label: t("admin.overview.errorRate"),
                   value: errorRate != null ? `${errorRate}%` : "—",
-                  hint: `${fmtNum(pulse?.summary.error_requests)} errors all-time`,
+                  hint: t("admin.overview.errorsAllTime", {
+                    n: fmtNum(pulse?.summary.error_requests),
+                  }),
                   icon: Timer,
                 },
               ].map((card) => (
@@ -944,12 +952,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {
                   label: t("admin.overview.users"),
                   value: totals?.total_users ?? "—",
-                  hint: `${activeLast7d} active in 7d`,
+                  hint: t("admin.overview.activeIn7d", { n: activeLast7d }),
                 },
                 {
                   label: t("admin.overview.accountsOn"),
                   value: totals?.active_users ?? "—",
-                  hint: `${disabledUsers} disabled · ${adminUsers} admin`,
+                  hint: t("admin.overview.accountsHint", {
+                    disabled: disabledUsers,
+                    admin: adminUsers,
+                  }),
                 },
                 {
                   label: t("admin.overview.chats"),
@@ -959,7 +970,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {
                   label: t("admin.overview.messages"),
                   value: totals?.total_messages ?? "—",
-                  hint: `${totals?.total_user_messages ?? "—"} user prompts`,
+                  hint: t("admin.overview.userPrompts", {
+                    n: totals?.total_user_messages ?? "—",
+                  }),
                 },
                 {
                   label: t("admin.overview.guestUserAi"),
@@ -1014,7 +1027,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       <div
                         key={bucket.hour}
                         className="group relative flex min-w-0 flex-1 flex-col items-center justify-end"
-                        title={`${bucket.hour}: ${bucket.requests} requests`}
+                        title={t("admin.overview.hourRequests", {
+                          hour: bucket.hour,
+                          n: bucket.requests,
+                        })}
                       >
                         <div
                           className="w-full rounded-t-sm bg-gradient-to-t from-blue-600/80 to-sky-400/80 transition group-hover:from-blue-500 group-hover:to-sky-300"

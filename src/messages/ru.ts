@@ -36,6 +36,7 @@ export const ru: Messages = {
     more: "Ещё",
     moreMenu: "Другие страницы",
     ms: "{n} мс",
+    sec: "{n} с",
     rpmShort: "{n}/мин",
     statusOk: "ок",
     statusError: "ошибка",
@@ -270,6 +271,7 @@ export const ru: Messages = {
     recordAudio: "Записать аудио",
     stopRecording: "Остановить запись",
     removeAudio: "Удалить запись",
+    voiceRecording: "Голосовая запись",
     recording: "Запись… {n} с",
     audioDefaultPrompt:
       "Расшифруй эту запись, затем ответь на сказанное.",

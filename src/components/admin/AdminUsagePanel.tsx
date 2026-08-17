@@ -128,12 +128,6 @@ type DetailPane = "sent" | "reply";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
-const fmtMs = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return "—";
-  if (value < 1000) return `${Math.round(value)} ms`;
-  return `${(value / 1000).toFixed(1)} s`;
-};
-
 const fmtNum = (value: number | null | undefined) => {
   if (value == null || Number.isNaN(value)) return "—";
   return String(value);
@@ -156,6 +150,11 @@ const statusTone = (status: string) => {
 
 export const AdminUsagePanel = () => {
   const { locale, t } = useLocale();
+  const fmtMs = (value: number | null | undefined) => {
+    if (value == null || Number.isNaN(value)) return "—";
+    if (value < 1000) return t("common.ms", { n: Math.round(value) });
+    return t("common.sec", { n: (value / 1000).toFixed(1) });
+  };
   const [data, setData] = useState<UsagePayload | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -373,7 +372,9 @@ export const AdminUsagePanel = () => {
                 isLoading && !data
                   ? "…"
                   : summary?.avg_tokens_per_sec != null
-                    ? `${summary.avg_tokens_per_sec} t/s`
+                    ? t("admin.overview.tokPerSec", {
+                        n: summary.avg_tokens_per_sec,
+                      })
                     : "—"
               }
               hint={t("admin.usage.allTime", {
@@ -533,7 +534,9 @@ export const AdminUsagePanel = () => {
                   </div>
                   <p className="shrink-0 text-sm tabular-nums text-[var(--admin-fg)]">
                     {row.avg_tokens_per_sec != null
-                      ? `${row.avg_tokens_per_sec} t/s`
+                      ? t("admin.overview.tokPerSec", {
+                          n: row.avg_tokens_per_sec,
+                        })
                       : "—"}
                   </p>
                 </div>
@@ -720,7 +723,9 @@ export const AdminUsagePanel = () => {
                     </td>
                     <td className="tabular-nums text-[var(--admin-fg)]">
                       {row.tokens_per_sec != null
-                        ? `${row.tokens_per_sec} t/s`
+                        ? t("admin.overview.tokPerSec", {
+                            n: row.tokens_per_sec,
+                          })
                         : "—"}
                     </td>
                     <td className="text-[var(--admin-muted)]">
@@ -827,7 +832,7 @@ export const AdminUsagePanel = () => {
                       n: detail.responseChars,
                     })}`}
                     {detail.ttftMs != null
-                      ? ` · TTFT ${fmtMs(detail.ttftMs)}`
+                      ? ` · ${t("admin.usage.colTtft")} ${fmtMs(detail.ttftMs)}`
                       : ""}
                     {detail.durationMs != null
                       ? ` · ${fmtMs(detail.durationMs)}`
@@ -835,7 +840,9 @@ export const AdminUsagePanel = () => {
                         ? ` · ${fmtMs(detail.elapsedMs)}`
                         : ""}
                     {detail.tokensPerSec != null
-                      ? ` · ${detail.tokensPerSec} t/s`
+                      ? ` · ${t("admin.overview.tokPerSec", {
+                          n: detail.tokensPerSec,
+                        })}`
                       : ""}
                   </p>
                 ) : (

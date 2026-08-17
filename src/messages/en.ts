@@ -35,6 +35,7 @@ export const en = {
     more: "More",
     moreMenu: "More pages",
     ms: "{n} ms",
+    sec: "{n} s",
     rpmShort: "{n}/min",
     statusOk: "ok",
     statusError: "error",
@@ -260,6 +261,7 @@ export const en = {
     recordAudio: "Record audio",
     stopRecording: "Stop recording",
     removeAudio: "Remove recording",
+    voiceRecording: "Voice recording",
     recording: "Recording… {n}s",
     audioDefaultPrompt:
       "Transcribe this recording, then respond to what was said.",
