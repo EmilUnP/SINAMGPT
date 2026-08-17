@@ -122,7 +122,7 @@ type DbMessage = {
   attachments?: string | null;
 };
 
-const streamAssistantReply = (input: {
+const streamAssistantReply = async (input: {
   userId: string;
   username: string;
   conversationId: string;
@@ -155,10 +155,11 @@ const streamAssistantReply = (input: {
   const historyLimit = getUserHistoryLimitSetting();
   const contextHistory =
     historyLimit > 0 ? history.slice(-historyLimit) : history;
-  const prepared = withSystemPrompt(
+  const prepared = await withSystemPrompt(
     contextHistory,
     "user",
     conversation.project_id,
+    { model },
   );
   const promptedHistory = prepared.messages;
   const knowledgeSources = prepared.sources;
@@ -539,10 +540,11 @@ export async function POST(request: Request) {
       }
 
       const lastUser = rows[lastUserIdx];
-      const guard = checkInputGuardrails(lastUser.content, "user", {
+      const guard = await checkInputGuardrails(lastUser.content, "user", {
         username: user.username,
         userId: user.id,
         projectId: owned.project_id,
+        model,
       });
       if (guard.blocked) {
         return Response.json(
@@ -625,10 +627,11 @@ export async function POST(request: Request) {
         )
         .get(conversationId, user.id) as Conversation | undefined;
 
-      const guard = checkInputGuardrails(message, "user", {
+      const guard = await checkInputGuardrails(message, "user", {
         username: user.username,
         userId: user.id,
         projectId: owned?.project_id,
+        model,
       });
       if (guard.blocked) {
         return Response.json(
@@ -783,10 +786,11 @@ export async function POST(request: Request) {
       ).run(model, conversationId);
     }
 
-    const guard = checkInputGuardrails(message, "user", {
+    const guard = await checkInputGuardrails(message, "user", {
       username: user.username,
       userId: user.id,
       projectId: projectIdForGuard,
+      model,
     });
     if (guard.blocked) {
       return Response.json(

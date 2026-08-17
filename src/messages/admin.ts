@@ -115,9 +115,9 @@ export const adminEn = {
   models: {
     title: "LLM models",
     subtitle:
-      "Synced in parallel from Ollama and/or vLLM. Edit the display name shown in chat pickers. Clear + save to reset to the model id.",
+      "New Ollama models show up here after a refresh. They stay inactive for users until you Activate them.",
     empty:
-      "No models found. Start Ollama (`ollama list`) and/or vLLM, and set LLM_BACKENDS=ollama,vllm in .env.local.",
+      "No models found. Start Ollama and run `ollama list`.",
     colId: "Model id",
     colBackend: "Backend",
     colCaps: "Capabilities",
@@ -125,13 +125,15 @@ export const adminEn = {
     colDisplay: "Display name",
     colStatus: "Status",
     colActions: "Actions",
-    enabled: "enabled",
-    disabled: "disabled",
+    enabled: "active",
+    disabled: "inactive",
+    activate: "Activate",
+    deactivate: "Deactivate",
     displayUnchanged: "Display name unchanged",
     couldNotUpdate: "Could not update model",
     couldNotSaveName: "Could not save display name",
-    nowEnabled: "{name} is now enabled for users",
-    nowDisabled: "{name} is now disabled for users",
+    nowEnabled: "{name} is now available to all users",
+    nowDisabled: "{name} is no longer available to users",
     resetToId: "Reset “{name}” to its model id",
     vision: "Vision",
     tools: "Tools",
@@ -188,7 +190,7 @@ export const adminEn = {
     modelsTipAfter:
       "tab — settings here only pick defaults among available ones.",
     sampling: "Sampling",
-    samplingDesc: "Applies to both Ollama and vLLM chat completions.",
+    samplingDesc: "Applies to Ollama chat completions.",
     temperature: "Temperature",
     temperatureHint: "0 = focused · 0.7 default · 1.2+ more creative",
     maxTokens: "Max reply tokens",
@@ -225,7 +227,7 @@ export const adminEn = {
   usage: {
     title: "Live usage",
     description:
-      "Auto-refreshes every 3s — speed, load, and request history across backends.",
+      "Auto-refreshes every 3s — speed, load, and request history.",
     liveCount: "{n} live",
     requestsToday: "Requests today",
     last24h: "{n} last 24h",
@@ -609,9 +611,9 @@ export const adminAz: AdminMessages = {
   models: {
     title: "LLM modelləri",
     subtitle:
-      "Ollama və/və ya vLLM-dən paralel sinxronlaşır. Söhbət seçicisində görünən adı redaktə edin. Təmizlə + saxla — model id-yə qayıdır.",
+      "Yeni Ollama modelləri yeniləyəndə burada görünür. Aktiv et basana qədər istifadəçilər üçün qeyri-aktiv qalır.",
     empty:
-      "Model tapılmadı. Ollama (`ollama list`) və/və ya vLLM işə salın və .env.local-də LLM_BACKENDS=ollama,vllm təyin edin.",
+      "Model tapılmadı. Ollama-nı işə salın və `ollama list` işlədin.",
     colId: "Model id",
     colBackend: "Backend",
     colCaps: "İmkanlar",
@@ -620,12 +622,14 @@ export const adminAz: AdminMessages = {
     colStatus: "Status",
     colActions: "Əməllər",
     enabled: "aktiv",
-    disabled: "deaktiv",
+    disabled: "qeyri-aktiv",
+    activate: "Aktiv et",
+    deactivate: "Deaktiv et",
     displayUnchanged: "Göstərilən ad dəyişməyib",
     couldNotUpdate: "Modeli yeniləmək alınmadı",
     couldNotSaveName: "Göstərilən adı saxlamaq alınmadı",
-    nowEnabled: "{name} indi istifadəçilər üçün aktivdir",
-    nowDisabled: "{name} indi istifadəçilər üçün deaktivdir",
+    nowEnabled: "{name} indi bütün istifadəçilər üçün əlçatandır",
+    nowDisabled: "{name} artıq istifadəçilər üçün əlçatan deyil",
     resetToId: "“{name}” model id-yə sıfırlandı",
     vision: "Görüntü",
     tools: "Alətlər",
@@ -682,7 +686,7 @@ export const adminAz: AdminMessages = {
     modelsTipAfter:
       "tabında aktiv/deaktiv edin — burada yalnız mövcudlar arasından standart seçilir.",
     sampling: "Nümunəgötürmə",
-    samplingDesc: "Həm Ollama, həm vLLM söhbət tamamlanalarına tətbiq olunur.",
+    samplingDesc: "Ollama söhbət tamamlanalarına tətbiq olunur.",
     temperature: "Temperatur",
     temperatureHint: "0 = fokuslu · 0.7 standart · 1.2+ daha yaradıcı",
     maxTokens: "Maks. cavab tokenləri",
@@ -719,7 +723,7 @@ export const adminAz: AdminMessages = {
   usage: {
     title: "Canlı istifadə",
     description:
-      "Hər 3 saniyədə avtomatik yenilənir — sürət, yük və backend-lər üzrə sorğu tarixçəsi.",
+      "Hər 3 saniyədə avtomatik yenilənir — sürət, yük və sorğu tarixçəsi.",
     liveCount: "{n} canlı",
     requestsToday: "Bu gün sorğular",
     last24h: "son 24 saatda {n}",

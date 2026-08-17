@@ -263,6 +263,37 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ["price", "qiymət", "qiymet", "цена", "тариф", "pricing", "paket", "package"],
   ["employee", "işçi", "isci", "əməkdaş", "emekdas", "сотрудник", "staff", "workers", "headcount"],
   [
+    "leave",
+    "vacation",
+    "holiday",
+    "pto",
+    "отпуск",
+    "отпуска",
+    "məzuniyyət",
+    "mezuniyyet",
+    "izin",
+  ],
+  [
+    "salary",
+    "wage",
+    "payroll",
+    "maaş",
+    "maas",
+    "зарплата",
+    "зарплату",
+    "əməkhaqqı",
+    "emekhaqqi",
+  ],
+  [
+    "password",
+    "passwords",
+    "şifrə",
+    "sifre",
+    "пароль",
+    "пароли",
+    "parol",
+  ],
+  [
     "year",
     "years",
     "ildir",
@@ -276,12 +307,19 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ],
 ];
 
-/** AZ/RU inflections: əməkdaşı ↔ əməkdaş, məhsulları ↔ məhsul. */
+/** AZ/RU inflections: əməkdaşı ↔ əməkdaş, компания ↔ компании. */
 export const tokensAlign = (a: string, b: string): boolean => {
   if (!a || !b) return false;
   if (a === b) return true;
   if (a.length < 4 || b.length < 4) return false;
-  return a.startsWith(b) || b.startsWith(a);
+  if (a.startsWith(b) || b.startsWith(a)) return true;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  if (shorter.length < 5) return false;
+  if (longer.length - shorter.length > 3) return false;
+  let i = 0;
+  while (i < shorter.length && shorter[i] === longer[i]) i += 1;
+  return i >= 5 && shorter.length - i <= 2;
 };
 
 export const expandQueryTokens = (query: string): string[] => {

@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslations } from "@/components/LocaleProvider";
 
 export type AdminSubtab<T extends string> = {
   id: T;
@@ -163,30 +164,55 @@ export const AdminToggleCard = ({
   label: string;
   hint: string;
   emphasize?: boolean;
-}) => (
-  <label
-    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
-      emphasize
-        ? "border-[var(--accent)]/25 bg-[var(--accent)]/[0.06]"
-        : "border-[var(--admin-border)] bg-[var(--admin-surface-soft)]"
-    }`}
-  >
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="mt-1"
-    />
-    <span>
-      <span className="block text-sm font-medium text-[var(--admin-fg)]">
-        {label}
-      </span>
-      <span className="mt-0.5 block text-xs leading-relaxed text-[var(--admin-muted)]">
-        {hint}
-      </span>
-    </span>
-  </label>
-);
+}) => {
+  const t = useTranslations();
+  return (
+    <div
+      className={`flex items-start justify-between gap-3 rounded-xl border px-3 py-3 ${
+        emphasize
+          ? "border-[var(--accent)]/25 bg-[var(--accent)]/[0.06]"
+          : "border-[var(--admin-border)] bg-[var(--admin-surface-soft)]"
+      }`}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-[var(--admin-fg)]">{label}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--admin-muted)]">
+          {hint}
+        </p>
+      </div>
+      <div
+        role="group"
+        aria-label={label}
+        className="inline-flex shrink-0 rounded-full border border-[var(--admin-border)] bg-[var(--admin-surface)] p-0.5"
+      >
+        <button
+          type="button"
+          aria-pressed={!checked}
+          onClick={() => onChange(false)}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize whitespace-nowrap transition ${
+            !checked
+              ? "bg-[var(--admin-muted)]/25 text-[var(--admin-fg)]"
+              : "text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"
+          }`}
+        >
+          {t("admin.chrome.off")}
+        </button>
+        <button
+          type="button"
+          aria-pressed={checked}
+          onClick={() => onChange(true)}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize whitespace-nowrap transition ${
+            checked
+              ? "bg-[var(--accent)] text-white"
+              : "text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"
+          }`}
+        >
+          {t("admin.chrome.on")}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const adminFieldClass =
   "mt-1.5 w-full rounded-xl border border-[var(--admin-border)] bg-[var(--admin-input)] px-3 py-2.5 text-sm text-[var(--admin-fg)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition placeholder:text-[var(--admin-muted)]/45 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20";

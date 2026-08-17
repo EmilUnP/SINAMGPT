@@ -423,6 +423,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     () => models.filter((m) => m.is_enabled).length,
     [models],
   );
+  const sortedModels = useMemo(
+    () =>
+      [...models].sort((a, b) => {
+        if (a.is_enabled !== b.is_enabled) return a.is_enabled ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      }),
+    [models],
+  );
   const disabledUsers = useMemo(
     () => users.filter((u) => u.is_active !== 1).length,
     [users],
@@ -1409,7 +1417,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   <thead>
                     <tr>
                       <th>{t("admin.models.colId")}</th>
-                      <th>{t("admin.models.colBackend")}</th>
                       <th>{t("admin.models.colCaps")}</th>
                       <th>{t("admin.models.colSize")}</th>
                       <th className="min-w-[220px]">{t("admin.models.colDisplay")}</th>
@@ -1418,7 +1425,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {models.map((model) => {
+                    {sortedModels.map((model) => {
                       const busy = busyModel === model.name;
                       const draft =
                         displayDrafts[model.name] ?? model.display_name;
@@ -1428,7 +1435,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       return (
                         <tr
                           key={model.name}
-                          className="border-t border-[var(--admin-border)]"
+                          className={`border-t border-[var(--admin-border)] ${
+                            model.is_enabled ? "" : "bg-[var(--accent)]/[0.04]"
+                          }`}
                         >
                           <td className="px-4 py-2.5">
                             <p className="max-w-[180px] truncate font-mono text-xs text-[var(--admin-fg)]">
@@ -1439,17 +1448,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 {formatDate(model.modified_at)}
                               </p>
                             ) : null}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span
-                              className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                                model.backend === "vllm"
-                                  ? "bg-violet-500/15 text-violet-200"
-                                  : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
-                              }`}
-                            >
-                              {model.backend === "vllm" ? "vLLM" : "Ollama"}
-                            </span>
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-wrap gap-1">
@@ -1524,8 +1522,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               {busy && !dirty
                                 ? "…"
                                 : model.is_enabled
-                                  ? t("admin.chrome.disable")
-                                  : t("admin.chrome.enable")}
+                                  ? t("admin.models.deactivate")
+                                  : t("admin.models.activate")}
                             </button>
                           </td>
                         </tr>

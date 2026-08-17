@@ -35,12 +35,6 @@ type ModelPickerProps = {
   className?: string;
 };
 
-const backendLabel = (backend?: string) => {
-  if (backend === "vllm") return "vLLM";
-  if (backend === "ollama") return "Ollama";
-  return null;
-};
-
 const modelLabel = (option: ModelOption) => option.display_name || option.name;
 
 export const ModelPicker = ({
@@ -200,7 +194,6 @@ export const ModelPicker = ({
           >
             {models.map((option, index) => {
               const active = option.name === value;
-              const backend = backendLabel(option.backend);
               return (
                 <button
                   key={option.name}
@@ -224,11 +217,6 @@ export const ModelPicker = ({
                   {option.tools ? (
                     <span className="shrink-0 rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-600 dark:text-violet-300">
                       {t("chat.tools")}
-                    </span>
-                  ) : null}
-                  {backend ? (
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-60">
-                      {backend}
                     </span>
                   ) : null}
                   {active ? <Check size={14} className="shrink-0" /> : null}

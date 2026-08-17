@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { getDb } from "@/lib/db";
 import type { GuardrailsConfig } from "@/lib/guardrails";
 import { resolveKnowledgeContext } from "@/lib/knowledge";
+import { glossUserQuery } from "@/lib/query-gloss";
 import {
   BUILTIN_BLOCKED_KEYWORDS,
   detectReplyLanguage,
@@ -231,18 +232,20 @@ const findKeywordHit = (
   return null;
 };
 
-export const inspectGuardrails = (input: {
+export const inspectGuardrails = async (input: {
   text: string;
   audience: "guest" | "user";
   projectId?: string | null;
   config: GuardrailsConfig;
-}): GuardrailInspection => {
+  model?: string;
+}): Promise<GuardrailInspection> => {
   const started = Date.now();
   const config = input.config;
   const text = input.text ?? "";
   const lang = detectReplyLanguage(text);
   const findings: GuardrailFinding[] = [];
   const layersRun: GuardrailLayer[] = ["master_switch", "audience", "language"];
+  const gloss = await glossUserQuery(text, { model: input.model });
 
   const applied = isApplied(input.audience, config);
 
@@ -271,7 +274,9 @@ export const inspectGuardrails = (input: {
     severity: "info",
     ruleId: `lang_${lang.code}`,
     title: `Detected reply language: ${lang.label}`,
-    detail: `Chat will pin REPLY LANGUAGE to ${lang.label} for this turn.`,
+    detail: gloss.usedLlm
+      ? `Chat will pin REPLY LANGUAGE to ${lang.label} for this turn. Retrieval also searches translated EN/AZ/RU keywords.`
+      : `Chat will pin REPLY LANGUAGE to ${lang.label} for this turn.`,
   });
 
   let decision: "allow" | "block" = "allow";
@@ -280,7 +285,9 @@ export const inspectGuardrails = (input: {
 
   if (applied) {
     layersRun.push("keywords");
-    const hit = findKeywordHit(text, config);
+    const hit =
+      findKeywordHit(text, config) ??
+      (gloss.searchText ? findKeywordHit(gloss.searchText, config) : null);
     if (hit) {
       decision = "block";
       blockReason = hit.keyword;
@@ -414,10 +421,11 @@ export const inspectGuardrails = (input: {
   }
 
   layersRun.push("knowledge");
-  const knowledge = resolveKnowledgeContext(
+  const knowledge = await resolveKnowledgeContext(
     text,
     input.audience,
     input.projectId,
+    { model: input.model },
   );
   findings.push({
     layer: "knowledge",

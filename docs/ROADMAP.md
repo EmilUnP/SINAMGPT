@@ -5,11 +5,11 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.10.1](../CHANGELOG.md#1101--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.11.0](../CHANGELOG.md#1110--2026-08-17) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.10.1)
+## Product today (v1.11.0)
 
 What operators and users can rely on right now:
 
@@ -23,9 +23,9 @@ What operators and users can rely on right now:
 | **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images; admin middleware by session role |
-| **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`); capabilities from Ollama `/api/show` + name heuristics |
+| **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
-| **API gateway** | Off by default. Admin → Settings → Features turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
+| **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -65,6 +65,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.11.0 — Admin control of models & surfaces (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Activate models | `done` | New Ollama pulls appear on Admin → Models inactive until Activate |
+| Ollama-only runtime | `done` | vLLM adapter kept in repo, not selectable |
+| Settings On/Off toggles | `done` | Features, guest, and other admin switches use On/Off buttons |
 
 ### v1.10.1 — Feature toggles (2026-08-17)
 

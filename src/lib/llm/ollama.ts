@@ -11,14 +11,7 @@ const getBaseUrl = (): string =>
 const getKeepAlive = (): string =>
   process.env.OLLAMA_KEEP_ALIVE?.trim() || "30m";
 
-export const isOllamaEnabled = (): boolean => {
-  const backends = (process.env.LLM_BACKENDS || "ollama")
-    .toLowerCase()
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return backends.includes("ollama") || backends.includes("both");
-};
+export const isOllamaEnabled = (): boolean => true;
 
 export const listOllamaModels = async (): Promise<LlmModel[]> => {
   const res = await fetch(`${getBaseUrl()}/api/tags`, {

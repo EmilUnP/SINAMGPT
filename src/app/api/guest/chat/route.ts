@@ -168,8 +168,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const guard = checkInputGuardrails(message, "guest", {
+    const guard = await checkInputGuardrails(message, "guest", {
       username: "guest",
+      model,
     });
     if (guard.blocked) {
       return Response.json(
@@ -206,7 +207,7 @@ export async function POST(request: Request) {
     }
 
     const prior = priorTurns;
-    const prepared = withSystemPrompt(
+    const prepared = await withSystemPrompt(
       [
         ...prior,
         {
@@ -218,6 +219,8 @@ export async function POST(request: Request) {
         },
       ],
       "guest",
+      null,
+      { model },
     );
     const messages: ChatMessage[] = prepared.messages;
     const knowledgeSources = prepared.sources;

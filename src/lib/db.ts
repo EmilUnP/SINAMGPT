@@ -84,7 +84,7 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE TABLE IF NOT EXISTS models (
       name TEXT PRIMARY KEY,
-      is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
+      is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
       backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
       vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),

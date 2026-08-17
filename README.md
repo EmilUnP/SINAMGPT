@@ -2,9 +2,9 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.10.1](./CHANGELOG.md#1101--2026-08-17) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.11.0](./CHANGELOG.md#1110--2026-08-17) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
 
-- **Local models** via [Ollama](https://ollama.com) and optional [vLLM](https://docs.vllm.ai/) (OpenAI-compatible) — can run in parallel
+- **Local models** via [Ollama](https://ollama.com)
 - **Vision models** — attach or paste images when the selected model is multimodal (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …)
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
@@ -13,7 +13,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
 - **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
-- **Admin** — users, models (capability chips), live usage, knowledge, multi-layer guardrails (event log), theme-aware UI
+- **Admin** — users, models (Activate before users can pick them), live usage, knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images)
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
@@ -81,8 +81,8 @@ There you can:
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
 - **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; event log
-- **Settings** — Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
-- Enable / disable accounts and which models users can use (Vision / Tools chips show what each model can do)
+- **Settings** — Features On/Off (Developer API, Dev lab), Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
+- Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Vision / Tools chips show what each model can do)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 - **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
@@ -94,12 +94,9 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | Variable | Meaning |
 |----------|---------|
 | `SESSION_SECRET` | Cookie signing secret (change for company use) |
-| `LLM_BACKENDS` | `ollama`, `vllm`, or `ollama,vllm` (parallel discovery) |
 | `OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434` |
 | `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
-| `VLLM_BASE_URL` | OpenAI-compatible vLLM URL (`http://127.0.0.1:8000`) |
-| `VLLM_API_KEY` | Optional bearer token for vLLM |
-| `DEFAULT_MODEL` | Preferred model name if installed |
+| `DEFAULT_MODEL` | Preferred Ollama model name if installed |
 | `ADMIN_USERNAME` | Seeded admin username |
 | `ADMIN_PASSWORD` | Seeded admin password (change this) |
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
@@ -171,7 +168,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./
 
 ## Stack
 
-Next.js · React · Tailwind · SQLite (`better-sqlite3`) · Ollama / vLLM · Zod
+Next.js · React · Tailwind · SQLite (`better-sqlite3`) · Ollama · Zod
 
 ## License
 

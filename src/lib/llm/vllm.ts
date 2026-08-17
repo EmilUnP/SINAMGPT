@@ -16,14 +16,8 @@ const authHeaders = (): HeadersInit => {
   return key ? { Authorization: `Bearer ${key}` } : {};
 };
 
-export const isVllmEnabled = (): boolean => {
-  const backends = (process.env.LLM_BACKENDS || "ollama")
-    .toLowerCase()
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return backends.includes("vllm") || backends.includes("both");
-};
+/** Parked: chat and model lists are Ollama-only until we turn vLLM back on. */
+export const isVllmEnabled = (): boolean => false;
 
 export const listVllmModels = async (): Promise<LlmModel[]> => {
   const res = await fetch(`${getBaseUrl()}/v1/models`, {

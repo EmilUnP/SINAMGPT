@@ -293,14 +293,20 @@ const normalizeDisplayName = (
   return trimmed || fallback;
 };
 
-/** Sync live backends (Ollama and/or vLLM in parallel) into DB. */
+/** Sync live Ollama models into DB. New names stay inactive until an admin activates them. */
 export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
   const liveModels = await listModels();
   const db = getDb();
+  const hadAny = Boolean(
+    db.prepare(`SELECT 1 AS ok FROM models LIMIT 1`).get(),
+  );
+  // First catalog fill (empty table) enables current Ollama models so setup works.
+  // Later pulls insert as inactive until Admin → Models → Activate.
+  const enableNew = hadAny ? 0 : 1;
 
   const upsert = db.prepare(
     `INSERT INTO models (name, is_enabled, backend, vision, tools, updated_at)
-     VALUES (?, 1, ?, ?, ?, datetime('now'))
+     VALUES (?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(name) DO UPDATE SET
        backend = excluded.backend,
        vision = excluded.vision,
@@ -318,7 +324,13 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       }>,
     ) => {
       for (const row of rows) {
-        upsert.run(row.name, row.backend, row.vision ? 1 : 0, row.tools ? 1 : 0);
+        upsert.run(
+          row.name,
+          enableNew,
+          row.backend,
+          row.vision ? 1 : 0,
+          row.tools ? 1 : 0,
+        );
       }
     },
   );
@@ -355,7 +367,7 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     return {
       ...m,
       backend: meta?.backend ?? m.backend,
-      is_enabled: meta?.is_enabled ?? true,
+      is_enabled: meta?.is_enabled ?? false,
       display_name: normalizeDisplayName(meta?.display_name, m.name),
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
@@ -382,7 +394,7 @@ export const setModelDisplayName = (name: string, displayName: string) => {
   getDb()
     .prepare(
       `INSERT INTO models (name, display_name, is_enabled, updated_at)
-       VALUES (?, ?, 1, datetime('now'))
+       VALUES (?, ?, 0, datetime('now'))
        ON CONFLICT(name) DO UPDATE SET
          display_name = excluded.display_name,
          updated_at = datetime('now')`,
@@ -418,8 +430,8 @@ export const isModelEnabled = (name: string): boolean => {
     .prepare(`SELECT is_enabled FROM models WHERE name = ?`)
     .get(resolved) as { is_enabled: number } | undefined;
 
-  // Unknown model (not synced yet): allow until admin disables after sync
-  if (!row) return true;
+  // Unknown / not yet activated: keep it off the user picker
+  if (!row) return false;
   return row.is_enabled === 1;
 };
 
@@ -439,7 +451,7 @@ export const getEnabledModels = async (): Promise<{
   smartModel: string;
 }> => {
   const all = await syncModelsFromOllama();
-  const enabled = all.filter((m) => m.is_enabled);
+  const enabled = all.filter((m) => m.is_enabled && m.backend !== "vllm");
   const names = enabled.map((m) => m.name);
   const preferred = getDefaultModelSetting();
   const defaultModel =

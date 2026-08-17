@@ -10,6 +10,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.11.0] — 2026-08-17
+
+Admin controls which product surfaces and which Ollama models employees can use. Runtime is Ollama-only for now.
+
+### Added
+- **Activate models** — a newly pulled Ollama model shows on Admin → Models as inactive. Users only see it after an admin clicks Activate.
+- **On / Off toggles** — Admin settings switches use On/Off buttons instead of checkboxes (Features, guest chat, and the same control elsewhere).
+
+### Changed
+- **Ollama only** — chat, model sync, and health checks use Ollama. vLLM stays in the codebase but is not selectable until we turn it back on.
+
 ## [1.10.1] — 2026-08-17
 
 Admin can turn product surfaces on or off from Settings. Developer API and Dev lab stay hidden until enabled.
@@ -208,7 +219,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...v1.9.0
