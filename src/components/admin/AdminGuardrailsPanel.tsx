@@ -23,6 +23,7 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "./AdminChrome";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslations } from "@/components/LocaleProvider";
 import type {
   GuardrailsConfig,
@@ -155,6 +156,7 @@ const emptySuggestions = (): PolicySuggestions => ({
 
 export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   const t = useTranslations();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<GuardTab>("overview");
   const [draft, setDraft] = useState<GuardrailsConfig | null>(null);
   const [saved, setSaved] = useState<GuardrailsConfig | null>(null);
@@ -516,9 +518,13 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   };
 
   const handleReset = async () => {
-    if (!window.confirm(t("admin.guardrails.resetConfirm"))) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("admin.guardrails.resetDefaults"),
+      description: t("admin.guardrails.resetConfirm"),
+      confirmLabel: t("admin.guardrails.resetDefaults"),
+      tone: "danger",
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       const res = await fetch("/api/admin/guardrails", {

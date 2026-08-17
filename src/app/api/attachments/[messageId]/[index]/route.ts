@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -6,6 +7,13 @@ import {
 } from "@/lib/attachments";
 
 type Params = { params: Promise<{ messageId: string; index: string }> };
+
+const tokensEqual = (left: string, right: string): boolean => {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  if (a.length !== b.length || a.length === 0) return false;
+  return timingSafeEqual(a, b);
+};
 
 const parseByteRange = (
   header: string | null,
@@ -44,7 +52,12 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   const isOwner = ctx.userId === user.id;
-  const isShared = Boolean(ctx.shareToken);
+  const presented = new URL(request.url).searchParams.get("share")?.trim() ?? "";
+  const isShared =
+    Boolean(ctx.shareToken) &&
+    presented.length >= 8 &&
+    presented.length <= 80 &&
+    tokensEqual(presented, ctx.shareToken ?? "");
   if (!isOwner && !isShared) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -67,6 +80,7 @@ export async function GET(request: Request, { params }: Params) {
     "Cache-Control": "private, max-age=3600",
     "Content-Disposition": `inline; filename="${filename}"`,
     "Accept-Ranges": "bytes",
+    "X-Content-Type-Options": "nosniff",
   };
 
   const range = parseByteRange(request.headers.get("range"), size);
@@ -98,4 +112,4 @@ export async function GET(request: Request, { params }: Params) {
       "Content-Length": String(size),
     },
   });
-}
+};

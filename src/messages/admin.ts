@@ -396,6 +396,7 @@ export const adminEn = {
     priority: "Priority",
     alwaysIncludeFlag: "Always include on company questions",
     enabledFlag: "Enabled",
+    deleteConfirm: "Delete “{title}”? This cannot be undone.",
   },
   guardrails: {
     title: "AI guardrails",
@@ -926,6 +927,7 @@ export const adminAz: AdminMessages = {
     priority: "Prioritet",
     alwaysIncludeFlag: "Şirkət suallarında həmişə daxil et",
     enabledFlag: "Aktiv",
+    deleteConfirm: "“{title}” silinsin? Bunu geri qaytarmaq olmaz.",
   },
   guardrails: {
     title: "AI qoruyucuları",
@@ -1451,6 +1453,7 @@ export const adminRu: AdminMessages = {
     priority: "Приоритет",
     alwaysIncludeFlag: "Всегда включать на вопросы о компании",
     enabledFlag: "Включено",
+    deleteConfirm: "Удалить «{title}»? Это нельзя отменить.",
   },
   guardrails: {
     title: "Защитные правила ИИ",

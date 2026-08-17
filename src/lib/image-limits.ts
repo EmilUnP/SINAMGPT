@@ -13,5 +13,12 @@ export type AllowedImageMime = (typeof ALLOWED_IMAGE_MIMES)[number];
 export const isAllowedImageMime = (value: string): value is AllowedImageMime =>
   (ALLOWED_IMAGE_MIMES as readonly string[]).includes(value);
 
-export const attachmentUrl = (messageId: string, index: number): string =>
-  `/api/attachments/${encodeURIComponent(messageId)}/${index}`;
+export const attachmentUrl = (
+  messageId: string,
+  index: number,
+  shareToken?: string | null,
+): string => {
+  const path = `/api/attachments/${encodeURIComponent(messageId)}/${index}`;
+  if (!shareToken) return path;
+  return `${path}?share=${encodeURIComponent(shareToken)}`;
+};

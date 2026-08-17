@@ -34,6 +34,7 @@ import {
   markUsageToken,
   startUsage,
 } from "@/lib/usage";
+import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import type { Conversation, Message } from "@/lib/types";
 
 const imageSchema = z.object({
@@ -141,6 +142,32 @@ type DbMessage = {
   content: string;
   created_at: string;
   attachments?: string | null;
+};
+
+const LLM_HISTORY_HARD_CAP = 500;
+
+const windowForLlm = (rows: DbMessage[]): DbMessage[] => {
+  const limit = getUserHistoryLimitSetting();
+  const cap = limit > 0 ? limit : LLM_HISTORY_HARD_CAP;
+  return rows.length > cap ? rows.slice(-cap) : rows;
+};
+
+const loadRecentMessages = (
+  conversationId: string,
+  cap = LLM_HISTORY_HARD_CAP,
+): DbMessage[] => {
+  const limit = cap > 0 ? cap : LLM_HISTORY_HARD_CAP;
+  return getDb()
+    .prepare(
+      `SELECT * FROM (
+         SELECT ${MESSAGE_SELECT} FROM messages
+         WHERE conversation_id = ?
+         ORDER BY created_at DESC
+         LIMIT ?
+       )
+       ORDER BY created_at ASC`,
+    )
+    .all(conversationId, limit) as DbMessage[];
 };
 
 const streamAssistantReply = async (input: {
@@ -378,6 +405,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const burst = takeRateLimit(`chat:user:${user.id}`, 40, 60 * 1000);
+  if (!burst.ok) {
+    return Response.json(
+      { error: "Too many requests. Slow down." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(burst.retryAfterSec) },
+      },
+    );
+  }
+  const ipBurst = takeRateLimit(`chat:ip:${clientIp(request)}`, 80, 60 * 1000);
+  if (!ipBurst.ok) {
+    return Response.json(
+      { error: "Too many requests. Slow down." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(ipBurst.retryAfterSec) },
+      },
+    );
+  }
+
   markActive(user.id);
 
   try {
@@ -510,7 +558,10 @@ export async function POST(request: Request) {
         .get(conversationId) as Conversation;
 
       const history: ChatMessage[] = [
-        ...toLlmHistory(conversationId, rows.slice(0, lastAssistantIdx)),
+        ...toLlmHistory(
+          conversationId,
+          windowForLlm(rows.slice(0, lastAssistantIdx)),
+        ),
         { role: "assistant", content: lastAssistant.content },
         { role: "user", content: REWRITE_PROMPTS[style] },
       ];
@@ -620,7 +671,7 @@ export async function POST(request: Request) {
 
       const history = toLlmHistory(
         conversationId,
-        rows.slice(0, lastUserIdx + 1),
+        windowForLlm(rows.slice(0, lastUserIdx + 1)),
       );
 
       const lastUserAttachments = parseAttachments(lastUser.attachments);
@@ -760,8 +811,10 @@ export async function POST(request: Request) {
 
       const history = toLlmHistory(
         conversationId,
-        rows.slice(0, editIdx + 1).map((row, i) =>
-          i === editIdx ? { ...row, content: message } : row,
+        windowForLlm(
+          rows.slice(0, editIdx + 1).map((row, i) =>
+            i === editIdx ? { ...row, content: message } : row,
+          ),
         ),
       );
 
@@ -893,13 +946,9 @@ export async function POST(request: Request) {
       saved.attachments.length ? JSON.stringify(saved.attachments) : null,
     );
 
-    const historyRows = db
-      .prepare(
-        `SELECT ${MESSAGE_SELECT} FROM messages
-         WHERE conversation_id = ?
-         ORDER BY created_at ASC`,
-      )
-      .all(conversationId) as DbMessage[];
+    const historyLimit = getUserHistoryLimitSetting();
+    const fetchCap = historyLimit > 0 ? historyLimit : LLM_HISTORY_HARD_CAP;
+    const historyRows = loadRecentMessages(conversationId, fetchCap);
     const history = toLlmHistory(conversationId, historyRows);
 
     let conversation = db
@@ -908,8 +957,15 @@ export async function POST(request: Request) {
       )
       .get(conversationId) as Conversation;
 
-    const isFirstExchange =
-      historyRows.filter((m) => m.role === "user").length === 1;
+    const userCount = (
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM messages
+           WHERE conversation_id = ? AND role = 'user'`,
+        )
+        .get(conversationId) as { n: number }
+    ).n;
+    const isFirstExchange = userCount === 1;
 
     if (isFirstExchange && conversation.title === "New chat") {
       const title = titleFromPrompt(

@@ -116,6 +116,13 @@ const ensureSchema = (database: Database.Database) => {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS guest_ip_usage (
+      ip TEXT NOT NULL,
+      day TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (ip, day)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_usage_events_created
       ON usage_events(created_at DESC);
 
@@ -353,13 +360,19 @@ const ensureSchema = (database: Database.Database) => {
   );
 };
 
+const EXAMPLE_ADMIN_PASSWORD = "AdminChangeMe123!";
+
 const ensureAdminUser = (database: Database.Database) => {
   const username = (process.env.ADMIN_USERNAME || "admin").trim();
-  const password = process.env.ADMIN_PASSWORD || "AdminChangeMe123!";
+  const password = (process.env.ADMIN_PASSWORD || "").trim();
 
-  if (!username || password.length < 6) {
+  if (
+    !username ||
+    password.length < 10 ||
+    password === EXAMPLE_ADMIN_PASSWORD
+  ) {
     console.warn(
-      "[OwnGPT] ADMIN_USERNAME / ADMIN_PASSWORD invalid — admin not seeded",
+      "[OwnGPT] Set ADMIN_PASSWORD in .env.local (min 10 chars, not the example value) to seed the admin account",
     );
     return;
   }

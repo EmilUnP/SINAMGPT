@@ -247,11 +247,20 @@ export const AdminUsagePanel = () => {
   }, [page, pageSize, t]);
 
   useEffect(() => {
-    void (async () => {
-      await load();
-    })();
-    const timer = window.setInterval(() => void load(), 3000);
-    return () => window.clearInterval(timer);
+    void load();
+    const tick = () => {
+      if (document.visibilityState === "hidden") return;
+      void load();
+    };
+    const timer = window.setInterval(tick, 4000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [load]);
 
   useEffect(() => {

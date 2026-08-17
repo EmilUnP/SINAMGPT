@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.14.0](./CHANGELOG.md#1140--2026-08-17)
+**Current version:** [1.14.1](./CHANGELOG.md#1141--2026-08-17)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -79,12 +79,12 @@ ollama pull llama3.1:8b
 
 ## Admin
 
-A high admin user is created automatically from `.env.local`:
+A high admin user is created on first start **only if** `ADMIN_PASSWORD` is set in `.env.local` (at least 10 characters, not the old example password):
 
-| Variable | Default |
-|----------|---------|
-| `ADMIN_USERNAME` | `admin` |
-| `ADMIN_PASSWORD` | `AdminChangeMe123!` |
+| Variable | Notes |
+|----------|--------|
+| `ADMIN_USERNAME` | Defaults to `admin` |
+| `ADMIN_PASSWORD` | Required to seed the admin account |
 
 Sign in with that account → open **Admin panel** (or `/admin`).
 
@@ -111,7 +111,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
 | `DEFAULT_MODEL` | Preferred Ollama model name if installed |
 | `ADMIN_USERNAME` | Seeded admin username |
-| `ADMIN_PASSWORD` | Seeded admin password (change this) |
+| `ADMIN_PASSWORD` | Required to seed the admin account (min 10 characters) |
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
 | `GUEST_MAX_MESSAGE_CHARS` | Max guest message length |
 

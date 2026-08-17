@@ -70,9 +70,13 @@ export const getSharedConversation = (
 export const getSharedMessages = (conversationId: string): Message[] => {
   const rows = getDb()
     .prepare(
-      `SELECT id, conversation_id, role, content, sources, attachments, created_at
-       FROM messages
-       WHERE conversation_id = ?
+      `SELECT * FROM (
+         SELECT id, conversation_id, role, content, sources, attachments, created_at
+         FROM messages
+         WHERE conversation_id = ?
+         ORDER BY created_at DESC
+         LIMIT 500
+       )
        ORDER BY created_at ASC`,
     )
     .all(conversationId) as Array<

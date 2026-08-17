@@ -63,8 +63,14 @@ export const pingBackends = async (): Promise<BackendHealth[]> => [
   await pingOllama(),
 ];
 
-/** Backward-compatible single health check (primary / best available). */
-export const pingLlm = async (): Promise<
+const PING_TTL_MS = 20_000;
+
+let pingCache: {
+  at: number;
+  value: BackendHealth & { backends: BackendHealth[] };
+} | null = null;
+
+const pingLlmFresh = async (): Promise<
   BackendHealth & { backends: BackendHealth[] }
 > => {
   const backends = await pingBackends();
@@ -80,6 +86,19 @@ export const pingLlm = async (): Promise<
     } satisfies BackendHealth);
 
   return { ...primary, backends };
+};
+
+/** Backward-compatible single health check (primary / best available). */
+export const pingLlm = async (): Promise<
+  BackendHealth & { backends: BackendHealth[] }
+> => {
+  const now = Date.now();
+  if (pingCache && now - pingCache.at < PING_TTL_MS) {
+    return pingCache.value;
+  }
+  const value = await pingLlmFresh();
+  pingCache = { at: now, value };
+  return value;
 };
 
 export const getDefaultModel = (available: string[]): string => {

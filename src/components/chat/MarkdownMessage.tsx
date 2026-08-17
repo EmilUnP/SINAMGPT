@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -39,17 +40,13 @@ const components: Components = {
       </a>
     );
   },
-  img: ({ src, alt }) => {
-    const safe = typeof src === "string" ? safeUrl(src) : "";
-    if (!safe || !/^https?:/i.test(safe)) return null;
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- model-provided remote images
-      <img src={safe} alt={alt || ""} loading="lazy" className="max-w-full" />
-    );
-  },
+  img: ({ alt }) =>
+    alt ? (
+      <span className="text-[var(--text-muted)]">[{alt}]</span>
+    ) : null,
 };
 
-export const MarkdownMessage = ({ content }: MarkdownMessageProps) => {
+export const MarkdownMessage = memo(({ content }: MarkdownMessageProps) => {
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -61,4 +58,5 @@ export const MarkdownMessage = ({ content }: MarkdownMessageProps) => {
       </ReactMarkdown>
     </div>
   );
-};
+});
+MarkdownMessage.displayName = "MarkdownMessage";

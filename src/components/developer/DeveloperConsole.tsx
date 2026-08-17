@@ -11,6 +11,7 @@ import {
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
 import { PageHeader } from "@/components/PageHeader";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiKeyPublic } from "@/lib/api-keys";
@@ -23,6 +24,7 @@ type Tab = "keys" | "requests" | "howto";
 
 export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("keys");
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
   const [maxKeys, setMaxKeys] = useState(5);
@@ -116,7 +118,15 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   };
 
   const handlePatch = async (id: string, body: { enabled?: boolean; revoke?: boolean }) => {
-    if (body.revoke && !window.confirm(t("developer.revokeConfirm"))) return;
+    if (body.revoke) {
+      const ok = await confirm({
+        title: t("developer.revoke"),
+        description: t("developer.revokeConfirm"),
+        confirmLabel: t("developer.revoke"),
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
     setError(null);
     const res = await fetch(`/api/developer/keys/${id}`, {
       method: "PATCH",

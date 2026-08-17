@@ -14,8 +14,9 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const q = (searchParams.get("q") || "").trim();
+  const q = (searchParams.get("q") || "").trim().slice(0, 80);
   const projectId = (searchParams.get("projectId") || "").trim();
+  const LIST_CAP = 200;
 
   const db = getDb();
   let conversations: Conversation[];
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
           OR m.content LIKE ? COLLATE NOCASE
         )
       ORDER BY c.is_pinned DESC, c.updated_at DESC
+      LIMIT ${LIST_CAP}
     `;
     conversations = (
       projectId
@@ -47,18 +49,20 @@ export async function GET(request: Request) {
         `SELECT ${CONVERSATION_SELECT}
          FROM conversations
          WHERE user_id = ? AND project_id = ?
-         ORDER BY is_pinned DESC, updated_at DESC`,
+         ORDER BY is_pinned DESC, updated_at DESC
+         LIMIT ?`,
       )
-      .all(user.id, projectId) as Conversation[];
+      .all(user.id, projectId, LIST_CAP) as Conversation[];
   } else {
     conversations = db
       .prepare(
         `SELECT ${CONVERSATION_SELECT}
          FROM conversations
          WHERE user_id = ?
-         ORDER BY is_pinned DESC, updated_at DESC`,
+         ORDER BY is_pinned DESC, updated_at DESC
+         LIMIT ?`,
       )
-      .all(user.id) as Conversation[];
+      .all(user.id, LIST_CAP) as Conversation[];
   }
 
   return NextResponse.json({ conversations });

@@ -22,6 +22,7 @@ import {
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
 import { PageHeader } from "@/components/PageHeader";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiGatewaySettings, ApiKeyPublic } from "@/lib/api-keys";
@@ -55,6 +56,7 @@ const num = (value: number | null | undefined) =>
 
 export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("overview");
   const [, setSettings] = useState<ApiGatewaySettings | null>(null);
   const [draft, setDraft] = useState<ApiGatewaySettings | null>(null);
@@ -122,7 +124,15 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
     id: string,
     body: { enabled?: boolean; revoke?: boolean },
   ) => {
-    if (body.revoke && !window.confirm(t("devlab.revokeConfirm"))) return;
+    if (body.revoke) {
+      const ok = await confirm({
+        title: t("devlab.revoke"),
+        description: t("devlab.revokeConfirm"),
+        confirmLabel: t("devlab.revoke"),
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
     const res = await fetch(`/api/admin/devlab/keys/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

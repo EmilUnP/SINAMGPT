@@ -19,6 +19,7 @@ type SharedChatViewProps = {
   ownerUsername: string;
   model: string;
   messages: Message[];
+  shareToken: string;
 };
 
 export const SharedChatView = ({
@@ -26,6 +27,7 @@ export const SharedChatView = ({
   ownerUsername,
   model,
   messages,
+  shareToken,
 }: SharedChatViewProps) => {
   const t = useTranslations();
 
@@ -103,7 +105,11 @@ export const SharedChatView = ({
                               message.attachments
                                 ?.filter((item) => item.type === "image")
                                 .map((item) => ({
-                                  src: attachmentUrl(message.id, item.index),
+                                  src: attachmentUrl(
+                                    message.id,
+                                    item.index,
+                                    shareToken,
+                                  ),
                                   name: item.name,
                                 })) ?? []
                             }
@@ -113,7 +119,11 @@ export const SharedChatView = ({
                             .map((item) => (
                               <MessageAudio
                                 key={item.index}
-                                src={attachmentUrl(message.id, item.index)}
+                                src={attachmentUrl(
+                                  message.id,
+                                  item.index,
+                                  shareToken,
+                                )}
                                 name={item.name}
                               />
                             ))}

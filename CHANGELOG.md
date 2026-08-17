@@ -10,6 +10,23 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.14.1] — 2026-08-17
+
+Security and performance hardening so the app stays snappy on a company PC.
+
+### Security
+- **Shared files** — a share link is required to open someone else’s images or voice clips. Having any share token on the chat is no longer enough.
+- **Admin seed** — the first admin is created only when `ADMIN_PASSWORD` is set (min 10 characters, not the old example value).
+- **Chat rate limit** — signed-in `/api/chat` is capped per user and IP (same idea as guest and the developer API).
+- **Guest daily cap** — clearing cookies no longer resets the guest quota; the limit is also counted by IP for the UTC day.
+- **Logout** — GET `/api/auth/logout` only clears a leftover/stale cookie. A valid session logs out via POST.
+- **Headers** — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` on every response. Markdown no longer loads remote images from model replies.
+
+### Changed
+- **Long chats** — the model and the UI load a recent window (history setting, hard cap 500) instead of every old message and image.
+- **Sidebar** — conversation list and search return at most 200 chats.
+- **Admin Overview / Live usage** — Overview skips the heavy usage table; LLM health is cached ~20s; Live usage pauses polling when the tab is hidden.
+
 ## [1.14.0] — 2026-08-17
 
 Russian UI, admin gates for chat files/mic, and live usage that shows the exact prompt.
@@ -263,7 +280,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...v1.12.0

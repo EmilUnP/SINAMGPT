@@ -7,13 +7,13 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.14.0](../CHANGELOG.md#1140--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.14.1](../CHANGELOG.md#1141--2026-08-17) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.14.0**):
+What operators and users can rely on in the current tree (**v1.14.1**):
 
 | Area | Reality |
 |------|---------|
@@ -24,7 +24,7 @@ What operators and users can rely on in the current tree (**v1.14.0**):
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; citations; pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
+| **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
@@ -67,6 +67,15 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.14.1 — Hardening (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Shared attachments | `done` | Non-owners need the share token on `/api/attachments` |
+| Admin seed | `done` | No default `AdminChangeMe123!` password |
+| Chat / guest limits | `done` | Signed-in chat RPM; guest daily cap also by IP |
+| Admin polling | `done` | Cached LLM ping; usage tab pauses when hidden |
 
 ### v1.14.0 — Russian UI, chat input flags & usage detail (2026-08-17)
 

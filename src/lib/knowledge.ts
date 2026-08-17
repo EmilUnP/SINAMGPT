@@ -119,6 +119,21 @@ export const listKnowledgeDocs = (): KnowledgeDoc[] => {
     .all() as KnowledgeDoc[];
 };
 
+export const getKnowledgeOverview = (): {
+  total: number;
+  enabled: number;
+} => {
+  seedSinamKnowledgeIfEmpty();
+  const row = getDb()
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              COALESCE(SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END), 0) AS enabled
+       FROM knowledge_docs`,
+    )
+    .get() as { total: number; enabled: number };
+  return { total: row.total, enabled: row.enabled };
+};
+
 export const getKnowledgeDoc = (id: string): KnowledgeDoc | null => {
   return (
     (getDb()

@@ -51,6 +51,7 @@ import { CopyButton } from "./CopyButton";
 import { KnowledgeCitations } from "./KnowledgeCitations";
 import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageAudio } from "./MessageAudio";
@@ -177,6 +178,7 @@ export const ChatApp = ({
 }: ChatAppProps) => {
   const router = useRouter();
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const suggestions = [
     {
       title: t("chat.suggestionHello"),
@@ -832,7 +834,11 @@ export const ChatApp = ({
   const handleCreateShare = async (rotate = false) => {
     if (!activeId) return;
     if (rotate && shareToken) {
-      const ok = window.confirm(t("chat.shareConfirmNew"));
+      const ok = await confirm({
+        title: t("chat.newLink"),
+        description: t("chat.shareConfirmNew"),
+        confirmLabel: t("common.confirm"),
+      });
       if (!ok) return;
     }
     setShareBusy(true);
@@ -891,6 +897,13 @@ export const ChatApp = ({
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: t("chat.deleteChat"),
+      description: t("chat.deleteChatConfirm"),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setError(t("chat.couldNotDeleteChat"));
@@ -1003,13 +1016,13 @@ export const ChatApp = ({
   };
 
   const handleDeleteProject = async (project: Project) => {
-    if (
-      !window.confirm(
-        t("chat.deleteProjectConfirm", { name: project.name }),
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("chat.deleteProjectTitle"),
+      description: t("chat.deleteProjectConfirm", { name: project.name }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/projects/${project.id}`, {
       method: "DELETE",
     });
@@ -1883,7 +1896,7 @@ export const ChatApp = ({
                 disabled={ready && isSending}
                 emptyLabel={t("chat.noModels")}
                 ariaLabel={t("chat.model")}
-                className="min-w-0 w-full sm:max-w-[16rem]"
+                className="min-w-0 w-full sm:max-w-[20rem]"
               />
             </div>
           </div>

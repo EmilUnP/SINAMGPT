@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const usageBefore = await getGuestUsage();
+    const usageBefore = await getGuestUsage(ip);
     if (usageBefore.remaining <= 0) {
       return Response.json(
         {
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const consumed = await consumeGuestMessage();
+    const consumed = await consumeGuestMessage(ip);
     if (!consumed.ok) {
       return Response.json(
         {
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
         topP: runtime.topP,
       });
     } catch (error) {
-      await refundGuestMessage();
+      await refundGuestMessage(ip);
       finishUsage(usageId, {
         responseChars: 0,
         status: "error",

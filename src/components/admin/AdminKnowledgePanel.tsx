@@ -26,6 +26,7 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "./AdminChrome";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useTranslations } from "@/components/LocaleProvider";
 import type {
   KnowledgeCategory,
@@ -78,6 +79,7 @@ const formatChars = (n: number) => {
 
 export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   const t = useTranslations();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<KnowledgeTab>("overview");
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -298,7 +300,13 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   };
 
   const handleDelete = async (doc: KnowledgeDoc) => {
-    if (!window.confirm(`${t("admin.chrome.delete")} “${doc.title}”?`)) return;
+    const ok = await confirm({
+      title: t("common.delete"),
+      description: t("admin.knowledge.deleteConfirm", { title: doc.title }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
     setIsSaving(true);
     try {
       const res = await fetch(`/api/admin/knowledge/${doc.id}`, {
@@ -360,13 +368,21 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
   const handleSeed = async (mode: "add" | "refresh" | "replace") => {
     if (mode === "replace") {
-      if (!window.confirm(t("admin.knowledge.replaceConfirm"))) {
-        return;
-      }
+      const ok = await confirm({
+        title: t("admin.knowledge.replaceAll"),
+        description: t("admin.knowledge.replaceConfirm"),
+        confirmLabel: t("admin.knowledge.replaceAll"),
+        tone: "danger",
+      });
+      if (!ok) return;
     } else if (mode === "refresh") {
-      if (!window.confirm(t("admin.knowledge.refreshConfirm"))) {
-        return;
-      }
+      const ok = await confirm({
+        title: t("admin.knowledge.refreshPack"),
+        description: t("admin.knowledge.refreshConfirm"),
+        confirmLabel: t("admin.knowledge.refreshPack"),
+        tone: "danger",
+      });
+      if (!ok) return;
     }
     setIsSaving(true);
     try {

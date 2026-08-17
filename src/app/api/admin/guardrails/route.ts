@@ -20,7 +20,14 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const eventsLimit = Number(searchParams.get("events") || "0");
+  const eventsRaw = searchParams.get("events");
+  const eventsLimit = Number(eventsRaw ?? "30");
+  const events =
+    eventsRaw === "0"
+      ? []
+      : listGuardrailEvents(
+          Number.isFinite(eventsLimit) && eventsLimit > 0 ? eventsLimit : 30,
+        );
 
   return NextResponse.json({
     guardrails: getGuardrails(),
@@ -28,10 +35,7 @@ export async function GET(request: Request) {
     suggestions: getPolicySuggestions(),
     suggestionDefaults: DEFAULT_POLICY_SUGGESTIONS,
     builtinKeywordCount: BUILTIN_BLOCKED_KEYWORDS.length,
-    events:
-      eventsLimit > 0
-        ? listGuardrailEvents(eventsLimit)
-        : listGuardrailEvents(30),
+    events,
   });
 }
 

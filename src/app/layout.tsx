@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import { LocaleProvider } from "@/components/LocaleProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { localeBootScript } from "@/lib/locale";
 import { themeBootScript } from "@/lib/theme";
@@ -44,7 +45,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
         <ThemeProvider>
-          <LocaleProvider>{children}</LocaleProvider>
+          <LocaleProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

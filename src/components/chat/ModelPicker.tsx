@@ -67,7 +67,7 @@ export const ModelPicker = ({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const width = Math.max(rect.width, 208);
+    const width = Math.max(rect.width, 240);
     const left = Math.min(rect.left, Math.max(8, window.innerWidth - width - 8));
     const menuMaxH = 288;
     const safeBottom = 12;
@@ -79,7 +79,7 @@ export const ModelPicker = ({
       openUp ? spaceAbove - 8 : Math.min(menuMaxH, spaceBelow - 8),
     );
     const top = openUp ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8;
-    setPos({ top, left, minWidth: rect.width, maxHeight });
+    setPos({ top, left, minWidth: width, maxHeight });
   };
 
   useLayoutEffect(() => {
@@ -225,7 +225,7 @@ export const ModelPicker = ({
                     {modelLabel(option)}
                   </span>
                   <ModelCapabilityBadges
-                    size="sm"
+                    presentation="icons"
                     vision={option.vision}
                     audio={option.audio}
                     video={option.video}
@@ -261,15 +261,13 @@ export const ModelPicker = ({
           {selected ? modelLabel(selected) : emptyLabel}
         </span>
         {selected ? (
-          <span className="hidden items-center gap-1 sm:inline-flex">
-            <ModelCapabilityBadges
-              size="sm"
-              vision={selected.vision}
-              audio={selected.audio}
-              video={selected.video}
-              tools={selected.tools}
-            />
-          </span>
+          <ModelCapabilityBadges
+            presentation="icons"
+            vision={selected.vision}
+            audio={selected.audio}
+            video={selected.video}
+            tools={selected.tools}
+          />
         ) : null}
         <ChevronDown
           size={size === "sm" ? 13 : 14}

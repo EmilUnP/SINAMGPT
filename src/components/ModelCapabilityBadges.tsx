@@ -1,5 +1,6 @@
 "use client";
 
+import { Image, Mic, Puzzle, Type, Video } from "lucide-react";
 import { useTranslations } from "@/components/LocaleProvider";
 
 export type ModelCapabilityFlags = {
@@ -13,12 +14,17 @@ type Props = ModelCapabilityFlags & {
   /** Admin table and Models guide show Text; the chat picker skips it to save space. */
   showText?: boolean;
   size?: "sm" | "md";
+  /** Labeled chips by default; icons in the chat model picker. */
+  presentation?: "chips" | "icons";
 };
 
 const pillClass = (size: "sm" | "md", tone: string) =>
   size === "sm"
     ? `cap-chip shrink-0 cursor-help rounded-md px-1.5 py-0.5 text-[10px] ${tone}`
     : `cap-chip inline-flex cursor-help rounded-md px-2 py-0.5 text-[11px] ${tone}`;
+
+const iconWrapClass = (tone: string) =>
+  `cap-chip inline-flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-md ${tone}`;
 
 export const ModelCapabilityBadges = ({
   vision,
@@ -27,52 +33,83 @@ export const ModelCapabilityBadges = ({
   video,
   showText = false,
   size = "md",
+  presentation = "chips",
 }: Props) => {
   const t = useTranslations();
   if (!showText && !vision && !tools && !audio && !video) return null;
 
+  const items = [
+    showText
+      ? {
+          key: "text",
+          tone: "cap-chip-text",
+          title: t("chat.inputTextHint"),
+          label: t("chat.inputText"),
+          Icon: Type,
+        }
+      : null,
+    vision
+      ? {
+          key: "image",
+          tone: "cap-chip-image",
+          title: t("chat.inputImageHint"),
+          label: t("chat.inputImage"),
+          Icon: Image,
+        }
+      : null,
+    audio
+      ? {
+          key: "audio",
+          tone: "cap-chip-audio",
+          title: t("chat.inputAudioHint"),
+          label: t("chat.inputAudio"),
+          Icon: Mic,
+        }
+      : null,
+    video
+      ? {
+          key: "video",
+          tone: "cap-chip-video",
+          title: t("chat.inputVideoHint"),
+          label: t("chat.inputVideo"),
+          Icon: Video,
+        }
+      : null,
+    tools
+      ? {
+          key: "tools",
+          tone: "cap-chip-fn",
+          title: t("chat.toolsHint"),
+          label: t("chat.tools"),
+          Icon: Puzzle,
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  if (presentation === "icons") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-0.5">
+        {items.map(({ key, tone, title, label, Icon }) => (
+          <span
+            key={key}
+            title={title}
+            aria-label={label}
+            className={iconWrapClass(tone)}
+          >
+            <Icon size={11} strokeWidth={2.25} aria-hidden />
+          </span>
+        ))}
+      </span>
+    );
+  }
+
   return (
     <>
-      {showText ? (
-        <span
-          title={t("chat.inputTextHint")}
-          className={pillClass(size, "cap-chip-text")}
-        >
-          {t("chat.inputText")}
+      {items.map(({ key, tone, title, label }) => (
+        <span key={key} title={title} className={pillClass(size, tone)}>
+          {label}
         </span>
-      ) : null}
-      {vision ? (
-        <span
-          title={t("chat.inputImageHint")}
-          className={pillClass(size, "cap-chip-image")}
-        >
-          {t("chat.inputImage")}
-        </span>
-      ) : null}
-      {audio ? (
-        <span
-          title={t("chat.inputAudioHint")}
-          className={pillClass(size, "cap-chip-audio")}
-        >
-          {t("chat.inputAudio")}
-        </span>
-      ) : null}
-      {video ? (
-        <span
-          title={t("chat.inputVideoHint")}
-          className={pillClass(size, "cap-chip-video")}
-        >
-          {t("chat.inputVideo")}
-        </span>
-      ) : null}
-      {tools ? (
-        <span
-          title={t("chat.toolsHint")}
-          className={pillClass(size, "cap-chip-fn")}
-        >
-          {t("chat.tools")}
-        </span>
-      ) : null}
+      ))}
     </>
   );
 };

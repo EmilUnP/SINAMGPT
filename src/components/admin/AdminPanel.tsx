@@ -31,6 +31,7 @@ import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { LOCALE_BCP47 } from "@/lib/locale";
 import type { AdminUserRow, User } from "@/lib/types";
@@ -164,6 +165,7 @@ const withinDays = (value: string | null, days: number) => {
 
 export const AdminPanel = ({ admin }: AdminPanelProps) => {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const fmtMs = (value: number | null | undefined) => {
     if (value == null || Number.isNaN(value)) return "—";
     if (value < 1000) return t("common.ms", { n: Math.round(value) });
@@ -244,9 +246,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           fetch("/api/admin/users"),
           fetch("/api/admin/models"),
           fetch("/api/admin/settings"),
-          fetch("/api/admin/usage", { cache: "no-store" }),
-          fetch("/api/admin/knowledge"),
-          fetch("/api/admin/guardrails"),
+          fetch("/api/admin/usage?overview=1", { cache: "no-store" }),
+          fetch("/api/admin/knowledge?overview=1"),
+          fetch("/api/admin/guardrails?events=0"),
         ]);
 
       const usersData = (await usersRes.json()) as {
@@ -276,6 +278,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       };
       const knowledgeData = (await knowledgeRes.json()) as {
         docs?: Array<{ is_enabled: number }>;
+        overview?: { total: number; enabled: number };
         settings?: { enabled: boolean };
         error?: string;
       };
@@ -355,8 +358,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       if (knowledgeRes.ok || guardRes.ok) {
         const docs = knowledgeData.docs ?? [];
         setMeta({
-          knowledgeDocs: docs.length,
-          knowledgeEnabled: docs.filter((d) => d.is_enabled === 1).length,
+          knowledgeDocs: knowledgeData.overview?.total ?? docs.length,
+          knowledgeEnabled:
+            knowledgeData.overview?.enabled ??
+            docs.filter((d) => d.is_enabled === 1).length,
           knowledgeOn: knowledgeData.settings?.enabled ?? false,
           guardrailsOn: guardData.guardrails?.enabled ?? false,
           keywordRules: countLines(guardData.guardrails?.blockedKeywords ?? ""),
@@ -489,13 +494,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   };
 
   const handleDelete = async (user: AdminUserRow) => {
-    if (
-      !window.confirm(
-        t("admin.users.deleteConfirm", { name: user.username }),
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("common.delete"),
+      description: t("admin.users.deleteConfirm", { name: user.username }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
 
     setBusyId(user.id);
     setError("");
