@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
-import { useTranslations } from "@/components/LocaleProvider";
+import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { useIsMounted } from "@/lib/use-mounted";
 
 export type ModelOption = {
@@ -19,6 +19,8 @@ export type ModelOption = {
   backend?: string;
   vision?: boolean;
   tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 type ModelPickerProps = {
@@ -49,10 +51,9 @@ export const ModelPicker = ({
   className = "",
 }: ModelPickerProps) => {
   const mounted = useIsMounted();
-  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [pos, setPos] = useState({ top: 0, left: 0, minWidth: 0 });
+  const [pos, setPos] = useState({ top: 0, left: 0, minWidth: 0, maxHeight: 288 });
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const listId = useId();
@@ -67,9 +68,18 @@ export const ModelPicker = ({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const width = Math.max(rect.width, 208);
-    // Keep the panel on screen when the trigger sits near the right edge.
     const left = Math.min(rect.left, Math.max(8, window.innerWidth - width - 8));
-    setPos({ top: rect.bottom + 8, left, minWidth: rect.width });
+    const menuMaxH = 288;
+    const safeBottom = 12;
+    const spaceBelow = window.innerHeight - rect.bottom - safeBottom;
+    const spaceAbove = rect.top - safeBottom;
+    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(
+      120,
+      openUp ? spaceAbove - 8 : Math.min(menuMaxH, spaceBelow - 8),
+    );
+    const top = openUp ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8;
+    setPos({ top, left, minWidth: rect.width, maxHeight });
   };
 
   useLayoutEffect(() => {
@@ -189,8 +199,13 @@ export const ModelPicker = ({
             role="listbox"
             aria-label={ariaLabel}
             tabIndex={-1}
-            className="menu-surface fixed z-[200] max-h-72 overflow-y-auto rounded-xl p-1"
-            style={{ top: pos.top, left: pos.left, minWidth: pos.minWidth }}
+            className="menu-surface fixed z-[200] overflow-y-auto rounded-xl p-1"
+            style={{
+              top: pos.top,
+              left: pos.left,
+              minWidth: pos.minWidth,
+              maxHeight: pos.maxHeight,
+            }}
           >
             {models.map((option, index) => {
               const active = option.name === value;
@@ -209,16 +224,13 @@ export const ModelPicker = ({
                   <span className="min-w-0 flex-1 truncate">
                     {modelLabel(option)}
                   </span>
-                  {option.vision ? (
-                    <span className="shrink-0 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-300">
-                      {t("chat.vision")}
-                    </span>
-                  ) : null}
-                  {option.tools ? (
-                    <span className="shrink-0 rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-600 dark:text-violet-300">
-                      {t("chat.tools")}
-                    </span>
-                  ) : null}
+                  <ModelCapabilityBadges
+                    size="sm"
+                    vision={option.vision}
+                    audio={option.audio}
+                    video={option.video}
+                    tools={option.tools}
+                  />
                   {active ? <Check size={14} className="shrink-0" /> : null}
                 </button>
               );
@@ -248,9 +260,14 @@ export const ModelPicker = ({
         <span className="min-w-0 flex-1 truncate text-left">
           {selected ? modelLabel(selected) : emptyLabel}
         </span>
-        {selected?.vision ? (
-          <span className="hidden shrink-0 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 sm:inline dark:text-sky-300">
-            {t("chat.vision")}
+        {selected ? (
+          <span className="hidden items-center gap-1 sm:inline-flex">
+            <ModelCapabilityBadges
+              size="sm"
+              vision={selected.vision}
+              audio={selected.audio}
+              video={selected.video}
+            />
           </span>
         ) : null}
         <ChevronDown

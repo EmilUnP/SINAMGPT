@@ -89,6 +89,8 @@ const ensureSchema = (database: Database.Database) => {
       backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
       vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),
       tools INTEGER NOT NULL DEFAULT 0 CHECK (tools IN (0, 1)),
+      audio INTEGER NOT NULL DEFAULT 0 CHECK (audio IN (0, 1)),
+      video INTEGER NOT NULL DEFAULT 0 CHECK (video IN (0, 1)),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -308,6 +310,16 @@ const ensureSchema = (database: Database.Database) => {
   if (!hasColumn(database, "models", "tools")) {
     database.exec(
       `ALTER TABLE models ADD COLUMN tools INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "audio")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN audio INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "video")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN video INTEGER NOT NULL DEFAULT 0`,
     );
   }
   if (!hasColumn(database, "conversations", "project_id")) {

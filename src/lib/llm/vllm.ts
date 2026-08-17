@@ -46,6 +46,8 @@ export const listVllmModels = async (): Promise<LlmModel[]> => {
       backend: "vllm" as const,
       vision: caps.vision,
       tools: caps.tools,
+      audio: caps.audio,
+      video: caps.video,
     };
   });
 };

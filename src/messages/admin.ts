@@ -116,6 +116,8 @@ export const adminEn = {
     title: "LLM models",
     subtitle:
       "New Ollama models show up here after a refresh. They stay inactive for users until you Activate them.",
+    capsLegend:
+      "Inputs: Text, Image, Audio, Video. Functions = can call extra functions (not used in chat yet).",
     empty:
       "No models found. Start Ollama and run `ollama list`.",
     colId: "Model id",
@@ -136,7 +138,9 @@ export const adminEn = {
     nowDisabled: "{name} is no longer available to users",
     resetToId: "Reset “{name}” to its model id",
     vision: "Vision",
-    tools: "Tools",
+    tools: "Functions",
+    visionHint: "Can read images you attach or paste.",
+    toolsHint: "Can call extra functions. Chat does not use that yet.",
   },
   settings: {
     title: "App settings",
@@ -165,17 +169,12 @@ export const adminEn = {
     unlimited: "unlimited",
     loggedInHintBefore: "Message count stays",
     loggedInHintAfter: ". Cap load with user max chars / history under",
-    modelPresets: "Model presets",
+    modelPresets: "Default model",
     modelPresetsDesc:
-      "Default for new chats, plus Fast / Smart shortcuts in the chat header.",
+      "Used when someone opens a new chat and has not picked a model yet.",
     defaultModel: "Default model",
     defaultModelHint: "Used when guest/user opens a new chat",
     firstEnabled: "First enabled / env default",
-    fastModel: "Fast model",
-    fastHint: "Chat “Fast” preset",
-    smartModel: "Smart model",
-    smartHint: "Chat “Smart” preset",
-    sameAsDefault: "Same as default",
     modelDisabled: " (disabled)",
     contextTitle: "Logged-in context limits",
     contextDesc:
@@ -612,6 +611,8 @@ export const adminAz: AdminMessages = {
     title: "LLM modelləri",
     subtitle:
       "Yeni Ollama modelləri yeniləyəndə burada görünür. Aktiv et basana qədər istifadəçilər üçün qeyri-aktiv qalır.",
+    capsLegend:
+      "Giriş: Mətn, Şəkil, Audio, Video. Funksiya = əlavə funksiya çağırışı (söhbətdə hələ yoxdur).",
     empty:
       "Model tapılmadı. Ollama-nı işə salın və `ollama list` işlədin.",
     colId: "Model id",
@@ -632,7 +633,10 @@ export const adminAz: AdminMessages = {
     nowDisabled: "{name} artıq istifadəçilər üçün əlçatan deyil",
     resetToId: "“{name}” model id-yə sıfırlandı",
     vision: "Görüntü",
-    tools: "Alətlər",
+    tools: "Funksiya",
+    visionHint: "Əlavə etdiyiniz və ya yapışdırdığınız şəkilləri oxuya bilər.",
+    toolsHint:
+      "Əlavə funksiyalar çağıra bilər. Bu söhbətdə hələ istifadə olunmur.",
   },
   settings: {
     title: "Tətbiq parametrləri",
@@ -661,17 +665,12 @@ export const adminAz: AdminMessages = {
     unlimited: "limitsiz",
     loggedInHintBefore: "Mesaj sayı",
     loggedInHintAfter: "qalır. Yükü istifadəçi simvol / tarixçə limiti ilə",
-    modelPresets: "Model ön ayarları",
+    modelPresets: "Standart model",
     modelPresetsDesc:
-      "Yeni söhbətlər üçün standart, plus başlıqda Sürətli / Ağıllı qısa yollar.",
+      "Kimisə yeni söhbət açanda və hələ model seçməyəndə istifadə olunur.",
     defaultModel: "Standart model",
     defaultModelHint: "Qonaq/istifadəçi yeni söhbət açanda istifadə olunur",
     firstEnabled: "İlk aktiv / env standartı",
-    fastModel: "Sürətli model",
-    fastHint: "Söhbətdə “Sürətli” ön ayarı",
-    smartModel: "Ağıllı model",
-    smartHint: "Söhbətdə “Ağıllı” ön ayarı",
-    sameAsDefault: "Standart ilə eyni",
     modelDisabled: " (deaktiv)",
     contextTitle: "Daxil olmuş kontekst limitləri",
     contextDesc:

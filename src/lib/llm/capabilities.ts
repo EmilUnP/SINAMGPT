@@ -1,6 +1,8 @@
 export type ModelCapabilities = {
   vision: boolean;
   tools: boolean;
+  audio: boolean;
+  video: boolean;
 };
 
 const TOOLS_RE =
@@ -8,6 +10,11 @@ const TOOLS_RE =
 
 const VISION_RE =
   /\b(llava|bakllava|moondream|pixtral|internvl|minicpm-v|granite-vision|phi-?3-vision|phi-?4-multimodal|llama3\.2-vision|llama-?3\.2-vision|qwen2(\.5)?-vl|qwen2vl|qwen-vl|qwen3-vl|gemma-?4)\b/i;
+
+const AUDIO_RE =
+  /\b(whisper|audio|omni|qwen2-audio|qwen2\.5-omni|qwen3-omni|gemma-?4)\b/i;
+
+const VIDEO_RE = /\b(video|omni|qwen2\.5-omni|qwen3-omni)\b/i;
 
 /** Gemma 3 4B+ is multimodal; the 1B variant is text-only. */
 const isGemma3Vision = (name: string): boolean => {
@@ -19,14 +26,17 @@ const isGemma3Vision = (name: string): boolean => {
 /** Name-based fallback when Ollama `/api/show` has no capabilities list. */
 export const inferCapabilities = (name: string): ModelCapabilities => {
   const id = name.trim();
+  const vision =
+    VISION_RE.test(id) ||
+    isGemma3Vision(id) ||
+    /vision/i.test(id) ||
+    /[-_/]vl\b/i.test(id) ||
+    /\bvl[-_]/i.test(id);
   return {
-    vision:
-      VISION_RE.test(id) ||
-      isGemma3Vision(id) ||
-      /vision/i.test(id) ||
-      /[-_/]vl\b/i.test(id) ||
-      /\bvl[-_]/i.test(id),
+    vision,
     tools: TOOLS_RE.test(id) || /gemma[34]/i.test(id),
+    audio: AUDIO_RE.test(id),
+    video: VIDEO_RE.test(id),
   };
 };
 
@@ -42,5 +52,8 @@ export const parseOllamaCapabilities = (
   return {
     vision: caps.includes("vision") || heuristic.vision,
     tools: caps.includes("tools") || heuristic.tools,
+    audio: caps.includes("audio") || heuristic.audio,
+    // Ollama has no video capability flag yet — name heuristic only.
+    video: heuristic.video,
   };
 };

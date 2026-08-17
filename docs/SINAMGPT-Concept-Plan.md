@@ -1,12 +1,13 @@
 # SINAMGPT — Conceptual Plan for Management
 
-**Document type:** Concept / first presentation  
+**Document type:** Concept / first presentation (kept for history)  
 **Audience:** Managers & decision makers  
-**Status:** Proposed plan (nothing assumed built)  
+**Status:** Original proposal — **not** a live status report  
 **Company context:** SINAM Ltd — internal productivity & knowledge assistant  
 **Working name:** SINAMGPT  
 
-Shipped product status (what is actually running) lives in [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), and [ROADMAP.md](./ROADMAP.md). **Current release: v1.11.0.**  
+**How it works today (plain language):** [HOW-IT-WORKS.md](./HOW-IT-WORKS.md) — start here if you want the current product in simple words.  
+Shipped status also lives in [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), and [ROADMAP.md](./ROADMAP.md). **Current release: v1.12.0.**  
 
 ---
 
@@ -79,7 +80,7 @@ Everything in this section is **planned scope**, grouped for discussion.
 ### A. Chat experience
 
 - Streaming, ChatGPT-style conversations  
-- Model picker + Fast / Smart presets (admin maps which models those mean)  
+- Model picker  
 - Rewrite helpers (shorter / more formal / continue)  
 - Light / dark / system theme  
 - Per-user conversation history  
@@ -151,7 +152,7 @@ Employee asks: “What is SESDA used for?”
 1. Update knowledge entries when products change  
 2. Tune policy chips / keywords when new workplace risks appear  
 3. Review audit + guardrail events periodically  
-4. Adjust Fast/Smart models as hardware allows  
+4. Activate the right Ollama models as hardware allows  
 
 ---
 
@@ -261,13 +262,14 @@ If we build it, the operating model is simple:
 11. Success criteria  
 12. Ask / next step  
 
-## Appendix B — Related internal docs (after approval)
+## Appendix B — Related internal docs
 
-These are engineering/product living docs and are **not** required for the first management conversation:
+The product exists. Use these living docs instead of treating this concept as current status:
 
-- Product roadmap (candidates & backlog)  
-- Versioning & release notes (once implementation starts)  
-- Technical README / setup (once a prototype exists)  
+- **[How it works](./HOW-IT-WORKS.md)** — simple flow for managers and everyday users  
+- Product roadmap (candidates & backlog) — [ROADMAP.md](./ROADMAP.md)  
+- Versioning & release notes — [VERSIONING.md](./VERSIONING.md), [CHANGELOG.md](../CHANGELOG.md)  
+- Technical README / setup — [README.md](../README.md)  
 
 ---
 

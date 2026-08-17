@@ -29,6 +29,7 @@ import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
+import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
 import { useLocale } from "@/components/LocaleProvider";
 import type { AdminUserRow, User } from "@/lib/types";
@@ -96,6 +97,8 @@ type ManagedModel = {
   backend?: "ollama" | "vllm";
   vision?: boolean;
   tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 type AppSettings = {
@@ -105,8 +108,6 @@ type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
@@ -202,8 +203,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     guestHistoryLimit: "10",
     registrationEnabled: true,
     defaultModel: "",
-    fastModel: "",
-    smartModel: "",
     userMaxMessageChars: "12000",
     userHistoryLimit: "40",
     temperature: "0.7",
@@ -315,8 +314,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit ?? 10),
           registrationEnabled: s.registrationEnabled ?? true,
           defaultModel: s.defaultModel ?? "",
-          fastModel: s.fastModel ?? "",
-          smartModel: s.smartModel ?? "",
           userMaxMessageChars: String(s.userMaxMessageChars ?? 12000),
           userHistoryLimit: String(s.userHistoryLimit ?? 40),
           temperature: String(s.temperature ?? 0.7),
@@ -678,8 +675,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: Math.floor(guestHistoryLimit),
           registrationEnabled: settingsDraft.registrationEnabled,
           defaultModel: settingsDraft.defaultModel.trim(),
-          fastModel: settingsDraft.fastModel.trim(),
-          smartModel: settingsDraft.smartModel.trim(),
           userMaxMessageChars: Math.floor(userMaxMessageChars),
           userHistoryLimit: Math.floor(userHistoryLimit),
           temperature,
@@ -707,8 +702,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit),
           registrationEnabled: s.registrationEnabled,
           defaultModel: s.defaultModel,
-          fastModel: s.fastModel,
-          smartModel: s.smartModel,
           userMaxMessageChars: String(s.userMaxMessageChars),
           userHistoryLimit: String(s.userHistoryLimit),
           temperature: String(s.temperature),
@@ -1401,6 +1394,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               <p className="text-xs text-[var(--admin-muted)]">
                 {t("admin.models.subtitle")}
               </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--admin-muted)]">
+                {t("admin.models.capsLegend")}
+              </p>
             </div>
 
             {isLoading ? (
@@ -1451,21 +1447,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-wrap gap-1">
-                              {model.vision ? (
-                                <span className="inline-flex rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-200">
-                                  {t("admin.models.vision")}
-                                </span>
-                              ) : null}
-                              {model.tools ? (
-                                <span className="inline-flex rounded-md bg-violet-500/15 px-2 py-0.5 text-[11px] font-medium text-violet-200">
-                                  {t("admin.models.tools")}
-                                </span>
-                              ) : null}
-                              {!model.vision && !model.tools ? (
-                                <span className="text-[11px] text-[var(--admin-muted)]">
-                                  —
-                                </span>
-                              ) : null}
+                              <ModelCapabilityBadges
+                                showText
+                                vision={model.vision}
+                                audio={model.audio}
+                                video={model.video}
+                                tools={model.tools}
+                              />
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-xs text-[var(--admin-muted)]">

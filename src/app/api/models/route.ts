@@ -9,13 +9,11 @@ export async function GET() {
   }
 
   try {
-    const { models, defaultModel, fastModel, smartModel } =
+    const { models, defaultModel } =
       await getEnabledModels();
     return NextResponse.json({
       models,
       defaultModel,
-      fastModel,
-      smartModel,
       unlimited: true,
     });
   } catch (error) {

@@ -364,7 +364,7 @@ export const HomeTryChat = () => {
     <div className="relative flex min-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
       <AnimatedBackground />
 
-      <header className="page-chrome relative z-10 flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-8 sm:py-4">
+      <header className="page-chrome safe-x relative z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
         <div className="flex min-w-0 items-center gap-3">
           <Image
             src={sinamLogo}
@@ -416,7 +416,7 @@ export const HomeTryChat = () => {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
+      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-1 pb-4 text-center">
             <div className="hero-brand">
@@ -689,7 +689,7 @@ export const HomeTryChat = () => {
         ) : null}
 
         {models.length > 0 && guestEnabled ? (
-          <div className="mb-2 flex justify-end sm:hidden">
+          <div className="mb-2 flex w-full justify-stretch sm:hidden">
             <ModelPicker
               models={models}
               value={model}
@@ -699,13 +699,13 @@ export const HomeTryChat = () => {
               variant="glass"
               emptyLabel={t("chat.noModels")}
               ariaLabel={t("chat.model")}
-              className="max-w-[12rem]"
+              className="w-full"
             />
           </div>
         ) : null}
 
         <div
-          className="composer-shell rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+          className="composer-shell sticky bottom-0 z-20 rounded-[28px] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)]"
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           {pendingImages.length ? (
@@ -805,7 +805,7 @@ export const HomeTryChat = () => {
           </div>
         </div>
 
-        <p className="mt-3 hidden text-center text-[11px] text-[var(--home-faint)] sm:block">
+        <p className="mt-3 text-center text-[10px] leading-snug text-[var(--home-faint)] sm:text-[11px]">
           {supportsVision ? t("chat.visionFooterHint") : t("home.footerHint")}
         </p>
       </main>

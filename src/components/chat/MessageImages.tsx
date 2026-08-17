@@ -33,14 +33,14 @@ export const MessageImages = ({
             src={item.src}
             alt={item.name || ""}
             className={`block max-h-44 max-w-[min(100%,14rem)] object-cover ${
-              tone === "composer" ? "h-16 w-16" : ""
+              tone === "composer" ? "h-16 w-16 sm:h-20 sm:w-20" : ""
             }`}
           />
           {onRemove ? (
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/85"
+              className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-sm text-white hover:bg-black/85 sm:h-6 sm:w-6 sm:text-xs"
               aria-label={removeLabel}
             >
               ×

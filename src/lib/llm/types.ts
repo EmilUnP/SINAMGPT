@@ -14,6 +14,8 @@ export type LlmModel = {
   backend: LlmBackend;
   vision?: boolean;
   tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 /** @deprecated Use LlmModel — kept for older imports */

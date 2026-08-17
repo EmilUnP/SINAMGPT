@@ -2,6 +2,7 @@ import { adminAz } from "./admin";
 import { developerAz } from "./developer";
 import { devlabAz } from "./devlab";
 import { labAz } from "./lab";
+import { modelsAz } from "./models";
 import type { Messages } from "./en";
 
 export const az: Messages = {
@@ -165,6 +166,8 @@ export const az: Messages = {
     adminBadge: "admin",
     unlimitedMessages: "Limitsiz mesajlar",
     adminPanel: "Admin paneli",
+    modelsGuide: "Modellər",
+    modelsGuideHint: "Ölçü, girişlər və hər modelin nə vaxt istifadə olunacağını müqayisə edin.",
     modelLab: "Model laboratoriyası",
     developer: "Tərtibatçı",
     devLab: "Dev lab",
@@ -179,9 +182,6 @@ export const az: Messages = {
     shareThisChat: "Bu söhbəti paylaş",
     shared: "Paylaşıldı",
     share: "Paylaş",
-    replySpeed: "Cavab sürəti",
-    fast: "Sürətli",
-    smart: "Ağıllı",
     model: "Model",
     noModels: "Model yoxdur",
     shareChat: "Söhbəti paylaş",
@@ -245,7 +245,17 @@ export const az: Messages = {
     attachImage: "Şəkil əlavə et",
     removeImage: "Şəkli sil",
     vision: "Görüntü",
-    tools: "Alətlər",
+    tools: "Funksiya",
+    visionHint: "Əlavə etdiyiniz və ya yapışdırdığınız şəkilləri oxuya bilər.",
+    toolsHint: "Əlavə funksiyalar çağıra bilər. Bu söhbətdə hələ istifadə olunmur.",
+    inputText: "Mətn",
+    inputImage: "Şəkil",
+    inputAudio: "Audio",
+    inputVideo: "Video",
+    inputTextHint: "Yazılı mesaj qəbul edir.",
+    inputImageHint: "Əlavə edilən və ya yapışdırılan şəkilləri qəbul edir.",
+    inputAudioHint: "Audio qəbul edə bilər (bu söhbətdə hələ yoxdur).",
+    inputVideoHint: "Video qəbul edə bilər (bu söhbətdə hələ yoxdur).",
     imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
     visionFooterHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin və ya yapışdırın",
@@ -268,5 +278,6 @@ export const az: Messages = {
   lab: labAz,
   developer: developerAz,
   devlab: devlabAz,
+  models: modelsAz,
   admin: adminAz,
 };

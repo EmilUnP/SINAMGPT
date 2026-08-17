@@ -2,20 +2,32 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.11.0](./CHANGELOG.md#1110--2026-08-17) · [Versioning guide](./docs/VERSIONING.md) · [Roadmap](./docs/ROADMAP.md)
+**Current version:** [1.12.0](./CHANGELOG.md#1120--2026-08-17)
+
+**New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
+
+| You need… | Open |
+|-----------|------|
+| How the product works (no install) | [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) |
+| Install, env vars, API examples | This README |
+| What shipped vs what is next | [docs/ROADMAP.md](./docs/ROADMAP.md) |
+| What changed in each version | [CHANGELOG.md](./CHANGELOG.md) |
+| How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
+| Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
 - **Local models** via [Ollama](https://ollama.com)
 - **Vision models** — attach or paste images when the selected model is multimodal (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …)
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
-- **Streaming replies**, Fast/Smart presets, model picker (Vision / Tools badges), rewrite shortcuts
+- **Streaming replies**, model picker (Text / Image / Audio / Video + Functions badges), rewrite shortcuts
+- **Models guide** (`/models`) — signed-in users see activated models with size, inputs, and a short “best for” tip. Open it from the chat header or sidebar.
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images stay visible)
-- **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies)
-- **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser
+- **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note
+- **English / Azərbaycan UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
 - **Admin** — users, models (Activate before users can pick them), live usage, knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
-- **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images)
+- **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models)
 
@@ -79,10 +91,10 @@ There you can:
 
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history
-- **Knowledge** — living company/project library (keyword RAG, EN / AZ / RU / TR); pack seed is a template; citations toggle
-- **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; event log
-- **Settings** — Features On/Off (Developer API, Dev lab), Fast/Smart model mapping, generation controls (temperature, max tokens, top-p)
-- Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Vision / Tools chips show what each model can do)
+- **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle
+- **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; blocked phrases can also match via that same keyword list
+- **Settings** — Features On/Off (Developer API, Dev lab), default model, generation controls (temperature, max tokens, top-p)
+- Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (input chips: Text, Image, Audio, Video; Functions = can call extra functions)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (40) / Assist (42) / Guardrails (31) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 - **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
@@ -109,6 +121,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 - Chat images: `data/attachments/{conversationId}/{messageId}/` (gitignored with `data/`)
 - Delete `data/owngpt.db` to wipe all accounts and chats (also delete `data/attachments/` if you want stored images gone)
 - Never commit `.env.local` or `data/` (already gitignored)
+- How it works (plain language): [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
 ## Deep chat test
@@ -132,7 +145,7 @@ Other SINAM apps can call **local models through SINAMGPT** with a personal API 
 
 1. Admin → Settings → Features → enable **Developer API** (and **Dev lab** if you want the admin console)
 2. Sign in → **Developer** (`/developer`) → create a key (shown once)
-2. Call:
+3. Call:
 
 ```bash
 curl -N http://localhost:3055/api/v1/generate \
@@ -157,10 +170,11 @@ curl -N http://localhost:3055/api/v1/generate \
 
 ## Releases & changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./docs/VERSIONING.md) for how we bump versions and tag releases.
+See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./docs/VERSIONING.md) for how we bump versions and tag releases. After a behavior change, also refresh [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md).
 
 ## Company use tips
 
+- Share [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) with managers and new users — it explains the flow without install steps
 - Run on one powerful PC; others can open `http://THAT-PC-IP:3055` on the LAN if firewall allows
 - Change `SESSION_SECRET` and admin password before sharing
 - Keep Ollama updated; pull the models your team needs

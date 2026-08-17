@@ -30,10 +30,10 @@ export const SharedChatView = ({
 
   return (
     <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--text)]">
-      <header className="page-chrome flex items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
+      <header className="page-chrome safe-x flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
         <Link
           href="/chat"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          className="touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
           aria-label={t("share.back")}
         >
           <ArrowLeft size={16} />
@@ -61,7 +61,7 @@ export const SharedChatView = ({
                 <UserRound size={11} />
                 {ownerUsername}
               </span>
-              <span className="truncate hidden sm:inline">{model}</span>
+              <span className="truncate max-w-[8rem] sm:max-w-none sm:inline">{model}</span>
             </p>
           </div>
         </div>
@@ -69,8 +69,8 @@ export const SharedChatView = ({
         <ThemeToggle size="sm" />
       </header>
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+      <div className="safe-bottom chat-scroll min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl space-y-4 px-3 py-4 sm:px-4 sm:py-6">
           {messages.length === 0 ? (
             <p className="text-center text-sm text-[var(--text-muted)]">
               {t("share.empty")}
@@ -84,7 +84,7 @@ export const SharedChatView = ({
                   className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[min(100%,42rem)] ${
+                    className={`max-w-[min(100%,42rem)] sm:max-w-[92%] md:max-w-[85%] ${
                       isUser ? "items-end" : "items-start"
                     }`}
                   >

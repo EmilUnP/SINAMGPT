@@ -3,25 +3,27 @@
 Living plan for features that make SINAMGPT more valuable as a **local company GPT**.  
 Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: status here should match the code.
 
+For a **plain-language** picture of chat, knowledge, and safety (managers / everyday users), see [HOW-IT-WORKS.md](./HOW-IT-WORKS.md).
+
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.11.0](../CHANGELOG.md#1110--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.12.0](../CHANGELOG.md#1120--2026-08-17) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.11.0)
+## Product today
 
-What operators and users can rely on right now:
+What operators and users can rely on in the current tree (**v1.12.0**):
 
 | Area | Reality |
 |------|---------|
-| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani |
-| **Chat** | Streaming replies, model picker (Vision / Tools badges), Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system), **attach/paste images** on vision models |
+| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language |
+| **Chat** | Streaming replies, model picker (input badges), rewrite, theme, **attach/paste images** on vision models; **Models guide** at `/models` (header + sidebar). No Fast/Smart toggle — pick a model in the header |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images); owner can revoke or rotate (“New link”) |
-| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
-| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
+| **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; citations; pack seed add-missing / refresh / replace |
+| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; guest vision up to 2 images; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`); new pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
@@ -66,6 +68,15 @@ Ideas kept for later — not a commitment.
 
 Closed tracks — keep for context; do not re-open unless regressing.
 
+### v1.12.0 — Models guide & clearer picker (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Models guide `/models` | `done` | Size, inputs, Default, when to use; header + sidebar |
+| Capability badges | `done` | Text / Image / Audio / Video + Functions; readable light-mode chips |
+| Cross-language keyword search | `done` | Query gloss EN / AZ / RU before RAG and hard-block match |
+| Fast / Smart presets | `removed` | Header picker + admin default only |
+
 ### v1.11.0 — Admin control of models & surfaces (2026-08-17)
 
 | Feature | Status | Notes |
@@ -85,7 +96,7 @@ Closed tracks — keep for context; do not re-open unless regressing.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Image chat on vision models | `done` | Attach/paste JPEG/PNG/WebP/GIF; Ollama `images` + vLLM `image_url` |
-| Capability badges | `done` | Vision / Tools on picker and Admin → Models; tools is display-only |
+| Capability badges | `done` | Inputs + Functions on picker and Admin → Models; Functions is display-only |
 | Attachment storage | `done` | `data/attachments/`; owner or shared-chat access via `/api/attachments` |
 | API images | `done` | `/api/v1/models` `vision`/`tools`; `/api/v1/generate` optional `images` |
 | Mobile / EN-AZ chrome | `done` | Overflow More menu, safe-area, 16px composer, attach-image copy |

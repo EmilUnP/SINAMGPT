@@ -86,7 +86,7 @@ export const OverflowNav = ({ items, className = "" }: OverflowNavProps) => {
                 href={href}
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="menu-item flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm"
+                className="menu-item flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm sm:py-2"
               >
                 <Icon size={15} strokeWidth={1.85} />
                 <span className="flex-1">{label}</span>

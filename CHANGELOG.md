@@ -10,6 +10,22 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.12.0] — 2026-08-17
+
+Clearer model picking: a Models guide, readable input badges, and no Fast / Smart toggle.
+
+### Added
+- **Models guide** — signed-in users can open `/models` for a short card per activated model (size, inputs, Default, when to use it). Open it from the chat header or sidebar.
+- **How it works** — [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md): plain-language flow for managers and everyday users (chat path, knowledge, guardrails, data).
+
+### Changed
+- **Capability badges** — hover for a short explanation. Models show **inputs** (Text, Image, Audio, Video) plus **Functions** (can call extra functions; not used in chat yet). Light mode uses solid chips with a border so labels stay readable.
+- **Cross-language search** — before knowledge lookup (and hard-block matching), a short local-model pass adds EN / AZ / RU keywords. A Russian question can still find an English or Azerbaijani note; greetings skip this step.
+- **Smarter keyword RAG** — still no embeddings. Rare tokens (e.g. SESDA) rank above generic ones (SINAM); strong title/tag hits; phrase match in the body; skip always-include About/Contact when a specific doc already matches.
+
+### Removed
+- **Fast / Smart presets** — gone from chat, Admin settings, and the Models guide. Pick a model from the header picker; new chats use the admin default (or the last model you chose).
+
 ## [1.11.0] — 2026-08-17
 
 Admin controls which product surfaces and which Ollama models employees can use. Runtime is Ollama-only for now.
@@ -219,7 +235,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...v1.10.0

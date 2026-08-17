@@ -123,7 +123,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)]">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)] safe-x pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <AnimatedBackground />
 
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top,0px))] z-20 flex items-center gap-1.5 sm:right-6">
@@ -172,7 +172,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-6 backdrop-blur-md"
+          className="rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 backdrop-blur-md sm:p-6"
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           <label className="block text-sm font-medium text-[var(--home-fg)]/80">

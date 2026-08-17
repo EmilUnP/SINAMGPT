@@ -40,6 +40,8 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
     backend: "ollama" as const,
     vision: caps[i]?.vision ?? false,
     tools: caps[i]?.tools ?? false,
+    audio: caps[i]?.audio ?? false,
+    video: caps[i]?.video ?? false,
   }));
 };
 

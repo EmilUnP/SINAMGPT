@@ -18,8 +18,6 @@ const KEY_GUEST_ENABLED = "guest_enabled";
 const KEY_GUEST_HISTORY_LIMIT = "guest_history_limit";
 const KEY_REGISTRATION_ENABLED = "registration_enabled";
 const KEY_DEFAULT_MODEL = "default_model";
-const KEY_FAST_MODEL = "fast_model";
-const KEY_SMART_MODEL = "smart_model";
 const KEY_USER_MAX_CHARS = "user_max_message_chars";
 const KEY_USER_HISTORY_LIMIT = "user_history_limit";
 const KEY_TEMPERATURE = "chat_temperature";
@@ -35,6 +33,8 @@ export type PublicModel = LlmModel & {
   display_name: string;
   vision: boolean;
   tools: boolean;
+  audio: boolean;
+  video: boolean;
 };
 
 export type AppSettings = {
@@ -44,10 +44,6 @@ export type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
-  /** Preset for chat “Fast” toggle (empty = fall back to default) */
-  fastModel: string;
-  /** Preset for chat “Smart” toggle (empty = fall back to default) */
-  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
@@ -168,24 +164,6 @@ export const setDefaultModelSetting = (model: string) => {
   return safe;
 };
 
-export const getFastModelSetting = (): string =>
-  (getSetting(KEY_FAST_MODEL) ?? "").trim();
-
-export const setFastModelSetting = (model: string) => {
-  const safe = model.trim().slice(0, 120);
-  setSetting(KEY_FAST_MODEL, safe);
-  return safe;
-};
-
-export const getSmartModelSetting = (): string =>
-  (getSetting(KEY_SMART_MODEL) ?? "").trim();
-
-export const setSmartModelSetting = (model: string) => {
-  const safe = model.trim().slice(0, 120);
-  setSetting(KEY_SMART_MODEL, safe);
-  return safe;
-};
-
 export const getUserMaxCharsSetting = (): number =>
   parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 12000, 500, 32000);
 
@@ -251,8 +229,6 @@ export const getAppSettings = (): AppSettings => {
     guestHistoryLimit: getGuestHistoryLimitSetting(),
     registrationEnabled: getRegistrationEnabledSetting(),
     defaultModel: getDefaultModelSetting(),
-    fastModel: getFastModelSetting(),
-    smartModel: getSmartModelSetting(),
     userMaxMessageChars: getUserMaxCharsSetting(),
     userHistoryLimit: getUserHistoryLimitSetting(),
     temperature: getTemperatureSetting(),
@@ -305,12 +281,14 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
   const enableNew = hadAny ? 0 : 1;
 
   const upsert = db.prepare(
-    `INSERT INTO models (name, is_enabled, backend, vision, tools, updated_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO models (name, is_enabled, backend, vision, tools, audio, video, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(name) DO UPDATE SET
        backend = excluded.backend,
        vision = excluded.vision,
        tools = excluded.tools,
+       audio = excluded.audio,
+       video = excluded.video,
        updated_at = datetime('now')`,
   );
 
@@ -321,6 +299,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
         backend: LlmBackend;
         vision: boolean;
         tools: boolean;
+        audio: boolean;
+        video: boolean;
       }>,
     ) => {
       for (const row of rows) {
@@ -330,6 +310,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
           row.backend,
           row.vision ? 1 : 0,
           row.tools ? 1 : 0,
+          row.audio ? 1 : 0,
+          row.video ? 1 : 0,
         );
       }
     },
@@ -340,6 +322,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       backend: m.backend,
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
+      audio: Boolean(m.audio),
+      video: Boolean(m.video),
     })),
   );
 
@@ -371,6 +355,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       display_name: normalizeDisplayName(meta?.display_name, m.name),
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
+      audio: Boolean(m.audio),
+      video: Boolean(m.video),
     };
   });
 };
@@ -447,8 +433,6 @@ export const modelSupportsVision = (name: string): boolean => {
 export const getEnabledModels = async (): Promise<{
   models: PublicModel[];
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
 }> => {
   const all = await syncModelsFromOllama();
   const enabled = all.filter((m) => m.is_enabled && m.backend !== "vllm");
@@ -458,19 +442,14 @@ export const getEnabledModels = async (): Promise<{
     preferred && names.includes(preferred)
       ? preferred
       : getDefaultModel(names);
-  const pickPreset = (configured: string) => {
-    const c = configured.trim();
-    if (c && names.includes(c)) return c;
-    return defaultModel;
-  };
   return {
     models: enabled.map(({ is_enabled: _ignored, ...rest }) => ({
       ...rest,
       vision: Boolean(rest.vision),
       tools: Boolean(rest.tools),
+      audio: Boolean(rest.audio),
+      video: Boolean(rest.video),
     })),
     defaultModel,
-    fastModel: pickPreset(getFastModelSetting()),
-    smartModel: pickPreset(getSmartModelSetting()),
   };
 };

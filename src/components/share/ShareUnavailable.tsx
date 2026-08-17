@@ -9,7 +9,7 @@ export const ShareUnavailable = () => {
   const t = useTranslations();
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center gap-3 bg-[var(--bg)] px-6 text-center text-[var(--text)]">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center gap-3 bg-[var(--bg)] px-6 py-10 text-center text-[var(--text)] safe-x pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top,0px))] z-20 flex items-center gap-1.5">
         <LanguageToggle size="sm" />
         <ThemeToggle size="sm" />

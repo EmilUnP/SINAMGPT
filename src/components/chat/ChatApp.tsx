@@ -83,20 +83,7 @@ type UiMessage = Message & {
 
 type PendingImage = ChatImagePayload & { id: string };
 
-type ModelMode = "fast" | "smart" | "custom";
-
-const LS_MODEL_MODE = "sinamgpt_model_mode";
 const LS_LAST_MODEL = "sinamgpt_last_model";
-
-const readStoredModelMode = (): ModelMode => {
-  try {
-    const v = localStorage.getItem(LS_MODEL_MODE);
-    if (v === "fast" || v === "smart" || v === "custom") return v;
-  } catch {
-    /* ignore */
-  }
-  return "smart";
-};
 
 const readStoredModel = (): string => {
   try {
@@ -106,9 +93,8 @@ const readStoredModel = (): string => {
   }
 };
 
-const persistModelChoice = (mode: ModelMode, modelName: string) => {
+const persistModelChoice = (modelName: string) => {
   try {
-    localStorage.setItem(LS_MODEL_MODE, mode);
     if (modelName) localStorage.setItem(LS_LAST_MODEL, modelName);
   } catch {
     /* ignore */
@@ -158,9 +144,6 @@ export const ChatApp = ({
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState("");
-  const [fastModel, setFastModel] = useState("");
-  const [smartModel, setSmartModel] = useState("");
-  const [modelMode, setModelMode] = useState<ModelMode>("smart");
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [search, setSearch] = useState("");
@@ -188,7 +171,11 @@ export const ChatApp = ({
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
+  const [shareMenuPos, setShareMenuPos] = useState({
+    top: 0,
+    right: 0,
+    fullWidth: false,
+  });
   const sharePortalReady = useIsMounted();
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -203,9 +190,11 @@ export const ChatApp = ({
     const el = shareBtnRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    const fullWidth = window.innerWidth < 640;
     setShareMenuPos({
       top: rect.bottom + 8,
-      right: Math.max(8, window.innerWidth - rect.right),
+      right: fullWidth ? 12 : Math.max(8, window.innerWidth - rect.right),
+      fullWidth,
     });
   }, []);
 
@@ -351,8 +340,6 @@ export const ChatApp = ({
     const data = (await res.json()) as {
       models?: ModelOption[];
       defaultModel?: string;
-      fastModel?: string;
-      smartModel?: string;
       error?: string;
     };
 
@@ -365,60 +352,20 @@ export const ChatApp = ({
     const list = data.models ?? [];
     const names = new Set(list.map((m) => m.name));
     const fallback = data.defaultModel || list[0]?.name || "";
-    const nextFast =
-      (data.fastModel && names.has(data.fastModel) ? data.fastModel : "") ||
-      fallback;
-    const nextSmart =
-      (data.smartModel && names.has(data.smartModel)
-        ? data.smartModel
-        : "") || fallback;
     setModels(list);
-    setFastModel(nextFast);
-    setSmartModel(nextSmart);
     setModelsError("");
 
     setModel((current) => {
       if (current && names.has(current)) return current;
-      const storedMode = readStoredModelMode();
       const storedModel = readStoredModel();
-      if (storedMode === "fast" && nextFast) {
-        setModelMode("fast");
-        return nextFast;
-      }
-      if (storedMode === "smart" && nextSmart) {
-        setModelMode("smart");
-        return nextSmart;
-      }
-      if (storedModel && names.has(storedModel)) {
-        setModelMode(
-          storedModel === nextFast
-            ? "fast"
-            : storedModel === nextSmart
-              ? "smart"
-              : "custom",
-        );
-        return storedModel;
-      }
-      setModelMode("smart");
-      return nextSmart || fallback;
+      if (storedModel && names.has(storedModel)) return storedModel;
+      return fallback;
     });
   }, [t]);
 
-  const applyModelMode = (mode: ModelMode) => {
-    const next =
-      mode === "fast" ? fastModel : mode === "smart" ? smartModel : model;
-    if (!next) return;
-    setModelMode(mode);
-    setModel(next);
-    persistModelChoice(mode, next);
-  };
-
   const handleModelSelect = (name: string) => {
     setModel(name);
-    const mode: ModelMode =
-      name === fastModel ? "fast" : name === smartModel ? "smart" : "custom";
-    setModelMode(mode);
-    persistModelChoice(mode, name);
+    persistModelChoice(name);
   };
 
   const imageErrorMessage = (code: "type" | "size" | "failed") => {
@@ -500,13 +447,6 @@ export const ChatApp = ({
     setMessages(data.messages);
     const chatModel = data.conversation.model;
     setModel(chatModel);
-    setModelMode(
-      chatModel === fastModel
-        ? "fast"
-        : chatModel === smartModel
-          ? "smart"
-          : "custom",
-    );
     setShareToken(data.conversation.share_token ?? null);
   };
 
@@ -521,23 +461,9 @@ export const ChatApp = ({
     setShareOpen(false);
     setShareToken(null);
     setShareCopied(false);
-    const mode = readStoredModelMode();
     const stored = readStoredModel();
-    if (mode === "fast" && fastModel) {
-      setModelMode("fast");
-      setModel(fastModel);
-    } else if (mode === "smart" && smartModel) {
-      setModelMode("smart");
-      setModel(smartModel);
-    } else if (stored) {
+    if (stored && models.some((m) => m.name === stored)) {
       setModel(stored);
-      setModelMode(
-        stored === fastModel
-          ? "fast"
-          : stored === smartModel
-            ? "smart"
-            : "custom",
-      );
     }
     textareaRef.current?.focus();
   };
@@ -1122,7 +1048,7 @@ export const ChatApp = ({
   };
 
   const Sidebar = (
-    <aside className="flex h-full w-[min(20rem,86vw)] shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
+    <aside className="flex h-full max-h-dvh w-[min(20rem,86vw)] shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-4 py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Image
@@ -1411,7 +1337,7 @@ export const ChatApp = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
+      <div className="safe-bottom flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
         <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
           {user.username}
         </p>
@@ -1439,16 +1365,16 @@ export const ChatApp = ({
             aria-label={t("chat.closeMenu")}
             onClick={() => setMobileSidebar(false)}
           />
-          <div className="relative z-10 h-full shadow-2xl">{Sidebar}</div>
+          <div className="relative z-10 h-full max-h-dvh shadow-2xl">{Sidebar}</div>
         </div>
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="page-chrome relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
-          <div className="flex items-center gap-3">
+        <header className="page-chrome relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-2.5 backdrop-blur sm:py-3 md:px-5">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
+              className="touch-target rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
               onClick={() => setMobileSidebar(true)}
               aria-label={t("chat.openSidebar")}
             >
@@ -1475,8 +1401,8 @@ export const ChatApp = ({
                   </span>
                 ) : null}
               </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="chip chip-ok hidden min-[400px]:inline-flex">
+              <div className="mt-1 hidden flex-wrap items-center gap-1.5 min-[400px]:flex">
+                <span className="chip chip-ok hidden min-[480px]:inline-flex">
                   <InfinityIcon size={11} /> {t("chat.unlimited")}
                 </span>
                 <span className="chip chip-info hidden sm:inline-flex">
@@ -1491,7 +1417,7 @@ export const ChatApp = ({
                         void handleMoveChat(e.target.value || null)
                       }
                       disabled={isSending}
-                      className="max-w-[8rem] bg-transparent text-[11px] outline-none"
+                      className="max-w-[min(8rem,42vw)] bg-transparent text-[11px] outline-none sm:max-w-[8rem]"
                       aria-label={t("chat.moveChatAria")}
                       title={t("chat.moveToProject")}
                     >
@@ -1519,7 +1445,7 @@ export const ChatApp = ({
                   }
                 }}
                 disabled={shareBusy}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition ${
+                className={`touch-target inline-flex items-center gap-1.5 rounded-full border px-2 py-1.5 text-xs transition sm:px-2.5 ${
                   shareToken
                     ? "border-[var(--accent)]/40 bg-[var(--chip-info-bg)] text-[var(--chip-info-text)]"
                     : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
@@ -1532,7 +1458,7 @@ export const ChatApp = ({
                 aria-haspopup="dialog"
               >
                 <Link2 size={14} />
-                <span className="hidden sm:inline">
+                <span className="hidden min-[420px]:inline">
                   {shareToken ? t("chat.shared") : t("chat.share")}
                 </span>
               </button>
@@ -1553,42 +1479,9 @@ export const ChatApp = ({
             <ThemeToggle size="sm" />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-0">
-            <div
-              className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
-              role="group"
-              aria-label={t("chat.replySpeed")}
-            >
-              <button
-                type="button"
-                disabled={ready && (!fastModel || isSending)}
-                onClick={() => applyModelMode("fast")}
-                className={`rounded-full px-2.5 py-1 transition ${
-                  modelMode === "fast"
-                    ? "bg-[var(--accent)] text-white"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                }`}
-                title={fastModel ? `${t("chat.fast")} · ${fastModel}` : t("chat.fast")}
-              >
-                {t("chat.fast")}
-              </button>
-              <button
-                type="button"
-                disabled={ready && (!smartModel || isSending)}
-                onClick={() => applyModelMode("smart")}
-                className={`rounded-full px-2.5 py-1 transition ${
-                  modelMode === "smart"
-                    ? "bg-[var(--accent)] text-white"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                }`}
-                title={smartModel ? `${t("chat.smart")} · ${smartModel}` : t("chat.smart")}
-              >
-                {t("chat.smart")}
-              </button>
-            </div>
-
-            <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
-              <span className="hidden sm:inline">{t("chat.model")}</span>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex min-w-0 w-full items-center gap-2 text-xs text-[var(--text-muted)] sm:w-auto sm:flex-1 sm:flex-none">
+              <span className="hidden shrink-0 sm:inline">{t("chat.model")}</span>
               <ModelPicker
                 models={models}
                 value={model}
@@ -1596,7 +1489,7 @@ export const ChatApp = ({
                 disabled={ready && isSending}
                 emptyLabel={t("chat.noModels")}
                 ariaLabel={t("chat.model")}
-                className="w-full max-w-full sm:max-w-[16rem]"
+                className="min-w-0 w-full sm:max-w-[16rem]"
               />
             </div>
           </div>
@@ -1611,10 +1504,19 @@ export const ChatApp = ({
                       aria-modal="true"
                       aria-label={t("chat.shareChat")}
                       className="fixed z-[200] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-xl"
-                      style={{
-                        top: shareMenuPos.top,
-                        right: shareMenuPos.right,
-                      }}
+                      style={
+                        shareMenuPos.fullWidth
+                          ? {
+                              top: shareMenuPos.top,
+                              left: 12,
+                              right: 12,
+                              width: "auto",
+                            }
+                          : {
+                              top: shareMenuPos.top,
+                              right: shareMenuPos.right,
+                            }
+                      }
                     >
                       <p className="text-xs font-medium text-[var(--text)]">
                         {t("chat.shareColleagueTitle")}
@@ -1690,7 +1592,7 @@ export const ChatApp = ({
 
         <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 text-center">
+            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 py-6 text-center sm:px-6">
               <Image
                 src={sinamLogo}
                 alt={t("common.brand")}
@@ -1727,7 +1629,7 @@ export const ChatApp = ({
               </div>
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-6">
+            <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-4 sm:px-4 sm:py-6 md:px-6">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 const isLastUser = lastUserMessage?.id === message.id;
@@ -1836,7 +1738,7 @@ export const ChatApp = ({
                       ) : null}
                       {!isSending && !isEditing ? (
                         <div
-                          className={`mt-1 flex flex-wrap items-center gap-1 ${
+                          className={`mt-1 flex max-w-full items-center gap-1 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:overflow-visible ${
                             isUser ? "justify-end" : ""
                           }`}
                         >
@@ -1861,28 +1763,28 @@ export const ChatApp = ({
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("shorter")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.shorter")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("formal")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.moreFormal")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("continue")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.continue")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRegenerate()}
-                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 <RefreshCw size={12} />
                                 {t("chat.regenerate")}
@@ -1941,7 +1843,7 @@ export const ChatApp = ({
                     type="button"
                     disabled={ready && (isSending || !model)}
                     onClick={() => fileInputRef.current?.click()}
-                    className="mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40"
+                    className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40 sm:h-10 sm:w-10"
                     aria-label={t("chat.attachImage")}
                     title={t("chat.attachImage")}
                   >
@@ -1975,7 +1877,7 @@ export const ChatApp = ({
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
                   aria-label={t("chat.stopGenerating")}
                 >
                   <Square size={14} fill="currentColor" />
@@ -1988,7 +1890,7 @@ export const ChatApp = ({
                     ready &&
                     ((!input.trim() && pendingImages.length === 0) || !model)
                   }
-                  className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                   aria-label={t("chat.sendMessage")}
                 >
                   <SendHorizonal size={16} />
@@ -1996,7 +1898,7 @@ export const ChatApp = ({
               )}
             </div>
           </div>
-          <p className="mx-auto mt-2 hidden max-w-3xl text-center text-[11px] text-[var(--text-muted)] sm:block">
+          <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] leading-snug text-[var(--text-muted)] sm:text-[11px]">
             {supportsVision ? t("chat.visionFooterHint") : t("chat.footerHint")}
           </p>
         </div>

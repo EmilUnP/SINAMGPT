@@ -28,8 +28,6 @@ export type SettingsDraft = {
   guestHistoryLimit: string;
   registrationEnabled: boolean;
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
   userMaxMessageChars: string;
   userHistoryLimit: string;
   temperature: string;
@@ -260,47 +258,19 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.modelPresets")}
             description={t("admin.settings.modelPresetsDesc")}
           >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field
-                label={t("admin.settings.defaultModel")}
-                hint={t("admin.settings.defaultModelHint")}
+            <Field
+              label={t("admin.settings.defaultModel")}
+              hint={t("admin.settings.defaultModelHint")}
+            >
+              <select
+                value={draft.defaultModel}
+                onChange={(e) => patch({ defaultModel: e.target.value })}
+                className={adminFieldClass}
               >
-                <select
-                  value={draft.defaultModel}
-                  onChange={(e) => patch({ defaultModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.firstEnabled")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-              <Field
-                label={t("admin.settings.fastModel")}
-                hint={t("admin.settings.fastHint")}
-              >
-                <select
-                  value={draft.fastModel}
-                  onChange={(e) => patch({ fastModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.sameAsDefault")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-              <Field
-                label={t("admin.settings.smartModel")}
-                hint={t("admin.settings.smartHint")}
-              >
-                <select
-                  value={draft.smartModel}
-                  onChange={(e) => patch({ smartModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.sameAsDefault")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-            </div>
+                <option value="">{t("admin.settings.firstEnabled")}</option>
+                {modelOptions}
+              </select>
+            </Field>
           </SectionCard>
 
           <SectionCard

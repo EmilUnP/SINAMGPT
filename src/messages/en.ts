@@ -2,6 +2,7 @@ import { adminEn } from "./admin";
 import { developerEn } from "./developer";
 import { devlabEn } from "./devlab";
 import { labEn } from "./lab";
+import { modelsEn } from "./models";
 
 export const en = {
   common: {
@@ -158,6 +159,8 @@ export const en = {
     adminBadge: "admin",
     unlimitedMessages: "Unlimited messages",
     adminPanel: "Admin panel",
+    modelsGuide: "Models",
+    modelsGuideHint: "Compare size, inputs, and when to use each model.",
     modelLab: "Model lab",
     developer: "Developer",
     devLab: "Dev lab",
@@ -172,9 +175,6 @@ export const en = {
     shareThisChat: "Share this chat",
     shared: "Shared",
     share: "Share",
-    replySpeed: "Reply speed",
-    fast: "Fast",
-    smart: "Smart",
     model: "Model",
     noModels: "No models",
     shareChat: "Share chat",
@@ -236,7 +236,17 @@ export const en = {
     attachImage: "Attach image",
     removeImage: "Remove image",
     vision: "Vision",
-    tools: "Tools",
+    tools: "Functions",
+    visionHint: "Can read images you attach or paste.",
+    toolsHint: "Can call extra functions. Chat does not use that yet.",
+    inputText: "Text",
+    inputImage: "Image",
+    inputAudio: "Audio",
+    inputVideo: "Video",
+    inputTextHint: "Accepts typed messages.",
+    inputImageHint: "Accepts attached or pasted images.",
+    inputAudioHint: "Can take audio input (not used in this chat yet).",
+    inputVideoHint: "Can take video input (not used in this chat yet).",
     imagePlaceholder: "Add a caption, or send the image…",
     visionFooterHint:
       "Enter to send · Shift+Enter for new line · Attach or paste images",
@@ -258,6 +268,7 @@ export const en = {
   lab: labEn,
   developer: developerEn,
   devlab: devlabEn,
+  models: modelsEn,
   admin: adminEn,
 } as const;
 

@@ -37,6 +37,8 @@ export async function GET(request: Request) {
         backend: m.backend,
         vision: Boolean(m.vision),
         tools: Boolean(m.tools),
+        audio: Boolean(m.audio),
+        video: Boolean(m.video),
       })),
       defaultModel,
     });
