@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").trim().slice(0, 80);
   const projectId = (searchParams.get("projectId") || "").trim();
-  const LIST_CAP = 200;
+  const LIST_CAP = 100;
 
   const db = getDb();
   let conversations: Conversation[];

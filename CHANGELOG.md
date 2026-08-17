@@ -24,7 +24,7 @@ Security and performance hardening so the app stays snappy on a company PC.
 
 ### Changed
 - **Long chats** — the model and the UI load a recent window (history setting, hard cap 500) instead of every old message and image.
-- **Sidebar** — conversation list and search return at most 200 chats.
+- **Sidebar** — conversation list and search return at most 100 chats.
 - **Admin Overview / Live usage** — Overview skips the heavy usage table; LLM health is cached ~20s; Live usage pauses polling when the tab is hidden.
 
 ## [1.14.0] — 2026-08-17
