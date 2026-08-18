@@ -10,6 +10,7 @@ import {
   Folder,
   FolderPlus,
   Infinity as InfinityIcon,
+  Languages,
   Link2,
   Link2Off,
   Menu,
@@ -24,6 +25,7 @@ import {
   Search,
   SendHorizonal,
   Square,
+  TextQuote,
   Trash2,
   LogOut,
   Shield,
@@ -53,6 +55,7 @@ import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
+import { ComposerToolsMenu } from "./ComposerToolsMenu";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageAudio } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";
@@ -64,22 +67,18 @@ import {
   type ChatImagePayload,
 } from "@/lib/compress-image";
 import { AUDIO_MIME, MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
-import {
-  dropHasFiles,
-  isDroppedAudioFile,
-  isDroppedImageFile,
-} from "@/lib/chat-drop";
+import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
 import { attachmentUrl, MAX_CHAT_IMAGES } from "@/lib/image-limits";
 import {
   ensureMicPermission,
-  fileToWavClip,
   listMicDevices,
   startMicRecording,
   type MicDevice,
   type MicSession,
   type RecordedWav,
 } from "@/lib/record-mic";
-import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
+import { fleetHintKey } from "@/lib/model-fleet";
+import { autoResizeTextarea, formatChatTime, relativeTime, withComposerStarter } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
   Conversation,
@@ -365,11 +364,69 @@ export const ChatApp = ({
   );
   const canAttachImages = supportsVision && features.fileUpload === true;
   const canImportImages = supportsVision && features.fileImport === true;
-  const canImportAudio = supportsAudio && features.fileImport === true;
   const canUseMic = supportsAudio && features.microphone === true;
-  const canDropFiles = canImportImages || canImportAudio;
+  const canDropFiles = canImportImages;
   const currentMicLabel =
     micDevices.find((device) => device.deviceId === micDeviceId)?.label || "";
+  const composerToolsLocked = ready && (isSending || !model);
+
+  const applyComposerTool = useCallback((starter: string) => {
+    setInput((prev) => withComposerStarter(prev, starter));
+    requestAnimationFrame(() => {
+      autoResizeTextarea(textareaRef.current);
+      textareaRef.current?.focus();
+    });
+  }, []);
+
+  const composerToolSections = useMemo(() => {
+    const imageHint = canAttachImages
+      ? t("chat.uploadImageHint")
+      : supportsVision
+        ? t("chat.uploadImageNeedAdmin")
+        : t("chat.uploadImageNeedVision");
+    return [
+      {
+        id: "uploads",
+        items: [
+          {
+            id: "image",
+            label: t("chat.attachImage"),
+            hint: imageHint,
+            icon: Paperclip,
+            disabled: composerToolsLocked || !canAttachImages,
+            onSelect: () => fileInputRef.current?.click(),
+          },
+        ],
+      },
+      {
+        id: "write",
+        items: [
+          {
+            id: "summarize",
+            label: t("chat.toolSummarize"),
+            hint: t("chat.toolSummarizeHint"),
+            icon: TextQuote,
+            disabled: composerToolsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolSummarizePrompt")),
+          },
+          {
+            id: "translate",
+            label: t("chat.toolTranslate"),
+            hint: t("chat.toolTranslateHint"),
+            icon: Languages,
+            disabled: composerToolsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolTranslatePrompt")),
+          },
+        ],
+      },
+    ];
+  }, [
+    applyComposerTool,
+    canAttachImages,
+    composerToolsLocked,
+    supportsVision,
+    t,
+  ]);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -497,16 +554,10 @@ export const ChatApp = ({
   }, [micDeviceId]);
 
   useEffect(() => {
-    if (canUseMic || canImportAudio) return;
+    if (canUseMic) return;
     cancelMicSession();
     if (pendingAudio) clearPendingAudio();
-  }, [
-    canUseMic,
-    canImportAudio,
-    pendingAudio,
-    cancelMicSession,
-    clearPendingAudio,
-  ]);
+  }, [canUseMic, pendingAudio, cancelMicSession, clearPendingAudio]);
 
   useEffect(
     () => () => {
@@ -607,54 +658,15 @@ export const ChatApp = ({
     }
   };
 
-  const addAudioFile = async (file: File) => {
-    if (!canImportAudio) {
-      setError(t("chat.audioRequired"));
-      return;
-    }
-    if (isRecording) cancelMicSession();
-    setIsProcessingAudio(true);
-    try {
-      const clip = await fileToWavClip(file);
-      applyRecordedClip(clip);
-      setError("");
-    } catch (err) {
-      if (err instanceof Error && err.message === "too-large") {
-        setError(t("chat.audioTooLarge"));
-      } else {
-        setError(t("chat.audioFileFailed"));
-      }
-    } finally {
-      setIsProcessingAudio(false);
-    }
-  };
-
   const addDroppedFiles = async (files: File[]) => {
     if (!files.length || isSending || !canDropFiles) return;
     const images = files.filter(isDroppedImageFile);
-    const audios = files.filter(isDroppedAudioFile);
-    const unsupported = files.filter(
-      (file) => !isDroppedImageFile(file) && !isDroppedAudioFile(file),
-    );
-
-    if (!images.length && !audios.length) {
+    if (!images.length) {
       setError(t("chat.dropUnsupported"));
       return;
     }
-
-    let warning = "";
-    if (unsupported.length) warning = t("chat.dropUnsupported");
-    if (images.length) {
-      if (canImportImages) await addImageFiles(images);
-      else warning = t("chat.visionRequired");
-    }
-    if (audios.length) {
-      if (canImportAudio) {
-        await addAudioFile(audios[0]);
-        if (audios.length > 1) warning = t("chat.audioLimit");
-      } else warning = t("chat.audioRequired");
-    }
-    if (warning) setError(warning);
+    await addImageFiles(images);
+    if (images.length < files.length) setError(t("chat.dropUnsupported"));
   };
 
   const handleComposerDragEnter = (event: DragEvent<HTMLDivElement>) => {
@@ -1111,7 +1123,7 @@ export const ChatApp = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify(opts.body),
+        body: JSON.stringify({ ...opts.body, locale }),
       });
 
       if (!res.ok || !res.body) {
@@ -1886,21 +1898,6 @@ export const ChatApp = ({
             <ThemeToggle size="sm" />
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex min-w-0 w-full items-center gap-2 text-xs text-[var(--text-muted)] sm:w-auto sm:flex-1 sm:flex-none">
-              <span className="hidden shrink-0 sm:inline">{t("chat.model")}</span>
-              <ModelPicker
-                models={models}
-                value={model}
-                onChange={handleModelSelect}
-                disabled={ready && isSending}
-                emptyLabel={t("chat.noModels")}
-                ariaLabel={t("chat.model")}
-                className="min-w-0 w-full sm:max-w-[20rem]"
-              />
-            </div>
-          </div>
-
           {activeId ? (
             <>
               {sharePortalReady && shareOpen && shareToken
@@ -2227,7 +2224,7 @@ export const ChatApp = ({
           )}
         </div>
 
-        <div className="safe-bottom border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+        <div className="safe-bottom relative z-20 overflow-visible border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div
             className={`composer-shell relative mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
               isDraggingOver
@@ -2242,11 +2239,7 @@ export const ChatApp = ({
           >
             {isDraggingOver ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-sky-500/15 text-sm font-medium text-sky-800 dark:text-sky-100">
-                {canImportAudio && canImportImages
-                  ? t("chat.dropImagesOrAudio")
-                  : canImportAudio
-                    ? t("chat.dropAudio")
-                    : t("chat.dropImages")}
+                {t("chat.dropImages")}
               </div>
             ) : null}
             {pendingImages.length ? (
@@ -2306,35 +2299,63 @@ export const ChatApp = ({
                 ) : null}
               </div>
             ) : null}
-            <div className="flex items-end gap-2">
-              {canAttachImages ? (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    multiple
-                    className="hidden"
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files ?? []);
-                      event.target.value = "";
-                      void addImageFiles(files);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={ready && (isSending || !model)}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40 sm:h-10 sm:w-10"
-                    aria-label={t("chat.attachImage")}
-                    title={t("chat.attachImage")}
-                  >
-                    <Paperclip size={16} />
-                  </button>
-                </>
-              ) : null}
+            <div className="flex items-end gap-1.5 sm:gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  void addImageFiles(files);
+                }}
+              />
+              <ComposerToolsMenu
+                sections={composerToolSections}
+                disabled={ready && (isSending || !model)}
+                ariaLabel={t("chat.toolsMenu")}
+                closeLabel={t("chat.closeTools")}
+              />
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
+                  const files = Array.from(event.clipboardData.files);
+                  if (!files.length || !canDropFiles) return;
+                  event.preventDefault();
+                  void addDroppedFiles(files);
+                }}
+                rows={1}
+                placeholder={
+                  pendingAudio
+                    ? t("chat.audioPlaceholder")
+                    : pendingImages.length
+                      ? t("chat.imagePlaceholder")
+                      : t("chat.messagePlaceholder")
+                }
+                className="max-h-40 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:px-3 sm:text-[15px]"
+              />
+              <ModelPicker
+                models={models}
+                value={model}
+                onChange={handleModelSelect}
+                disabled={ready && isSending}
+                size="sm"
+                variant="composer"
+                emptyLabel={t("chat.noModels")}
+                ariaLabel={t("chat.model")}
+                hintFor={(option) => {
+                  const key = fleetHintKey(option.name);
+                  return key ? t(key) : undefined;
+                }}
+                className="shrink-0"
+              />
               {canUseMic ? (
-                <div className="relative mb-0.5 flex shrink-0 items-center" ref={micPickerRef}>
+                <div className="relative mb-0.5 flex h-11 shrink-0 items-center sm:h-10" ref={micPickerRef}>
                   <button
                     type="button"
                     disabled={ready && (isSending || isProcessingAudio || !model)}
@@ -2376,7 +2397,7 @@ export const ChatApp = ({
                     <ChevronDown size={14} />
                   </button>
                   {micPickerOpen ? (
-                    <div className="absolute bottom-full left-0 z-30 mb-2 min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-1 shadow-lg">
+                    <div className="absolute bottom-full right-0 z-30 mb-2 min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-1 shadow-lg">
                       <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
                         {t("chat.chooseMic")}
                       </p>
@@ -2413,32 +2434,11 @@ export const ChatApp = ({
                   ) : null}
                 </div>
               ) : null}
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
-                  const files = Array.from(event.clipboardData.files);
-                  if (!files.length || !canDropFiles) return;
-                  event.preventDefault();
-                  void addDroppedFiles(files);
-                }}
-                rows={1}
-                placeholder={
-                  pendingAudio
-                    ? t("chat.audioPlaceholder")
-                    : pendingImages.length
-                      ? t("chat.imagePlaceholder")
-                      : t("chat.messagePlaceholder")
-                }
-                className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-[15px]"
-              />
               {isSending ? (
                 <button
                   type="button"
                   onClick={handleStop}
-                  className="touch-target mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
                   aria-label={t("chat.stopGenerating")}
                 >
                   <Square size={14} fill="currentColor" />
@@ -2456,7 +2456,7 @@ export const ChatApp = ({
                         !isRecording) ||
                       !model)
                   }
-                  className="touch-target mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                   aria-label={t("chat.sendMessage")}
                 >
                   <SendHorizonal size={16} />
@@ -2465,10 +2465,9 @@ export const ChatApp = ({
             </div>
           </div>
           <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] leading-snug text-[var(--text-muted)] sm:text-[11px]">
-            {(canUseMic || canImportAudio) &&
-            (canAttachImages || canImportImages)
+            {canUseMic && (canAttachImages || canImportImages)
               ? t("chat.audioVisionFooterHint")
-              : canUseMic || canImportAudio
+              : canUseMic
                 ? t("chat.audioFooterHint")
                 : canAttachImages || canImportImages
                   ? t("chat.visionFooterHint")

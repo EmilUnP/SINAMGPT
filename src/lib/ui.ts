@@ -7,6 +7,14 @@ export const autoResizeTextarea = (el: HTMLTextAreaElement | null) => {
   el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
 };
 
+/** Put a write-helper starter in the composer, keeping text the user already typed. */
+export const withComposerStarter = (current: string, starter: string): string => {
+  const trimmed = current.trim();
+  if (!trimmed) return starter;
+  if (trimmed.startsWith(starter.trim())) return current;
+  return `${starter}${trimmed}`;
+};
+
 export const copyText = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text);

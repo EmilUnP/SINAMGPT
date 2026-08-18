@@ -1,5 +1,5 @@
 import { completeChat } from "@/lib/llm";
-import { normalizeMultilangText } from "@/lib/multilang";
+import { KNOWLEDGE_BRAND_TOKENS, normalizeMultilangText } from "@/lib/multilang";
 import { getDefaultModelSetting } from "@/lib/settings";
 
 export type QueryGloss = {
@@ -31,7 +31,9 @@ Rules:
 - Translate the user's intent into keywords (not a full sentence).
 - Keep product/company names as written (SINAM, SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM).
 - Include HR/policy words when relevant (leave, vacation, salary, password, contact, office).
-- CAT = product for a named product; company for about/contact/employees; faq for how-to/policy; none for greetings or unrelated chat.
+- CAT = product for a named product; company for about/contact/employees; faq for how-to/policy; none for greetings, general knowledge, or unrelated chat.
+- If the user did not name a SINAM product or the company, do NOT add SINAM, SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM, or similar names.
+- CAT = none for general questions (what is AI, a fun fact, a writing tip, a poem) even if the company also works in technology.
 - If the message is only a greeting or empty small talk, output:
 EN:
 AZ:
@@ -142,5 +144,16 @@ export const glossUserQuery = async (
 
 export const retrievalQuery = (original: string, gloss: QueryGloss): string => {
   if (!gloss.searchText) return original;
-  return `${original}\n${gloss.searchText}`;
+  const originalNorm = ` ${normalizeMultilangText(original)} `;
+  const kept = gloss.searchText
+    .split(/\s+/)
+    .filter((token) => {
+      if (!token) return false;
+      if (!KNOWLEDGE_BRAND_TOKENS.has(token)) return true;
+      return originalNorm.includes(` ${token} `);
+    })
+    .join(" ")
+    .trim();
+  if (!kept) return original;
+  return `${original}\n${kept}`;
 };

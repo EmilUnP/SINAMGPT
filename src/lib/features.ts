@@ -64,16 +64,16 @@ export const setFeatureFlags = (
 export const isFeatureEnabled = (id: FeatureId): boolean =>
   getFeatureFlags()[id] === true;
 
-/** Images may arrive from paperclip upload or drag/paste import. */
+/** Images may arrive from plus-menu upload or drag/paste import. */
 export const isChatImagesEnabled = (): boolean => {
   const flags = getFeatureFlags();
   return flags.fileUpload || flags.fileImport;
 };
 
-/** Audio may arrive from the microphone or a dropped/pasted file. */
+/** Audio may arrive from the microphone. */
 export const isChatAudioEnabled = (): boolean => {
   const flags = getFeatureFlags();
-  return flags.microphone || flags.fileImport;
+  return flags.microphone;
 };
 
 export const FEATURE_DISABLED_ERROR = "This feature is currently disabled";

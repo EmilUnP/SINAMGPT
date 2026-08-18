@@ -237,10 +237,10 @@ export const adminEn = {
       "Attach, import, and microphone in the composer. Off hides the controls and rejects those payloads until you enable them here.",
     fileUpload: "File upload",
     fileUploadHint:
-      "Paperclip in chat to attach images on vision models.",
+      "Plus menu in chat to attach images on vision models.",
     fileImport: "File import",
     fileImportHint:
-      "Drag-and-drop or paste files onto the composer (images, and audio on audio models).",
+      "Drag-and-drop or paste images onto the composer on vision models.",
     microphone: "Microphone",
     microphoneHint:
       "Record up to 30 seconds of audio on audio-capable models.",
@@ -768,10 +768,10 @@ export const adminAz: AdminMessages = {
       "Kompozitorda əlavə etmə, idxal və mikrofon. Sönük olanda idarəetmələr gizlənir və yükləmələr burada açılana qədər bloklanır.",
     fileUpload: "Fayl yükləmə",
     fileUploadHint:
-      "Görüntü modellərində söhbətə şəkil əlavə etmək üçün kağız klipləri.",
+      "Görüntü modellərində söhbətə şəkil əlavə etmək üçün plus menyusu.",
     fileImport: "Fayl idxalı",
     fileImportHint:
-      "Kompozitora faylları sürükləyib buraxmaq və ya yapışdırmaq (şəkillər, audio modellərdə audio).",
+      "Görüntü modellərində kompozitora şəkilləri sürükləyib buraxmaq və ya yapışdırmaq.",
     microphone: "Mikrofon",
     microphoneHint:
       "Audio qabiliyyətli modellərdə ən çox 30 saniyəlik səs yazın.",
@@ -1294,10 +1294,10 @@ export const adminRu: AdminMessages = {
       "Вложение, импорт и микрофон в композере. Выключенные скрывают элементы и отклоняют эти данные, пока вы не включите их здесь.",
     fileUpload: "Загрузка файла",
     fileUploadHint:
-      "Скрепка в чате для прикрепления изображений на моделях с изображениями.",
+      "Меню «плюс» в чате для прикрепления изображений на моделях с изображениями.",
     fileImport: "Импорт файла",
     fileImportHint:
-      "Перетаскивание или вставка файлов в композер (изображения и аудио на аудиомоделях).",
+      "Перетаскивание или вставка изображений в композер на моделях с изображениями.",
     microphone: "Микрофон",
     microphoneHint:
       "Запись до 30 секунд аудио на моделях с поддержкой аудио.",

@@ -491,12 +491,12 @@ export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal,
-      body: JSON.stringify({
-        message: test.prompt,
-        model,
-        mode: "send",
-        ...(conversationId ? { conversationId } : {}),
-      }),
+        body: JSON.stringify({
+          message: test.prompt,
+          model,
+          mode: "send",
+          ...(conversationId ? { conversationId } : {}),
+        }),
     });
 
     if (res.status === 422) {

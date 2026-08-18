@@ -261,7 +261,7 @@ export const az: Messages = {
     inputImageHint:
       "Bu söhbətdə şəkil əlavə edə, yapışdıra və ya buraxa bilərsiniz.",
     inputAudioHint:
-      "Bu söhbətdə mikrofonla və ya fayl buraxaraq audio göndərə bilərsiniz (ən çox 30 saniyə).",
+      "Bu söhbətdə mikrofonla audio göndərə bilərsiniz (ən çox 30 saniyə).",
     inputVideoHint:
       "Ollama bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
     imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
@@ -269,9 +269,9 @@ export const az: Messages = {
     visionFooterHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin, yapışdırın və ya buraxın",
     audioFooterHint:
-      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofonla yazın və ya audio buraxın",
+      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofonla yazın",
     audioVisionFooterHint:
-      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil və ya audio buraxın",
+      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofon · şəkil əlavə edin və ya buraxın",
     recordAudio: "Səs yaz",
     stopRecording: "Yazını dayandır",
     removeAudio: "Yazını sil",
@@ -290,22 +290,35 @@ export const az: Messages = {
     chooseMic: "Mikrofon seç",
     micLevel: "Mikrofon səviyyəsi",
     dropImages: "Şəkilləri bura buraxın",
-    dropAudio: "Audionu bura buraxın",
-    dropImagesOrAudio: "Şəkil və ya audionu bura buraxın",
     dropUnsupported:
-      "Bu söhbət JPEG, PNG, WebP və ya GIF şəkillərini, audio modellərdə isə audio faylları qəbul edir.",
-    audioRequired:
-      "Bu model audionu dəstəkləmir. Audio modelini seçin.",
-    audioLimit: "Hər mesaja bir audio yazı əlavə edə bilərsiniz.",
-    audioTooLarge: "Audio faylı çox böyükdür. Daha qısa yazı yoxlayın.",
-    audioFileFailed:
-      "Audio faylını oxumaq mümkün olmadı. WAV, MP3 və ya M4A yoxlayın.",
+      "Bu söhbət JPEG, PNG, WebP və ya GIF şəkillərini qəbul edir. Audionu mikrofonla yazın.",
     imageTooLarge: "Hər şəkil 8 MB-dan kiçik olmalıdır.",
     imageType: "JPEG, PNG, WebP və ya GIF istifadə edin.",
     imageLimit: "Ən çox {n} şəkil əlavə edə bilərsiniz.",
     imageFailed: "Şəkli oxumaq mümkün olmadı. Başqa fayl yoxlayın.",
     visionRequired:
       "Bu model şəkilləri dəstəkləmir. Görüntü modelini seçin.",
+    toolsMenu: "Alətlər",
+    closeTools: "Alətləri bağla",
+    uploadImageHint: "JPEG, PNG, WebP və ya GIF",
+    uploadImageNeedVision: "Şəkil oxuya bilən model seçin.",
+    uploadImageNeedAdmin: "Admin Fayl yükləməni açmalıdır.",
+    toolSummarize: "Xülasə",
+    toolSummarizeHint: "Mətnin qısa versiyası",
+    toolSummarizePrompt: "Bunu aydın şəkildə xülasə et:\n\n",
+    toolTranslate: "Tərcümə et",
+    toolTranslateHint: "Ekran dilinə",
+    toolTranslatePrompt: "Bunu Azərbaycan dilinə tərcümə et:\n\n",
+    toolsSignIn: "Söhbətləri saxlamaq üçün daxil olun",
+    toolsSignInHint: "Tarixçə, layihələr və limitsiz mesajlar",
+    modelHint: {
+      "gemma3-4b": "Ən sürətli cavablar",
+      "gemma3-12b": "Hər iş üçün",
+      "gemma4-e4b": "Səs və şəkil",
+      "gemma4-31b": "Şəkillə güclü cavab",
+      "qwen35-9b": "Şəkil və yazı",
+      "qwen3-32b": "Güclü mətn və kod",
+    },
   },
   share: {
     back: "Geri",

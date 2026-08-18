@@ -7,12 +7,27 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-### Changed
-- **Model lab** — suites match the current product: Russian cases, cross-language company knowledge, fewer duplicate EN/AZ twins. Quick 18 / Assist 20 / Guardrails 17. AZ/RU replies are scored on the expected language.
-- **RTX 5090 fleet** — docs, setup, Models guide, and display names match the company Ollama tags: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`. Qwen 3.5 is treated as vision (not microphone). Qwen 3 32B stays text-only.
-
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
+
+## [1.15.0] — 2026-08-18
+
+Composer tools in the chat box, model picker next to the prompt, microphone-only voice, and company RTX 5090 tags.
+
+### Added
+- **Composer tools** — a **+** menu in the chat box (signed-in and guest): attach image, summarize, and translate. Unavailable image upload stays visible but grayed, with the reason. Guest menu includes a sign-in row. Voice is microphone-only.
+
+### Changed
+- **Model picker** — lives in the chat box as a compact pill (name + short hint in the menu), not in the header. Microphone stays on the right of the box when enabled.
+- **Model lab** — suites match the current product: Russian cases, cross-language company knowledge, fewer duplicate EN/AZ twins. Quick 18 / Assist 20 / Guardrails 17. AZ/RU replies are scored on the expected language.
+- **RTX 5090 fleet** — docs, setup, Models guide, and display names match the company Ollama tags: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`. Qwen 3.5 is treated as vision (not microphone). Qwen 3 32B stays text-only.
+- **Reply language** — Azerbaijani prompts (including ASCII without ə) pin the model to AZ so small local models do not switch to English to “clarify”. The UI language is a hint when the prompt is short. Rewrite stays in the same language.
+
+### Fixed
+- **Knowledge citations** — a general question (for example “explain what AI is”) no longer injects About SINAM / YURDUM / Farabi and then shows them as “From: …”. Company notes attach only when the user’s words are about the company, or a document title/tag actually matches those words. Search-keyword expansion cannot invent product names the user did not mention.
+
+### Removed
+- **Audio file import** — dropped, pasted, or plus-menu audio files are gone. Voice is only the microphone (Admin → Microphone + an audio model). File import is images only.
 
 ## [1.14.1] — 2026-08-17
 
@@ -284,7 +299,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.12.0...v1.13.0

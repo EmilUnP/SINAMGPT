@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -13,10 +14,13 @@ import {
 } from "react";
 import {
   Infinity as InfinityIcon,
+  Languages,
   MessageSquarePlus,
   Paperclip,
   SendHorizonal,
   Square,
+  TextQuote,
+  UserRound,
 } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -24,6 +28,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLocale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CopyButton } from "./CopyButton";
+import { ComposerToolsMenu } from "./ComposerToolsMenu";
 import { KnowledgeCitations } from "./KnowledgeCitations";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageImages } from "./MessageImages";
@@ -34,8 +39,9 @@ import {
   type ChatImagePayload,
 } from "@/lib/compress-image";
 import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
+import { fleetHintKey } from "@/lib/model-fleet";
 import { MAX_GUEST_IMAGES } from "@/lib/image-limits";
-import { autoResizeTextarea, formatChatTime } from "@/lib/ui";
+import { autoResizeTextarea, formatChatTime, withComposerStarter } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";
 
@@ -330,6 +336,7 @@ export const HomeTryChat = ({
           message: text,
           model,
           history,
+          locale,
           images: imagesToSend.map(({ mime, data, name }) => ({
             mime,
             data,
@@ -432,6 +439,64 @@ export const HomeTryChat = ({
   const actionsLocked =
     ready && (isSending || limitHit || !model || !guestEnabled);
 
+  const applyComposerTool = useCallback((starter: string) => {
+    setInput((prev) => withComposerStarter(prev, starter));
+    requestAnimationFrame(() => {
+      autoResizeTextarea(textareaRef.current);
+      textareaRef.current?.focus();
+    });
+  }, []);
+
+  const composerToolSections = useMemo(() => {
+    const imageHint = canAttachImages
+      ? t("chat.uploadImageHint")
+      : supportsVision
+        ? t("chat.uploadImageNeedAdmin")
+        : t("chat.uploadImageNeedVision");
+    return [
+      {
+        id: "uploads",
+        items: [
+          {
+            id: "image",
+            label: t("chat.attachImage"),
+            hint: imageHint,
+            icon: Paperclip,
+            disabled: actionsLocked || !canAttachImages,
+            onSelect: () => fileInputRef.current?.click(),
+          },
+        ],
+      },
+      {
+        id: "write",
+        items: [
+          {
+            id: "summarize",
+            label: t("chat.toolSummarize"),
+            hint: t("chat.toolSummarizeHint"),
+            icon: TextQuote,
+            disabled: actionsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolSummarizePrompt")),
+          },
+          {
+            id: "translate",
+            label: t("chat.toolTranslate"),
+            hint: t("chat.toolTranslateHint"),
+            icon: Languages,
+            disabled: actionsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolTranslatePrompt")),
+          },
+        ],
+      },
+    ];
+  }, [
+    actionsLocked,
+    applyComposerTool,
+    canAttachImages,
+    supportsVision,
+    t,
+  ]);
+
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
       <AnimatedBackground />
@@ -458,19 +523,6 @@ export const HomeTryChat = ({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-          {models.length > 0 && guestEnabled ? (
-            <ModelPicker
-              models={models}
-              value={model}
-              onChange={setModel}
-              disabled={isSending}
-              size="sm"
-              variant="glass"
-              emptyLabel={t("chat.noModels")}
-              ariaLabel={t("chat.model")}
-              className="hidden max-w-[12rem] sm:block"
-            />
-          ) : null}
           <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />
           <Link
@@ -491,22 +543,7 @@ export const HomeTryChat = ({
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-1 pb-4 text-center">
-            <div className="hero-brand">
-              <Image
-                src={sinamLogo}
-                alt={t("common.brand")}
-                width={112}
-                height={112}
-                className="logo-breathe mx-auto h-20 w-20 rounded-full sm:h-28 sm:w-28"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <p className="mt-5 text-sm font-semibold tracking-[0.22em] text-[var(--home-fg)]/90 sm:mt-7">
-                {t("common.brand")}
-              </p>
-            </div>
-
-            <div className="hero-copy mt-4">
+            <div className="hero-copy">
               <h1 className="text-[1.85rem] font-normal tracking-tight text-[var(--home-fg)] sm:text-[2.9rem]">
                 {guestEnabled
                   ? t("home.heroAsk")
@@ -760,22 +797,6 @@ export const HomeTryChat = ({
           </p>
         ) : null}
 
-        {models.length > 0 && guestEnabled ? (
-          <div className="mb-2 flex w-full justify-stretch sm:hidden">
-            <ModelPicker
-              models={models}
-              value={model}
-              onChange={setModel}
-              disabled={isSending}
-              size="sm"
-              variant="glass"
-              emptyLabel={t("chat.noModels")}
-              ariaLabel={t("chat.model")}
-              className="w-full"
-            />
-          </div>
-        ) : null}
-
         <div
           className={`composer-shell relative sticky bottom-0 z-20 rounded-[28px] border bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
             isDraggingOver
@@ -808,33 +829,43 @@ export const HomeTryChat = ({
               />
             </div>
           ) : null}
-          <div className="flex items-end gap-2">
-            {canAttachImages && guestEnabled && !limitHit ? (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  multiple
-                  className="hidden"
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    event.target.value = "";
-                    void addImageFiles(files);
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={actionsLocked}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mb-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] disabled:opacity-40 sm:h-10 sm:w-10"
-                  aria-label={t("chat.attachImage")}
-                  title={t("chat.attachImage")}
+          <div className="flex items-end gap-1.5 sm:gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                void addImageFiles(files);
+              }}
+            />
+            <ComposerToolsMenu
+              sections={composerToolSections}
+              disabled={actionsLocked}
+              ariaLabel={t("chat.toolsMenu")}
+              closeLabel={t("chat.closeTools")}
+              footer={
+                <Link
+                  href="/login"
+                  className="menu-item flex w-full items-start gap-3 rounded-xl px-2.5 py-2 text-left"
                 >
-                  <Paperclip size={16} />
-                </button>
-              </>
-            ) : null}
+                  <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--hover)] text-[var(--text)]">
+                    <UserRound size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-[var(--text)]">
+                      {t("chat.toolsSignIn")}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-[var(--text-muted)]">
+                      {t("chat.toolsSignInHint")}
+                    </span>
+                  </span>
+                </Link>
+              }
+            />
             {/* text-base (16px) on phones — anything smaller makes iOS Safari
                 zoom the page when the field takes focus. */}
             <textarea
@@ -859,13 +890,30 @@ export const HomeTryChat = ({
                       : t("home.placeholderAsk")
               }
               disabled={limitHit || !guestEnabled}
-              className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-4 py-3 text-base text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50 sm:text-[15px]"
+              className="max-h-40 min-h-[48px] min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-base text-[var(--home-input)] outline-none placeholder:text-[var(--home-placeholder)] disabled:opacity-50 sm:px-3 sm:text-[15px]"
             />
+            {guestEnabled ? (
+              <ModelPicker
+                models={models}
+                value={model}
+                onChange={setModel}
+                disabled={isSending || limitHit}
+                size="sm"
+                variant="composer"
+                emptyLabel={t("chat.noModels")}
+                ariaLabel={t("chat.model")}
+                hintFor={(option) => {
+                  const key = fleetHintKey(option.name);
+                  return key ? t(key) : undefined;
+                }}
+                className="shrink-0"
+              />
+            ) : null}
             {isSending ? (
               <button
                 type="button"
                 onClick={handleStop}
-                className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)] sm:h-10 sm:w-10"
+                className="mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--home-chip-bg)] text-[var(--home-chip-fg)] sm:h-10 sm:w-10"
                 aria-label={t("home.stop")}
               >
                 <Square size={14} fill="currentColor" />
@@ -878,7 +926,7 @@ export const HomeTryChat = ({
                   actionsLocked ||
                   (ready && !input.trim() && pendingImages.length === 0)
                 }
-                className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
+                className="mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
                 aria-label={t("home.send")}
               >
                 <SendHorizonal size={16} />

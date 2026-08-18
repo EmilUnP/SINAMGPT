@@ -62,6 +62,7 @@ const schema = z
       .default("send"),
     editMessageId: z.string().min(1).optional(),
     rewrite: z.enum(["shorter", "formal", "continue"]).optional(),
+    locale: z.enum(["en", "az", "ru"]).optional(),
   })
   .superRefine((data, ctx) => {
     const text = data.message?.trim() ?? "";
@@ -111,11 +112,11 @@ const schema = z
 
 const REWRITE_PROMPTS = {
   shorter:
-    "Rewrite your previous answer to be shorter and tighter. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+    "Rewrite your previous answer to be shorter and tighter. Keep the SAME LANGUAGE as that answer (Azerbaijani stays Azerbaijani, Russian stays Russian, English stays English). Do not switch to English. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
   formal:
-    "Rewrite your previous answer in a more formal, professional tone suitable for internal company use. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+    "Rewrite your previous answer in a more formal, professional tone suitable for internal company use. Keep the SAME LANGUAGE as that answer. Do not switch to English. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
   continue:
-    "Continue your previous answer with useful additional detail. Return the complete answer: keep what you already said, then add the continuation. Do not add a preface like “Sure” — return only the full answer.",
+    "Continue your previous answer with useful additional detail, in the SAME LANGUAGE as that answer. Do not switch to English. Return the complete answer: keep what you already said, then add the continuation. Do not add a preface like “Sure” — return only the full answer.",
 } as const;
 
 const CONVERSATION_SELECT =
@@ -179,6 +180,7 @@ const streamAssistantReply = async (input: {
   promptText: string;
   userMessage: Message;
   history: ChatMessage[];
+  uiLocale?: "en" | "az" | "ru";
 }) => {
   const {
     userId,
@@ -189,6 +191,7 @@ const streamAssistantReply = async (input: {
     promptText,
     userMessage,
     history,
+    uiLocale,
   } = input;
 
   const db = getDb();
@@ -207,7 +210,7 @@ const streamAssistantReply = async (input: {
     contextHistory,
     "user",
     conversation.project_id,
-    { model },
+    { model, uiLocale },
   );
   const promptedHistory = prepared.messages;
   const knowledgeSources = prepared.sources;
@@ -440,6 +443,7 @@ export async function POST(request: Request) {
     }
 
     const mode = parsed.data.mode;
+    const uiLocale = parsed.data.locale;
     const model = resolveOllamaModelName(parsed.data.model);
     const maxChars = getUserMaxCharsSetting();
     const db = getDb();
@@ -585,6 +589,7 @@ export async function POST(request: Request) {
         promptText: `[rewrite:${style}] ${lastUser.content}`,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
@@ -693,6 +698,7 @@ export async function POST(request: Request) {
         promptText: lastUser.content,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
@@ -837,6 +843,7 @@ export async function POST(request: Request) {
         promptText: message,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
@@ -1000,6 +1007,7 @@ export async function POST(request: Request) {
       promptText: message || (incomingAudio ? "[audio]" : "[image]"),
       userMessage,
       history,
+      uiLocale,
     });
   } catch (error) {
     console.error("chat error", error);

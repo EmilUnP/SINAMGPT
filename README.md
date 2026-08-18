@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.14.1](./CHANGELOG.md#1141--2026-08-17)
+**Current version:** [1.15.0](./CHANGELOG.md#1150--2026-08-18)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -17,14 +17,14 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 
 - **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`
 - **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
-- **Audio models** — record from the microphone (pick the device on laptops) or drop a short audio file; up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone / File import (also start **off**). On this box: Gemma 4 E4B yes, Gemma 4 31B / Gemma 3 / Qwen no
+- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: Gemma 4 E4B yes, Gemma 4 31B / Gemma 3 / Qwen no
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
-- **Streaming replies**, model picker (Text / Image / Audio, plus Ollama Functions tags), rewrite shortcuts
+- **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
 - **Models guide** (`/models`) — signed-in users see activated models with size, inputs, use cases, and short pros / cons. Open it from the chat header or sidebar.
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
-- **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note
+- **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
 - **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
 - **Admin** — users, models (Activate before users can pick them), live usage (click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
@@ -101,7 +101,7 @@ There you can:
 
 - See users, registration / last-active, chat usage
 - **Live usage** — active AI generations, response speed (t/s), TTFT, history. Click a live or past row to inspect the exact prompt sent to the model and the reply
-- **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle
+- **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle (general chat does not cite About/product pages)
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; blocked phrases can also match via that same keyword list
 - **Settings** — Features On/Off (Developer API, Dev lab, File upload, File import, Microphone — chat inputs start **off**), default model, generation controls (temperature, max tokens, top-p)
 - Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Text / Image you can send; Audio follows Ollama; Functions not used in chat)

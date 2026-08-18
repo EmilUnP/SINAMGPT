@@ -7,8 +7,6 @@ export const MAX_AUDIO_MS = MAX_AUDIO_SECONDS * 1000;
 export const MAX_CHAT_AUDIO = 1;
 /** 16 kHz / 16-bit / mono / 30s is ~1 MB; leave headroom for the WAV header. */
 export const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
-/** Incoming file before we convert it to 16 kHz WAV. */
-export const MAX_AUDIO_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export const isAllowedAudioMime = (value: string): value is typeof AUDIO_MIME =>
   value.trim().toLowerCase() === AUDIO_MIME;

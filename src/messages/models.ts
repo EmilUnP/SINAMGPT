@@ -2,7 +2,7 @@ export const modelsEn = {
   title: "Models",
   badge: "Guide",
   description:
-    "These models are activated for chat. Pick one in the header. Size tells you speed vs strength. Text, Image, and Audio (microphone) are what you can send when the model supports them.",
+    "These models are activated for chat. Pick one in the chat box. Size tells you speed vs strength. Text, Image, and Audio (microphone) are what you can send when the model supports them.",
   pickTitle: "How to pick",
   pick1: "Need a photo or screenshot? Choose a model with Image.",
   pick2: "Need a quick short answer? Choose the smaller file.",
@@ -131,7 +131,7 @@ export const modelsAz = {
   title: "Modellər",
   badge: "Bələdçi",
   description:
-    "Bu modellər söhbət üçün aktivdir. Başlıqda birini seçin. Ölçü sürət və gücü göstərir. Mətn, Şəkil və Audio (mikrofon) model dəstəkləyəndə göndərə biləcəyinizdir.",
+    "Bu modellər söhbət üçün aktivdir. Söhbət qutusunda birini seçin. Ölçü sürət və gücü göstərir. Mətn, Şəkil və Audio (mikrofon) model dəstəkləyəndə göndərə biləcəyinizdir.",
   pickTitle: "Necə seçməli",
   pick1: "Şəkil və ya ekran görüntüsü lazımdır? Şəkil nişanı olan modeli seçin.",
   pick2: "Tez və qısa cavab lazımdır? Kiçik faylı seçin.",
@@ -260,7 +260,7 @@ export const modelsRu = {
   title: "Модели",
   badge: "Гид",
   description:
-    "Эти модели активированы для чата. Выберите одну в шапке. Размер показывает скорость и силу. Текст, изображение и аудио (микрофон) — то, что можно отправить, если модель это поддерживает.",
+    "Эти модели активированы для чата. Выберите одну в поле ввода. Размер показывает скорость и силу. Текст, изображение и аудио (микрофон) — то, что можно отправить, если модель это поддерживает.",
   pickTitle: "Как выбрать",
   pick1: "Нужно фото или скриншот? Выберите модель с изображением.",
   pick2: "Нужен быстрый короткий ответ? Выберите меньший файл.",

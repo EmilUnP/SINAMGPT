@@ -2,7 +2,6 @@ import {
   AUDIO_MIME,
   AUDIO_SAMPLE_RATE,
   MAX_AUDIO_MS,
-  MAX_AUDIO_UPLOAD_BYTES,
 } from "@/lib/audio-limits";
 
 export type RecordedWav = {
@@ -229,18 +228,6 @@ export const ensureMicPermission = async (deviceId?: string): Promise<void> => {
   }
   const stream = await openMicStream(deviceId);
   for (const track of stream.getTracks()) track.stop();
-};
-
-export const fileToWavClip = async (file: File): Promise<RecordedWav> => {
-  if (file.size > MAX_AUDIO_UPLOAD_BYTES) {
-    throw new Error("too-large");
-  }
-  const clip = await toWavClip(file);
-  const base = file.name.replace(/\.[^.]+$/, "");
-  return {
-    ...clip,
-    name: `${(base || "voice").replace(/[^\w.\-]+/g, "_").slice(0, 80) || "voice"}.wav`,
-  };
 };
 
 export const startMicRecording = async (opts?: {

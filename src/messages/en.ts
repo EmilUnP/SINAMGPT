@@ -251,7 +251,7 @@ export const en = {
     inputTextHint: "You can type messages in this chat.",
     inputImageHint: "You can attach, paste, or drop images in this chat.",
     inputAudioHint:
-      "You can record or drop audio in this chat (up to 30 seconds).",
+      "You can record from the microphone in this chat (up to 30 seconds).",
     inputVideoHint:
       "Ollama lists this model as video-capable. This chat cannot send video yet.",
     imagePlaceholder: "Add a caption, or send the image…",
@@ -259,9 +259,9 @@ export const en = {
     visionFooterHint:
       "Enter to send · Shift+Enter for new line · Attach, paste, or drop images",
     audioFooterHint:
-      "Enter to send · Shift+Enter for new line · Record or drop audio",
+      "Enter to send · Shift+Enter for new line · Record from the microphone",
     audioVisionFooterHint:
-      "Enter to send · Shift+Enter for new line · Drop images or audio",
+      "Enter to send · Shift+Enter for new line · Record audio · attach or drop images",
     recordAudio: "Record audio",
     stopRecording: "Stop recording",
     removeAudio: "Remove recording",
@@ -280,20 +280,34 @@ export const en = {
     chooseMic: "Choose microphone",
     micLevel: "Microphone level",
     dropImages: "Drop images here",
-    dropAudio: "Drop audio here",
-    dropImagesOrAudio: "Drop images or audio here",
     dropUnsupported:
-      "This chat accepts JPEG, PNG, WebP, or GIF images, and audio files on audio models.",
-    audioRequired:
-      "This model does not support audio. Choose an audio model.",
-    audioLimit: "You can attach one audio clip per message.",
-    audioTooLarge: "That audio file is too large. Try a shorter clip.",
-    audioFileFailed: "Could not read that audio file. Try WAV, MP3, or M4A.",
+      "This chat accepts JPEG, PNG, WebP, or GIF images. Record audio with the microphone.",
     imageTooLarge: "Each image must be under 8 MB.",
     imageType: "Use JPEG, PNG, WebP, or GIF.",
     imageLimit: "You can attach up to {n} images.",
     imageFailed: "Could not read that image. Try another file.",
     visionRequired: "This model does not support images. Choose a vision model.",
+    toolsMenu: "Tools",
+    closeTools: "Close tools",
+    uploadImageHint: "JPEG, PNG, WebP, or GIF",
+    uploadImageNeedVision: "Pick a model that can read images.",
+    uploadImageNeedAdmin: "An admin must turn on File upload.",
+    toolSummarize: "Summarize",
+    toolSummarizeHint: "A shorter version of a text",
+    toolSummarizePrompt: "Summarize this clearly:\n\n",
+    toolTranslate: "Translate",
+    toolTranslateHint: "Into this screen language",
+    toolTranslatePrompt: "Translate this into English:\n\n",
+    toolsSignIn: "Sign in to save chats",
+    toolsSignInHint: "History, projects, and unlimited messages",
+    modelHint: {
+      "gemma3-4b": "Fastest answers",
+      "gemma3-12b": "All-around help",
+      "gemma4-e4b": "Voice and images",
+      "gemma4-31b": "Advanced with images",
+      "qwen35-9b": "Images and writing",
+      "qwen3-32b": "Advanced text & code",
+    },
   },
   share: {
     back: "Back",

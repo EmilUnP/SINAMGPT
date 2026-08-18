@@ -45,5 +45,13 @@ export const fleetDisplayName = (name: string): string | null => {
   return id ? FLEET_DISPLAY[id] : null;
 };
 
+/** Short picker subtitle, Gemini-style ("Fastest answers"). */
+export const fleetHintKey = (
+  name: string,
+): `chat.modelHint.${FleetId}` | null => {
+  const id = matchFleetModel(name);
+  return id ? `chat.modelHint.${id}` : null;
+};
+
 /** Qwen 3.5 is natively multimodal (text + image; Ollama may also list video). */
 export const isQwen35Vision = (name: string): boolean => /qwen3\.5/i.test(name);

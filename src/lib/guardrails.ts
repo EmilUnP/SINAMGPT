@@ -9,6 +9,7 @@ import {
   type KnowledgeSource,
 } from "@/lib/knowledge";
 import {
+  isInternalRewritePrompt,
   MULTILANG_SYSTEM_RULES,
   replyLanguageInstruction,
 } from "@/lib/multilang";
@@ -509,7 +510,7 @@ export const withSystemPrompt = async <T extends { role: string; content: string
   messages: T[],
   audience: "guest" | "user",
   projectId?: string | null,
-  opts?: { model?: string },
+  opts?: { model?: string; uiLocale?: "en" | "az" | "ru" },
 ): Promise<PreparedChat<T>> => {
   const config = getGuardrails();
   const withoutSystem = messages.filter((m) => m.role !== "system");
@@ -518,12 +519,18 @@ export const withSystemPrompt = async <T extends { role: string; content: string
     ? buildSystemPrompt(config)
     : `${DEFAULT_GUARDRAILS.persona}\n\n${MULTILANG_SYSTEM_RULES}`;
 
-  const lastUser = [...withoutSystem]
-    .reverse()
-    .find((m) => m.role === "user")?.content;
+  const userTurns = withoutSystem
+    .filter((m) => m.role === "user")
+    .map((m) => m.content)
+    .filter((text) => text.trim() && !isInternalRewritePrompt(text));
+  const lastUser = userTurns.at(-1) ?? "";
+  const priorText = userTurns.slice(-4, -1).join("\n");
 
   // Pin language before knowledge so company docs cannot override it
-  content = `${content}\n\n${replyLanguageInstruction(lastUser ?? "")}`;
+  content = `${content}\n\n${replyLanguageInstruction(lastUser, {
+    uiLocale: opts?.uiLocale,
+    priorText,
+  })}`;
 
   const knowledge = await resolveKnowledgeContext(
     lastUser ?? "",

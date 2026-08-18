@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.14.1
+**Current product:** v1.15.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -21,7 +21,7 @@ Three promises:
 
 1. **It stays with us.** Models run on the company machine (Ollama). We do not send chats to ChatGPT, Gemini, or other public clouds.
 2. **Admins own the facts and the rules.** Product text and “do not answer this” policy live in Admin, not only in code.
-3. **It answers in the user’s language.** The screen is English / Azərbaycan / Русский. Questions in Turkish still get a reply in that language when possible.
+3. **It answers in the user’s language.** The screen is English / Azərbaycan / Русский. Azerbaijani typed without special letters (nedir, nece, menim) still counts as Azerbaijani. Clarifying questions stay in that language. Questions in Turkish still get a reply in that language when possible.
 
 ---
 
@@ -30,7 +30,7 @@ Three promises:
 | Person | What they do |
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. |
-| **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Open **Models** to compare size and inputs. |
+| **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare size and inputs. |
 | **Admin** | Turns models on, edits knowledge, sets guardrails, watches usage (including the exact prompt), can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
@@ -67,11 +67,11 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 1 blocks:** the model never runs. The user sees the refusal text admins configured.
 
-**If step 3 finds nothing:** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes.
+**If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
-**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B), **and** an admin has turned on **File upload** (paperclip) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
+**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone** and/or **File import**. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
+**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains size and inputs.
 
 ---
 
@@ -88,7 +88,7 @@ We do **not** yet use “embeddings” (vector search). We use a **smart keyword
 
 That is why a question in Russian can still find an English or Azerbaijani note. We **translate the question for search**. We do **not** translate the whole library on every request.
 
-Admins keep the library in **Admin → Knowledge**. Citations under a reply (“From: …”) show which notes were used. Guests can get the same notes if Admin left knowledge on for guests.
+Admins keep the library in **Admin → Knowledge**. Citations under a reply (“From: …”) show which notes were used. A general question (what is AI, a writing tip) should not cite YURDUM or About SINAM. Guests can get the same notes if Admin left knowledge on for guests.
 
 **Honest limit:** this is still keyword search. A very vague question, or a fact that is not in the library, will miss. The next big upgrade (on the roadmap) is file/PDF upload and stronger search.
 
@@ -150,8 +150,8 @@ Say this clearly to the business:
 - We do **not** have departments, billing, or public internet share links. Share links work only for **logged-in** colleagues.  
 - We do **not** automatically read PDFs into knowledge yet (you paste or type docs in Admin).  
 - Vision is **not** every model — only those marked as image-capable, and only after Admin turns on File upload / File import.  
-- Voice is **not** every model — only those marked as audio-capable, and only after Admin turns on Microphone / File import. Video still cannot be sent.  
-- **Functions** on a model badge means the model *could* call extra functions; SINAMGPT **does not run that yet**.
+- Voice is **not** every model — only those marked as audio-capable, and only after Admin turns on Microphone. Video still cannot be sent.  
+- **Functions** on a model badge means the model *could* call extra functions; SINAMGPT **does not run that yet**. The **+** menu in the chat box is attach image plus summarize and translate helpers — it does not call model tools.
 
 ---
 

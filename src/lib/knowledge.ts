@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
+  KNOWLEDGE_BRAND_TOKENS,
   MULTILANG_STOP_WORDS,
   tokenizeMultilang,
   tokensAlign,
@@ -241,18 +242,40 @@ export const retrieveKnowledge = (
   query: string,
   settings = getKnowledgeSettings(),
   projectId?: string | null,
-  opts?: { categoryHint?: KnowledgeCategory | "none" | null },
+  opts?: {
+    categoryHint?: KnowledgeCategory | "none" | null;
+    /** Company-intent from the user's words — not from search-keyword expansion. */
+    companyIntent?: boolean;
+    /** Raw user text; gloss keywords cannot invent product hits from this. */
+    originalQuery?: string;
+  },
 ): KnowledgeDoc[] => {
   if (!settings.enabled) return [];
 
   const docs = listKnowledgeDocs().filter((d) => d.is_enabled === 1);
   if (!docs.length) return [];
 
-  const queryTokens = expandQueryTokens(query).filter(
-    (token) => token.length >= 3 && !MULTILANG_STOP_WORDS.has(token),
+  const originalQuery = (opts?.originalQuery ?? query).trim() || query;
+  const originalTokens = new Set(
+    expandQueryTokens(originalQuery).filter(
+      (token) => token.length >= 3 && !MULTILANG_STOP_WORDS.has(token),
+    ),
   );
+  const queryTokens = expandQueryTokens(query).filter((token) => {
+    if (token.length < 3 || MULTILANG_STOP_WORDS.has(token)) return false;
+    if (!KNOWLEDGE_BRAND_TOKENS.has(token)) return true;
+    return originalTokens.has(token);
+  });
   const queryTokenSet = new Set(queryTokens);
-  const companyIntent = looksLikeCompanyQuestion(query);
+  const companyIntent =
+    opts?.companyIntent ?? looksLikeCompanyQuestion(originalQuery);
+  const tokenIsGrounded = (token: string) => {
+    if (originalTokens.has(token)) return true;
+    for (const item of originalTokens) {
+      if (tokensAlign(token, item)) return true;
+    }
+    return false;
+  };
   const activeProject = projectId?.trim() || null;
   const categoryHint =
     opts?.categoryHint && opts.categoryHint !== "none"
@@ -260,7 +283,7 @@ export const retrieveKnowledge = (
       : null;
   const wantsContact =
     /\b(contact|əlaqə|elaqe|kontakt|телефон|phone|email|office|офис|ünvan|unvan|hours|saat)\b/i.test(
-      query,
+      originalQuery,
     );
 
   const tokenHit = (haystack: Set<string>, token: string) => {
@@ -312,16 +335,17 @@ export const retrieveKnowledge = (
 
     for (const token of queryTokenSet) {
       const weight = idf(token);
+      const grounded = tokenIsGrounded(token);
       const inTitle = tokenHit(titleTokens, token);
       const inTags = tokenHit(tagTokens, token);
       const inContent = tokenHit(contentTokens, token);
       if (inTitle) {
-        matchScore += 6 * weight;
-        strongTokens.add(token);
+        matchScore += grounded ? 6 * weight : 2 * weight;
+        if (grounded) strongTokens.add(token);
       }
       if (inTags) {
-        matchScore += 4 * weight;
-        strongTokens.add(token);
+        matchScore += grounded ? 4 * weight : 1 * weight;
+        if (grounded) strongTokens.add(token);
       }
       if (inContent) {
         matchScore += 2 * weight;
@@ -332,12 +356,14 @@ export const retrieveKnowledge = (
     const queryWords = [...queryTokenSet].filter((t) => t.length >= 4);
     for (let i = 0; i < queryWords.length - 1; i += 1) {
       const phrase = ` ${queryWords[i]} ${queryWords[i + 1]} `;
+      const groundedPhrase =
+        tokenIsGrounded(queryWords[i]) || tokenIsGrounded(queryWords[i + 1]);
       if (titleNorm.includes(phrase)) {
-        matchScore += 10;
-        strongTokens.add(queryWords[i]);
+        matchScore += groundedPhrase ? 10 : 3;
+        if (groundedPhrase) strongTokens.add(queryWords[i]);
       } else if (tagNorm.includes(phrase) || contentNorm.includes(phrase)) {
-        matchScore += 6;
-        strongTokens.add(queryWords[i]);
+        matchScore += groundedPhrase ? 6 : 2;
+        if (groundedPhrase) strongTokens.add(queryWords[i]);
       }
     }
 
@@ -414,10 +440,12 @@ export const retrieveKnowledge = (
   const specificIsStrong = Boolean(
     bestSpecific && (bestSpecific.strongHits >= 2 || bestSpecific.score >= 14),
   );
-  if (!specificIsStrong) {
+  if (companyIntent && !specificIsStrong) {
     take(always);
   }
-  take(weak);
+  if (companyIntent) {
+    take(weak);
+  }
 
   if (!picked.length && companyIntent) {
     const fallback = docs
@@ -450,11 +478,17 @@ export const resolveKnowledgeContext = async (
   }
 
   const gloss = await glossUserQuery(query, { model: opts?.model });
+  const companyIntent = looksLikeCompanyQuestion(query);
+  const glossCat = gloss.category ?? "none";
+  if (!companyIntent && (glossCat === "none" || glossCat === "other")) {
+    return { block: "", sources: [], showCitations: settings.showCitations };
+  }
+
   const docs = retrieveKnowledge(
     retrievalQuery(query, gloss),
     settings,
     projectId,
-    { categoryHint: gloss.category },
+    { categoryHint: gloss.category, companyIntent, originalQuery: query },
   );
   if (!docs.length) {
     return { block: "", sources: [], showCitations: settings.showCitations };
@@ -466,7 +500,7 @@ export const resolveKnowledgeContext = async (
     "- Answer from these notes. Prefer the first / most specific section over generic About/Contact.",
     "- Put concrete facts in the reply: years, headcount, phones, emails, product names (SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM).",
     "- Never answer with only a URL or a single markdown link.",
-    "- Rewrite into the REPLY LANGUAGE. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "- Rewrite into the REPLY LANGUAGE. If that language is Azerbaijani or Russian, do not translate the answer into English. Clarifying questions stay in the reply language. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
     "- Do not invent numbers or products that are not in the notes.",
     "If the user is not asking about the company, ignore this block and answer normally.",
   ];

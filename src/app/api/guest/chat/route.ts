@@ -56,6 +56,7 @@ const schema = z
       .max(40)
       .optional()
       .default([]),
+    locale: z.enum(["en", "az", "ru"]).optional(),
   })
   .superRefine((data, ctx) => {
     const text = data.message?.trim() ?? "";
@@ -229,7 +230,7 @@ export async function POST(request: Request) {
       ],
       "guest",
       null,
-      { model },
+      { model, uiLocale: parsed.data.locale },
     );
     const messages: ChatMessage[] = prepared.messages;
     const knowledgeSources = prepared.sources;

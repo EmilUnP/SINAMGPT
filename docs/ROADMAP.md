@@ -7,22 +7,22 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.14.1](../CHANGELOG.md#1141--2026-08-17) (see [README](../README.md)).
+**Current release:** [v1.15.0](../CHANGELOG.md#1150--2026-08-18) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.14.1**):
+What operators and users can rely on in the current tree (**v1.15.0**):
 
 | Area | Reality |
 |------|---------|
-| **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language |
-| **Chat** | Streaming replies, model picker (input badges), rewrite, theme; **Models guide** at `/models`. Image attach/drop and microphone exist but stay **off** until Admin → Settings → Features (File upload, File import, Microphone) **and** the model supports vision/audio. No Fast/Smart toggle — pick a model in the header |
+| **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models`. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone only** (Admin → Microphone + an audio model). No Fast/Smart toggle — pick a model in the composer |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
-| **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; citations; pack seed add-missing / refresh / replace |
+| **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b`. New pulls stay inactive until Admin → Models → Activate |
@@ -67,6 +67,18 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.15.0 — Composer tools & fleet tags (2026-08-18)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Composer **+** menu | `done` | Attach image, summarize, translate; grayed image upload when off; guest sign-in row |
+| Model picker in chat box | `done` | Compact pill (name + hint); no longer in the header |
+| Audio file import | `removed` | Voice is microphone only; file import is images only |
+| Model lab suites | `done` | Quick 18 / Assist 20 / Guardrails 17; AZ/RU language scoring |
+| RTX 5090 fleet tags | `done` | `gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b` |
+| Reply language pin | `done` | ASCII Azerbaijani stays AZ; UI language is a hint on short prompts |
+| Knowledge citations | `done` | General chat no longer cites About/YURDUM/Farabi; inject only on company intent or a real title/tag hit |
 
 ### v1.14.1 — Hardening (2026-08-17)
 
