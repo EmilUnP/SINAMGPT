@@ -7,25 +7,25 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.15.0](../CHANGELOG.md#1150--2026-08-18) (see [README](../README.md)).
+**Current release:** [v1.16.0](../CHANGELOG.md#1160--2026-08-18) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.15.0**):
+What operators and users can rely on in the current tree (**v1.16.0**):
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
-| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models`. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone only** (Admin → Microphone + an audio model). No Fast/Smart toggle — pick a model in the composer |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone only** (Admin → Microphone + an audio model). No Fast/Smart toggle — pick a model in the composer |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
-| **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b`. New pulls stay inactive until Admin → Models → Activate |
+| **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`. Every Gemma 4 has images + microphone. Llama 4 Scout and Maverick have images, not microphone. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
@@ -67,6 +67,16 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.16.0 — Public models guide & fleet expansion (2026-08-18)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Public Models guide | `done` | `/models` open without sign-in; home Models link; Fast / Balanced / Strong / Voice cards |
+| Gemma 4 26B | `done` | Fleet tag `gemma4:26b`; Pull and Activate like the other Gemma 4 sizes |
+| Llama 4 Maverick | `done` | Fleet tag `llama4:maverick` (alias `llama4:128x17b`); text + images; no microphone |
+| Gemma 4 audio | `done` | Every Gemma 4 (E4B / 26B / 31B) is Text + Image + Audio; 31B is no longer “no microphone” |
+| Models guide extras | `removed` | No download size, RTX 5090 note, limits paragraph, Functions lecture, or how-to-pick steps |
 
 ### v1.15.0 — Composer tools & fleet tags (2026-08-18)
 

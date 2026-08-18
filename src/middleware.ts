@@ -67,7 +67,6 @@ export async function middleware(request: NextRequest) {
 
   if (
     pathname.startsWith("/chat") ||
-    pathname.startsWith("/models") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/lab") ||
     pathname.startsWith("/developer") ||
@@ -109,8 +108,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/chat/:path*",
-    "/models",
-    "/models/:path*",
     "/admin/:path*",
     "/lab",
     "/lab/:path*",

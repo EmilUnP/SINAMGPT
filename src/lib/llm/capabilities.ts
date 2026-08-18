@@ -1,5 +1,5 @@
 import { gemma4HasAudio } from "@/lib/model-specs";
-import { isQwen35Vision } from "@/lib/model-fleet";
+import { isLlama4Vision, isQwen35Vision } from "@/lib/model-fleet";
 
 export type ModelCapabilities = {
   vision: boolean;
@@ -8,10 +8,10 @@ export type ModelCapabilities = {
   video: boolean;
 };
 const TOOLS_RE =
-  /\b(llama3\.[123]|llama-?3\.[123]|qwen2\.5|qwen3|mistral|mixtral|command-?r|firefunction|gpt-oss|deepseek-r1)\b/i;
+  /\b(llama3\.[123]|llama-?3\.[123]|llama-?4|qwen2\.5|qwen3|mistral|mixtral|command-?r|firefunction|gpt-oss|deepseek-r1)\b/i;
 
 const VISION_RE =
-  /\b(llava|bakllava|moondream|pixtral|internvl|minicpm-v|granite-vision|phi-?3-vision|phi-?4-multimodal|llama3\.2-vision|llama-?3\.2-vision|qwen2(\.5)?-vl|qwen2vl|qwen-vl|qwen3-vl|gemma-?4)\b/i;
+  /\b(llava|bakllava|moondream|pixtral|internvl|minicpm-v|granite-vision|phi-?3-vision|phi-?4-multimodal|llama3\.2-vision|llama-?3\.2-vision|llama-?4|qwen2(\.5)?-vl|qwen2vl|qwen-vl|qwen3-vl|gemma-?4)\b/i;
 
 const AUDIO_RE =
   /\b(whisper|audio|omni|qwen2-audio|qwen2\.5-omni|qwen3-omni)\b/i;
@@ -32,6 +32,7 @@ export const inferCapabilities = (name: string): ModelCapabilities => {
     VISION_RE.test(id) ||
     isGemma3Vision(id) ||
     isQwen35Vision(id) ||
+    isLlama4Vision(id) ||
     /vision/i.test(id) ||
     /[-_/]vl\b/i.test(id) ||
     /\bvl[-_]/i.test(id);
@@ -53,12 +54,10 @@ export const parseOllamaCapabilities = (
   const caps = raw
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.toLowerCase());
-  const gemma4Audio = gemma4HasAudio(fallbackName);
-  const audioFromOllama = caps.includes("audio") || heuristic.audio;
   return {
     vision: caps.includes("vision") || heuristic.vision,
     tools: caps.includes("tools") || heuristic.tools,
-    audio: gemma4Audio == null ? audioFromOllama : gemma4Audio,
+    audio: caps.includes("audio") || heuristic.audio,
     // Ollama has no video capability flag yet — name heuristic only.
     video: heuristic.video,
   };

@@ -28,7 +28,10 @@ OwnGPT setup ready.
    ollama pull gemma3:4b
    ollama pull gemma3:12b
    ollama pull gemma4:e4b
+   ollama pull gemma4:26b
    ollama pull gemma4:31b
+   ollama pull llama4:scout
+   ollama pull llama4:maverick
    ollama pull qwen3.5:9b
    ollama pull qwen3:32b
 

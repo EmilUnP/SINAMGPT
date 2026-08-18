@@ -7,8 +7,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Public models guide** — `/models` is open without signing in (https://ai.sinam.az/models). Home has a Models link. Cards show Fast / Balanced / Strong / Voice, what you can send, when to use it, and one caveat.
+- **Gemma 4 26B** — fleet tag `gemma4:26b` (display name, picker hint, Models card). Pull and Activate on the company box like the other Gemma 4 sizes.
+- **Llama 4 Maverick** — fleet tag `llama4:maverick` (alias `llama4:128x17b`). Native text + image from the Ollama card (vision + tools). No microphone. Pull and Activate like the other fleet models.
+- **Llama 4 Scout** — fleet tag `llama4:scout` (alias `llama4:16x17b`). Same Llama 4 vision family as Maverick, fewer parameters (109B MoE / 17B active vs 400B). No microphone.
+
+### Changed
+- **Gemma 4 inputs** — every Gemma 4 (E4B, 26B, 31B, and other Ollama Gemma 4 tags) is treated as Text + Image + Audio, matching the Ollama card (vision, tools, thinking, audio). 31B is no longer marked “no microphone”.
+
 ### Removed
-- **Models guide extras** — `/models` no longer shows download size, the RTX 5090 fleet note, the text/image/mic limits paragraph, or “Ollama also lists Functions”. Cards keep what you can send and when to use each model.
+- **Models guide extras** — `/models` no longer shows download size, the RTX 5090 fleet note, the text/image/mic limits paragraph, “Ollama also lists Functions”, or the how-to-pick lecture.
 
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
@@ -302,7 +311,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...v1.14.0

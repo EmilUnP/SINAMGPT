@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.15.0
+**Current product:** v1.16.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -29,8 +29,8 @@ Three promises:
 
 | Person | What they do |
 |--------|----------------|
-| **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. |
-| **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare size and inputs. |
+| **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
+| **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. |
 | **Admin** | Turns models on, edits knowledge, sets guardrails, watches usage (including the exact prompt), can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
@@ -69,9 +69,9 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
-**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
+**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains inputs and when to use each one.
+**Voice:** only if the model lists **Audio** (on this box: every Gemma 4 — E4B, 26B, 31B; not Gemma 3, Llama 4, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains inputs and when to use each one.
 
 ---
 
@@ -117,7 +117,7 @@ Everything is on the company PC (or the LAN host):
 |------|--------|
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
-| Models | Ollama on that machine (`gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b`) |
+| Models | Ollama on that machine (`gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`) |
 | Passwords | Hashed (not stored as plain text) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 
