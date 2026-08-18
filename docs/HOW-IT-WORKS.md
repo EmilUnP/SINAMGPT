@@ -69,9 +69,9 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 3 finds nothing:** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes.
 
-**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 4, Gemma 3 4B+, LLaVA, …), **and** an admin has turned on **File upload** (paperclip) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Text-only models stay text-only.
+**Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B), **and** an admin has turned on **File upload** (paperclip) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** only if the model lists **Audio** (for example Gemma 4 E2B / E4B, not the 31B dense card) **and** an admin has turned on **Microphone** and/or **File import**. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
+**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone** and/or **File import**. Clips are at most **30 seconds**. Video cannot be sent. Pick the model in the chat header; **Models** explains size and inputs.
 
 ---
 
@@ -117,7 +117,7 @@ Everything is on the company PC (or the LAN host):
 |------|--------|
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
-| Models | Ollama on that machine |
+| Models | Ollama on that machine (`gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b`) |
 | Passwords | Hashed (not stored as plain text) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 

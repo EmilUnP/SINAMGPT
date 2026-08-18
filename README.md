@@ -15,9 +15,9 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
-- **Local models** via [Ollama](https://ollama.com)
-- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, …). Those Features start **off**.
-- **Audio models** — record from the microphone (pick the device on laptops) or drop a short audio file; up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone / File import (also start **off**). Gemma 4 E2B/E4B yes, 31B dense no
+- **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`
+- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
+- **Audio models** — record from the microphone (pick the device on laptops) or drop a short audio file; up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone / File import (also start **off**). On this box: Gemma 4 E4B yes, Gemma 4 31B / Gemma 3 / Qwen no
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker (Text / Image / Audio, plus Ollama Functions tags), rewrite shortcuts
@@ -64,17 +64,26 @@ npm run build
 npm run start
 ```
 
-## Ollama models (suggestions)
+## Ollama models (company RTX 5090)
 
-| Machine | Suggested models |
-|--------|-------------------|
-| Strong GPU (24GB+ VRAM) | `llama3.1:70b`, `qwen2.5:32b`, `gemma4:32b` (vision) |
-| Mid GPU (8–16GB) | `llama3.1:8b`, `qwen2.5:14b`, `gemma3:12b` (vision) |
-| Light / laptop | `gemma3:4b` (vision), `gemma3:1b` (text only) |
+These tags are what the company GPU box actually has. After deploy, **Activate** each one under Admin → Models. Default is `gemma3:4b`.
+
+| Tag | Role |
+|-----|------|
+| `gemma3:4b` | Fast default. Text + images. No microphone. |
+| `gemma3:12b` | Stronger Gemma 3. Text + images. No microphone. |
+| `gemma4:e4b` | Gemma 4 small. Text + images + microphone (30s). |
+| `gemma4:31b` | Largest Gemma. Text + images. **No** microphone. |
+| `qwen3.5:9b` | Fast Qwen. Native images. No microphone (Ollama may list video; chat cannot send it). |
+| `qwen3:32b` | Strongest text. No images, no microphone. |
 
 ```bash
 ollama pull gemma3:4b
-ollama pull llama3.1:8b
+ollama pull gemma3:12b
+ollama pull gemma4:e4b
+ollama pull gemma4:31b
+ollama pull qwen3.5:9b
+ollama pull qwen3:32b
 ```
 
 ## Admin
@@ -161,7 +170,7 @@ Vision example (model must report `vision: true`):
 curl -N http://localhost:3055/api/v1/generate \
   -H "Authorization: Bearer sinam_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"gemma4:32b","stream":true,"messages":[{"role":"user","content":"What is in this image?","images":[{"mime":"image/jpeg","data":"<base64>"}]}]}'
+  -d '{"model":"gemma3:12b","stream":true,"messages":[{"role":"user","content":"What is in this image?","images":[{"mime":"image/jpeg","data":"<base64>"}]}]}'
 ```
 
 - `GET /api/v1/models` — enabled models (`name`, `displayName`, `backend`, `vision`, `tools`)

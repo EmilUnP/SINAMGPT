@@ -348,6 +348,25 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     ]),
   );
 
+  const persistName = db.prepare(
+    `UPDATE models SET display_name = ?, updated_at = datetime('now') WHERE name = ?`,
+  );
+  const persistFleetNames = db.transaction(
+    (items: Array<{ name: string; display_name: string }>) => {
+      for (const item of items) persistName.run(item.display_name, item.name);
+    },
+  );
+  persistFleetNames(
+    liveModels.flatMap((m) => {
+      const storedName = metaMap.get(m.name)?.display_name?.trim() ?? "";
+      const friendly = fleetDisplayName(m.name);
+      if (!friendly) return [];
+      if (storedName && storedName !== m.name) return [];
+      if (storedName === friendly) return [];
+      return [{ name: m.name, display_name: friendly }];
+    }),
+  );
+
   return liveModels.map((m) => {
     const meta = metaMap.get(m.name);
     const storedName = meta?.display_name?.trim() ?? "";

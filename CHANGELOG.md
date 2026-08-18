@@ -9,6 +9,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 - **Model lab** — suites match the current product: Russian cases, cross-language company knowledge, fewer duplicate EN/AZ twins. Quick 18 / Assist 20 / Guardrails 17. AZ/RU replies are scored on the expected language.
+- **RTX 5090 fleet** — docs, setup, Models guide, and display names match the company Ollama tags: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`. Qwen 3.5 is treated as vision (not microphone). Qwen 3 32B stays text-only.
 
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.

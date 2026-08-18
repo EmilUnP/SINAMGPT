@@ -24,10 +24,13 @@ OwnGPT setup ready.
 1) Make sure Ollama is running:
    ollama serve
 
-2) Pull a model (examples for a strong GPU PC):
-   ollama pull llama3.1:8b
-   ollama pull qwen2.5:14b
+2) Pull the company RTX 5090 fleet (activate each in Admin → Models):
    ollama pull gemma3:4b
+   ollama pull gemma3:12b
+   ollama pull gemma4:e4b
+   ollama pull gemma4:31b
+   ollama pull qwen3.5:9b
+   ollama pull qwen3:32b
 
 3) Set ADMIN_USERNAME and a unique ADMIN_PASSWORD (min 10 characters) in .env.local
 
