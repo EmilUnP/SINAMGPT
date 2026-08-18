@@ -10,12 +10,17 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
+import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { useIsMounted } from "@/lib/use-mounted";
 
 export type ModelOption = {
   name: string;
   display_name?: string;
   backend?: string;
+  vision?: boolean;
+  tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 type ModelPickerProps = {
@@ -27,15 +32,11 @@ type ModelPickerProps = {
   emptyLabel: string;
   ariaLabel: string;
   size?: "sm" | "md";
-  /** "glass" matches the guest landing header; "panel" the signed-in chrome. */
-  variant?: "panel" | "glass";
+  /** "glass" matches the guest landing header; "composer" sits in the chat box. */
+  variant?: "panel" | "glass" | "composer";
+  /** One-line subtitle under each model name in the menu. */
+  hintFor?: (option: ModelOption) => string | undefined;
   className?: string;
-};
-
-const backendLabel = (backend?: string) => {
-  if (backend === "vllm") return "vLLM";
-  if (backend === "ollama") return "Ollama";
-  return null;
 };
 
 const modelLabel = (option: ModelOption) => option.display_name || option.name;
@@ -49,12 +50,20 @@ export const ModelPicker = ({
   ariaLabel,
   size = "md",
   variant = "panel",
+  hintFor,
   className = "",
 }: ModelPickerProps) => {
   const mounted = useIsMounted();
   const [open, setOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [pos, setPos] = useState({ top: 0, left: 0, minWidth: 0 });
+  const [pos, setPos] = useState({
+    top: 0,
+    bottom: 0,
+    left: 0,
+    minWidth: 0,
+    maxHeight: 288,
+    openUp: false,
+  });
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const listId = useId();
@@ -64,18 +73,46 @@ export const ModelPicker = ({
   const selectedIndex = models.findIndex((m) => m.name === value);
   const selected = selectedIndex >= 0 ? models[selectedIndex] : null;
 
+  const isComposer = variant === "composer";
+
   const updatePos = () => {
+    if (isComposer) return;
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const width = Math.max(rect.width, 208);
-    // Keep the panel on screen when the trigger sits near the right edge.
+    const width = Math.max(rect.width, 240);
     const left = Math.min(rect.left, Math.max(8, window.innerWidth - width - 8));
-    setPos({ top: rect.bottom + 8, left, minWidth: rect.width });
+    const menuMaxH = 288;
+    const safeBottom = 12;
+    const spaceBelow = window.innerHeight - rect.bottom - safeBottom;
+    const spaceAbove = rect.top - safeBottom;
+    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const available = openUp ? spaceAbove - 8 : spaceBelow - 8;
+    const maxHeight = Math.max(120, Math.min(menuMaxH, available));
+    const gap = 8;
+    setPos(
+      openUp
+        ? {
+            top: 0,
+            bottom: window.innerHeight - rect.top + gap,
+            left,
+            minWidth: width,
+            maxHeight,
+            openUp: true,
+          }
+        : {
+            top: rect.bottom + gap,
+            bottom: 0,
+            left,
+            minWidth: width,
+            maxHeight,
+            openUp: false,
+          },
+    );
   };
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || isComposer) return;
     updatePos();
     const onReflow = () => updatePos();
     window.addEventListener("resize", onReflow);
@@ -84,7 +121,7 @@ export const ModelPicker = ({
       window.removeEventListener("resize", onReflow);
       window.removeEventListener("scroll", onReflow, true);
     };
-  }, [open]);
+  }, [open, isComposer]);
 
   // The panel owns the key handling while it is open, so it needs the focus.
   useEffect(() => {
@@ -182,49 +219,79 @@ export const ModelPicker = ({
 
   const pad = size === "sm" ? "px-3 py-1.5 text-xs" : "px-3 py-1.5 text-sm";
 
+  const menuItems = models.map((option, index) => {
+    const active = option.name === value;
+    const hint = hintFor?.(option);
+    return (
+      <button
+        key={option.name}
+        type="button"
+        role="option"
+        aria-selected={active}
+        onClick={() => commit(index)}
+        onMouseEnter={() => setFocusedIndex(index)}
+        className={`menu-item flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm ${
+          active ? "is-active" : ""
+        } ${index === focusedIndex ? "is-focused" : ""}`}
+      >
+        {active ? (
+          <Check size={14} className="shrink-0" />
+        ) : (
+          <span className="inline-block w-3.5 shrink-0" />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{modelLabel(option)}</span>
+          {hint ? (
+            <span className="mt-0.5 block truncate text-[11px] font-normal text-[var(--text-muted)]">
+              {hint}
+            </span>
+          ) : null}
+        </span>
+        <ModelCapabilityBadges
+          presentation="icons"
+          vision={option.vision}
+          audio={option.audio}
+          video={option.video}
+          tools={option.tools}
+        />
+      </button>
+    );
+  });
+
+  const menuPanel = open ? (
+    <div
+      ref={menuRef}
+      id={listId}
+      role="listbox"
+      aria-label={ariaLabel}
+      tabIndex={-1}
+      className={`menu-surface overflow-y-auto rounded-xl p-1 ${
+        isComposer
+          ? "absolute bottom-full right-0 z-50 mb-2 min-w-[16rem] max-h-80"
+          : "fixed z-[200]"
+      }`}
+      style={
+        isComposer
+          ? undefined
+          : {
+              top: pos.openUp ? "auto" : pos.top,
+              bottom: pos.openUp ? pos.bottom : "auto",
+              left: pos.left,
+              minWidth: pos.minWidth,
+              maxHeight: pos.maxHeight,
+            }
+      }
+    >
+      {menuItems}
+    </div>
+  ) : null;
+
   const menu =
-    mounted && open
-      ? createPortal(
-          <div
-            ref={menuRef}
-            id={listId}
-            role="listbox"
-            aria-label={ariaLabel}
-            tabIndex={-1}
-            className="menu-surface fixed z-[200] max-h-72 overflow-y-auto rounded-xl p-1"
-            style={{ top: pos.top, left: pos.left, minWidth: pos.minWidth }}
-          >
-            {models.map((option, index) => {
-              const active = option.name === value;
-              const backend = backendLabel(option.backend);
-              return (
-                <button
-                  key={option.name}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => commit(index)}
-                  onMouseEnter={() => setFocusedIndex(index)}
-                  className={`menu-item flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm ${
-                    active ? "is-active" : ""
-                  } ${index === focusedIndex ? "is-focused" : ""}`}
-                >
-                  <span className="min-w-0 flex-1 truncate">
-                    {modelLabel(option)}
-                  </span>
-                  {backend ? (
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-60">
-                      {backend}
-                    </span>
-                  ) : null}
-                  {active ? <Check size={14} className="shrink-0" /> : null}
-                </button>
-              );
-            })}
-          </div>,
-          document.body,
-        )
-      : null;
+    isComposer || !menuPanel
+      ? menuPanel
+      : mounted
+        ? createPortal(menuPanel, document.body)
+        : null;
 
   return (
     <div className={`relative ${className}`}>
@@ -239,13 +306,24 @@ export const ModelPicker = ({
         aria-controls={open ? listId : undefined}
         aria-label={ariaLabel}
         title={selected ? modelLabel(selected) : emptyLabel}
-        className={`model-picker-trigger inline-flex w-full items-center gap-1.5 rounded-full ${pad} ${
-          variant === "glass" ? "on-glass" : ""
-        } outline-none transition disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`model-picker-trigger inline-flex items-center gap-1.5 rounded-full ${
+          isComposer ? "px-3 text-xs leading-none" : pad
+        } ${
+          isComposer ? "in-composer h-11 sm:h-10" : "w-full"
+        } ${variant === "glass" ? "on-glass" : ""} outline-none transition disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <span className="min-w-0 flex-1 truncate text-left">
           {selected ? modelLabel(selected) : emptyLabel}
         </span>
+        {selected && variant !== "composer" ? (
+          <ModelCapabilityBadges
+            presentation="icons"
+            vision={selected.vision}
+            audio={selected.audio}
+            video={selected.video}
+            tools={selected.tools}
+          />
+        ) : null}
         <ChevronDown
           size={size === "sm" ? 13 : 14}
           className={`shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}

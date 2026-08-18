@@ -3,28 +3,32 @@
 Living plan for features that make SINAMGPT more valuable as a **local company GPT**.  
 Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: status here should match the code.
 
+For a **plain-language** picture of chat, knowledge, and safety (managers / everyday users), see [HOW-IT-WORKS.md](./HOW-IT-WORKS.md).
+
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.8.0](../CHANGELOG.md#180--2026-08-13) (see [README](../README.md)).
+**Current release:** [v1.15.0](../CHANGELOG.md#1150--2026-08-18) (see [README](../README.md)).
 
 ---
 
-## Product today (v1.8.0)
+## Product today
 
-What operators and users can rely on right now:
+What operators and users can rely on in the current tree (**v1.15.0**):
 
 | Area | Reality |
 |------|---------|
-| **Language** | English / Azərbaycan UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani |
-| **Chat** | Streaming replies, model picker, Fast/Smart presets, rewrite (shorter / more formal / continue), theme (light/dark/system) |
-| **History** | Per-user conversations in SQLite (`data/owngpt.db`) |
+| **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models`. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone only** (Admin → Microphone + an audio model). No Fast/Smart toggle — pick a model in the composer |
+| **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
-| **Share** | Read-only `/share/[token]` for **logged-in** colleagues; owner can revoke or rotate (“New link”) |
-| **Knowledge** | Living Admin library (keyword RAG, EN / AZ / RU / TR); AZ inflections and product synonyms; pack seed add-missing / refresh / replace; citations; corpus stats |
-| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; guest daily + burst limits; admin middleware by session role |
-| **LLM** | Ollama and optional vLLM in parallel (`LLM_BACKENDS`) |
-| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (40) / Assist (42) / Guardrails (31); Live chat, Results scores, Charts |
+| **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
+| **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
+| **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
+| **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
+| **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b`. New pulls stay inactive until Admin → Models → Activate |
+| **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
+| **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
+| **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -54,7 +58,6 @@ Ideas kept for later — not a commitment.
 | Chat modes (Ask SINAM / Work / Write) | Productized feel |
 | Departments / knowledge visibility | Multi-team beyond personal projects |
 | Export chat (Markdown / PDF) | Manager handoffs |
-| Voice input | Quick questions |
 | ⌘K command palette | Power users |
 | First-login onboarding | Reduce confusion |
 | Project archive (soft-delete) | Schema has `is_archived`; UI today **hard-deletes** and untags knowledge |
@@ -64,6 +67,86 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.15.0 — Composer tools & fleet tags (2026-08-18)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Composer **+** menu | `done` | Attach image, summarize, translate; grayed image upload when off; guest sign-in row |
+| Model picker in chat box | `done` | Compact pill (name + hint); no longer in the header |
+| Audio file import | `removed` | Voice is microphone only; file import is images only |
+| Model lab suites | `done` | Quick 18 / Assist 20 / Guardrails 17; AZ/RU language scoring |
+| RTX 5090 fleet tags | `done` | `gemma3:4b` / `12b`, `gemma4:e4b` / `31b`, `qwen3.5:9b`, `qwen3:32b` |
+| Reply language pin | `done` | ASCII Azerbaijani stays AZ; UI language is a hint on short prompts |
+| Knowledge citations | `done` | General chat no longer cites About/YURDUM/Farabi; inject only on company intent or a real title/tag hit |
+
+### v1.14.1 — Hardening (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Shared attachments | `done` | Non-owners need the share token on `/api/attachments` |
+| Admin seed | `done` | No default `AdminChangeMe123!` password |
+| Chat / guest limits | `done` | Signed-in chat RPM; guest daily cap also by IP |
+| Admin polling | `done` | Cached LLM ping; usage tab pauses when hidden |
+
+### v1.14.0 — Russian UI, chat input flags & usage detail (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Russian UI | `done` | Flag toggle EN / AZ / RU; full product copy; `ru-RU` dates |
+| Chat input feature flags | `done` | File upload, File import, Microphone start **off** in Admin → Settings → Features |
+| Usage request detail | `done` | Click a live or past usage row for the exact prompt and reply |
+| Microphone replies | `done` | Native `/api/chat` WAV path; player duration no longer 0:00 |
+
+### v1.13.0 — Voice, mic picker & drag-and-drop (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Microphone audio | `done` | Audio models; 16 kHz mono WAV, 30s; playback in chat and shared links |
+| Microphone picker | `done` | Hardware devices only; recording uses the selected mic |
+| Drag and drop | `done` | Images on vision models; audio files on audio models; guest images too |
+| Models guide cards | `done` | How-to-pick, use cases, pros/cons; Audio is sendable; card spec block removed |
+
+### v1.12.0 — Models guide & clearer picker (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Models guide `/models` | `done` | Size, inputs, Default, when to use; header + sidebar |
+| Capability badges | `done` | Text / Image you can send; Audio follows Ollama tags; Functions display-only |
+| Cross-language keyword search | `done` | Query gloss EN / AZ / RU before RAG and hard-block match |
+| Fast / Smart presets | `removed` | Header picker + admin default only |
+
+### v1.11.0 — Admin control of models & surfaces (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Activate models | `done` | New Ollama pulls appear on Admin → Models inactive until Activate |
+| Ollama-only runtime | `done` | vLLM adapter kept in repo, not selectable |
+| Settings On/Off toggles | `done` | Features, guest, and other admin switches use On/Off buttons |
+
+### v1.10.1 — Feature toggles (2026-08-17)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Feature flags (Settings) | `done` | Developer API + Dev lab off until Admin → Settings → Features; chat inputs added in v1.14.0 |
+
+### v1.10.0 — Vision chat & mobile polish (2026-08-14)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Image chat on vision models | `done` | Attach/paste JPEG/PNG/WebP/GIF; Ollama `images` + vLLM `image_url` |
+| Capability badges | `done` | Inputs + Functions on picker and Admin → Models; Functions is display-only |
+| Attachment storage | `done` | `data/attachments/`; owner or shared-chat access via `/api/attachments` |
+| API images | `done` | `/api/v1/models` `vision`/`tools`; `/api/v1/generate` optional `images` |
+| Mobile / EN-AZ chrome | `done` | Overflow More menu, safe-area, 16px composer, attach-image copy |
+
+### v1.9.0 — Corporate API gateway (2026-08-14)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| API keys `/developer` | `done` | Users create/revoke keys; secret shown once; hashed at rest |
+| `GET /api/v1/models` + `POST /api/v1/generate` | `done` | Custom JSON/SSE; raw model proxy (no RAG, no guardrails) |
+| Dev lab `/devlab` | `done` | Admin keys, request log, RPM/CORS/gateway settings |
 
 ### v1.8.0 — Lab console (2026-08-13)
 

@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
+import { hydrateUiMessage } from "@/lib/attachments";
 import { getDb } from "@/lib/db";
-import type { Conversation, KnowledgeCitation, Message } from "@/lib/types";
+import type { Conversation, Message } from "@/lib/types";
 
 export type SharedConversation = Pick<
   Conversation,
@@ -69,30 +70,18 @@ export const getSharedConversation = (
 export const getSharedMessages = (conversationId: string): Message[] => {
   const rows = getDb()
     .prepare(
-      `SELECT id, conversation_id, role, content, sources, created_at
-       FROM messages
-       WHERE conversation_id = ?
+      `SELECT * FROM (
+         SELECT id, conversation_id, role, content, sources, attachments, created_at
+         FROM messages
+         WHERE conversation_id = ?
+         ORDER BY created_at DESC
+         LIMIT 500
+       )
        ORDER BY created_at ASC`,
     )
-    .all(conversationId) as Array<Message & { sources: string | null }>;
+    .all(conversationId) as Array<
+    Message & { sources: string | null; attachments?: string | null }
+  >;
 
-  return rows.map((row) => {
-    let sources: KnowledgeCitation[] | null = null;
-    if (row.sources) {
-      try {
-        const parsed = JSON.parse(row.sources) as KnowledgeCitation[];
-        if (Array.isArray(parsed) && parsed.length) sources = parsed;
-      } catch {
-        sources = null;
-      }
-    }
-    return {
-      id: row.id,
-      conversation_id: row.conversation_id,
-      role: row.role,
-      content: row.content,
-      created_at: row.created_at,
-      sources,
-    };
-  });
+  return rows.map((row) => hydrateUiMessage(row));
 };

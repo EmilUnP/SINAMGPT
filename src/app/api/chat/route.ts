@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { getCurrentUser, markActive, newId } from "@/lib/auth";
+import {
+  MAX_CHAT_IMAGES,
+  parseAttachments,
+  saveMessageImages,
+  toLlmHistory,
+} from "@/lib/attachments";
+import { AUDIO_MIME } from "@/lib/audio-limits";
 import { getDb } from "@/lib/db";
 import {
   checkInputGuardrails,
@@ -8,23 +15,46 @@ import {
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { assertAssignableProject } from "@/lib/projects";
 import {
+  FEATURE_DISABLED_ERROR,
+  isChatAudioEnabled,
+  isChatImagesEnabled,
+} from "@/lib/features";
+import {
   getChatRuntimeOptions,
   getUserHistoryLimitSetting,
   getUserMaxCharsSetting,
   isModelEnabled,
+  modelSupportsAudio,
+  modelSupportsVision,
   resolveOllamaModelName,
 } from "@/lib/settings";
 import {
+  attachUsageRequest,
   finishUsage,
   markUsageToken,
   startUsage,
 } from "@/lib/usage";
+import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import type { Conversation, Message } from "@/lib/types";
+
+const imageSchema = z.object({
+  mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  data: z.string().min(32).max(16_000_000),
+  name: z.string().trim().max(200).optional(),
+});
+
+const audioSchema = z.object({
+  mime: z.literal(AUDIO_MIME),
+  data: z.string().min(32).max(3_000_000),
+  name: z.string().trim().max(200).optional(),
+});
 
 const schema = z
   .object({
     conversationId: z.string().min(1).optional(),
-    message: z.string().trim().min(1).max(32000).optional(),
+    message: z.string().max(32000).optional(),
+    images: z.array(imageSchema).max(MAX_CHAT_IMAGES).optional(),
+    audio: audioSchema.optional(),
     model: z.string().trim().min(1).max(120),
     projectId: z.string().trim().min(1).max(64).nullable().optional(),
     mode: z
@@ -32,9 +62,13 @@ const schema = z
       .default("send"),
     editMessageId: z.string().min(1).optional(),
     rewrite: z.enum(["shorter", "formal", "continue"]).optional(),
+    locale: z.enum(["en", "az", "ru"]).optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.mode === "send" && !data.message) {
+    const text = data.message?.trim() ?? "";
+    const imageCount = data.images?.length ?? 0;
+    const hasAudio = Boolean(data.audio);
+    if (data.mode === "send" && !text && imageCount === 0 && !hasAudio) {
       ctx.addIssue({
         code: "custom",
         message: "Message is required",
@@ -78,19 +112,29 @@ const schema = z
 
 const REWRITE_PROMPTS = {
   shorter:
-    "Rewrite your previous answer to be shorter and tighter. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+    "Rewrite your previous answer to be shorter and tighter. Keep the SAME LANGUAGE as that answer (Azerbaijani stays Azerbaijani, Russian stays Russian, English stays English). Do not switch to English. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
   formal:
-    "Rewrite your previous answer in a more formal, professional tone suitable for internal company use. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
+    "Rewrite your previous answer in a more formal, professional tone suitable for internal company use. Keep the SAME LANGUAGE as that answer. Do not switch to English. Keep the same meaning and key facts. Do not add a preface — return only the rewritten answer.",
   continue:
-    "Continue your previous answer with useful additional detail. Return the complete answer: keep what you already said, then add the continuation. Do not add a preface like “Sure” — return only the full answer.",
+    "Continue your previous answer with useful additional detail, in the SAME LANGUAGE as that answer. Do not switch to English. Return the complete answer: keep what you already said, then add the continuation. Do not add a preface like “Sure” — return only the full answer.",
 } as const;
 
 const CONVERSATION_SELECT =
   "id, user_id, title, model, project_id, is_pinned, created_at, updated_at";
 
-const titleFromMessage = (text: string): string => {
+const MESSAGE_SELECT = "id, role, content, created_at, attachments";
+
+const titleFromPrompt = (
+  text: string,
+  hasImages: boolean,
+  hasAudio = false,
+): string => {
   const cleaned = text.replace(/\s+/g, " ").trim();
-  return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
+  if (cleaned) {
+    return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned;
+  }
+  if (hasAudio) return "Voice";
+  return hasImages ? "Image" : "New chat";
 };
 
 type DbMessage = {
@@ -98,9 +142,36 @@ type DbMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+  attachments?: string | null;
 };
 
-const streamAssistantReply = (input: {
+const LLM_HISTORY_HARD_CAP = 500;
+
+const windowForLlm = (rows: DbMessage[]): DbMessage[] => {
+  const limit = getUserHistoryLimitSetting();
+  const cap = limit > 0 ? limit : LLM_HISTORY_HARD_CAP;
+  return rows.length > cap ? rows.slice(-cap) : rows;
+};
+
+const loadRecentMessages = (
+  conversationId: string,
+  cap = LLM_HISTORY_HARD_CAP,
+): DbMessage[] => {
+  const limit = cap > 0 ? cap : LLM_HISTORY_HARD_CAP;
+  return getDb()
+    .prepare(
+      `SELECT * FROM (
+         SELECT ${MESSAGE_SELECT} FROM messages
+         WHERE conversation_id = ?
+         ORDER BY created_at DESC
+         LIMIT ?
+       )
+       ORDER BY created_at ASC`,
+    )
+    .all(conversationId, limit) as DbMessage[];
+};
+
+const streamAssistantReply = async (input: {
   userId: string;
   username: string;
   conversationId: string;
@@ -109,6 +180,7 @@ const streamAssistantReply = (input: {
   promptText: string;
   userMessage: Message;
   history: ChatMessage[];
+  uiLocale?: "en" | "az" | "ru";
 }) => {
   const {
     userId,
@@ -119,6 +191,7 @@ const streamAssistantReply = (input: {
     promptText,
     userMessage,
     history,
+    uiLocale,
   } = input;
 
   const db = getDb();
@@ -133,13 +206,15 @@ const streamAssistantReply = (input: {
   const historyLimit = getUserHistoryLimitSetting();
   const contextHistory =
     historyLimit > 0 ? history.slice(-historyLimit) : history;
-  const prepared = withSystemPrompt(
+  const prepared = await withSystemPrompt(
     contextHistory,
     "user",
     conversation.project_id,
+    { model, uiLocale },
   );
   const promptedHistory = prepared.messages;
   const knowledgeSources = prepared.sources;
+  attachUsageRequest(usageId, promptedHistory);
   const runtime = getChatRuntimeOptions();
 
   const startStream = async () => {
@@ -222,7 +297,7 @@ const streamAssistantReply = (input: {
               const piece = chunk.message?.content ?? "";
               if (piece) {
                 assistantText += piece;
-                markUsageToken(usageId, piece.length);
+                markUsageToken(usageId, piece);
                 send("token", { content: piece });
               }
 
@@ -333,6 +408,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const burst = takeRateLimit(`chat:user:${user.id}`, 40, 60 * 1000);
+  if (!burst.ok) {
+    return Response.json(
+      { error: "Too many requests. Slow down." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(burst.retryAfterSec) },
+      },
+    );
+  }
+  const ipBurst = takeRateLimit(`chat:ip:${clientIp(request)}`, 80, 60 * 1000);
+  if (!ipBurst.ok) {
+    return Response.json(
+      { error: "Too many requests. Slow down." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(ipBurst.retryAfterSec) },
+      },
+    );
+  }
+
   markActive(user.id);
 
   try {
@@ -347,6 +443,7 @@ export async function POST(request: Request) {
     }
 
     const mode = parsed.data.mode;
+    const uiLocale = parsed.data.locale;
     const model = resolveOllamaModelName(parsed.data.model);
     const maxChars = getUserMaxCharsSetting();
     const db = getDb();
@@ -355,6 +452,33 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
+      );
+    }
+
+    const incomingImages = parsed.data.images ?? [];
+    const incomingAudio = parsed.data.audio ?? null;
+    if (incomingImages.length && !isChatImagesEnabled()) {
+      return Response.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
+    }
+    if (incomingAudio && !isChatAudioEnabled()) {
+      return Response.json({ error: FEATURE_DISABLED_ERROR }, { status: 403 });
+    }
+    if (incomingImages.length && !modelSupportsVision(model)) {
+      return Response.json(
+        {
+          error:
+            "This model does not support images. Choose a vision model.",
+        },
+        { status: 400 },
+      );
+    }
+    if (incomingAudio && !modelSupportsAudio(model)) {
+      return Response.json(
+        {
+          error:
+            "This model does not support audio. Choose an audio model.",
+        },
+        { status: 400 },
       );
     }
 
@@ -378,7 +502,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -438,20 +562,22 @@ export async function POST(request: Request) {
         .get(conversationId) as Conversation;
 
       const history: ChatMessage[] = [
-        ...rows.slice(0, lastAssistantIdx).map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        ...toLlmHistory(
+          conversationId,
+          windowForLlm(rows.slice(0, lastAssistantIdx)),
+        ),
         { role: "assistant", content: lastAssistant.content },
         { role: "user", content: REWRITE_PROMPTS[style] },
       ];
 
+      const lastUserAttachments = parseAttachments(lastUser.attachments);
       const userMessage: Message = {
         id: lastUser.id,
         conversation_id: conversationId,
         role: "user",
         content: lastUser.content,
         created_at: lastUser.created_at,
+        attachments: lastUserAttachments.length ? lastUserAttachments : null,
       };
 
       return streamAssistantReply({
@@ -463,6 +589,7 @@ export async function POST(request: Request) {
         promptText: `[rewrite:${style}] ${lastUser.content}`,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
@@ -485,7 +612,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -507,10 +634,11 @@ export async function POST(request: Request) {
       }
 
       const lastUser = rows[lastUserIdx];
-      const guard = checkInputGuardrails(lastUser.content, "user", {
+      const guard = await checkInputGuardrails(lastUser.content, "user", {
         username: user.username,
         userId: user.id,
         projectId: owned.project_id,
+        model,
       });
       if (guard.blocked) {
         return Response.json(
@@ -546,16 +674,19 @@ export async function POST(request: Request) {
         )
         .get(conversationId) as Conversation;
 
-      const history = rows
-        .slice(0, lastUserIdx + 1)
-        .map((m) => ({ role: m.role, content: m.content })) as ChatMessage[];
+      const history = toLlmHistory(
+        conversationId,
+        windowForLlm(rows.slice(0, lastUserIdx + 1)),
+      );
 
+      const lastUserAttachments = parseAttachments(lastUser.attachments);
       const userMessage: Message = {
         id: lastUser.id,
         conversation_id: conversationId,
         role: "user",
         content: lastUser.content,
         created_at: lastUser.created_at,
+        attachments: lastUserAttachments.length ? lastUserAttachments : null,
       };
 
       return streamAssistantReply({
@@ -567,6 +698,7 @@ export async function POST(request: Request) {
         promptText: lastUser.content,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
@@ -590,10 +722,11 @@ export async function POST(request: Request) {
         )
         .get(conversationId, user.id) as Conversation | undefined;
 
-      const guard = checkInputGuardrails(message, "user", {
+      const guard = await checkInputGuardrails(message, "user", {
         username: user.username,
         userId: user.id,
         projectId: owned?.project_id,
+        model,
       });
       if (guard.blocked) {
         return Response.json(
@@ -616,7 +749,7 @@ export async function POST(request: Request) {
 
       const rows = db
         .prepare(
-          `SELECT id, role, content, created_at FROM messages
+          `SELECT ${MESSAGE_SELECT} FROM messages
            WHERE conversation_id = ?
            ORDER BY created_at ASC`,
         )
@@ -667,7 +800,7 @@ export async function POST(request: Request) {
           `UPDATE conversations
            SET title = ?, model = ?, updated_at = datetime('now')
            WHERE id = ?`,
-        ).run(titleFromMessage(message), model, conversationId);
+        ).run(titleFromPrompt(message, false), model, conversationId);
       } else {
         db.prepare(
           `UPDATE conversations
@@ -682,20 +815,23 @@ export async function POST(request: Request) {
         )
         .get(conversationId) as Conversation;
 
-      const history = [
-        ...rows.slice(0, editIdx).map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        { role: "user" as const, content: message },
-      ] as ChatMessage[];
+      const history = toLlmHistory(
+        conversationId,
+        windowForLlm(
+          rows.slice(0, editIdx + 1).map((row, i) =>
+            i === editIdx ? { ...row, content: message } : row,
+          ),
+        ),
+      );
 
+      const editAttachments = parseAttachments(rows[editIdx].attachments);
       const userMessage: Message = {
         id: editMessageId,
         conversation_id: conversationId,
         role: "user",
         content: message,
         created_at: rows[editIdx].created_at,
+        attachments: editAttachments.length ? editAttachments : null,
       };
 
       return streamAssistantReply({
@@ -707,11 +843,16 @@ export async function POST(request: Request) {
         promptText: message,
         userMessage,
         history,
+        uiLocale,
       });
     }
 
     // ——— Normal send ———
-    const message = parsed.data.message!;
+    const message =
+      (parsed.data.message ?? "").trim() ||
+      (incomingAudio
+        ? "Transcribe this recording, then respond to what was said."
+        : "");
 
     if (message.length > maxChars) {
       return Response.json(
@@ -747,10 +888,11 @@ export async function POST(request: Request) {
       ).run(model, conversationId);
     }
 
-    const guard = checkInputGuardrails(message, "user", {
+    const guard = await checkInputGuardrails(message, "user", {
       username: user.username,
       userId: user.id,
       projectId: projectIdForGuard,
+      model,
     });
     if (guard.blocked) {
       return Response.json(
@@ -780,25 +922,41 @@ export async function POST(request: Request) {
       ).run(
         conversationId,
         user.id,
-        titleFromMessage(message),
+        titleFromPrompt(
+          message,
+          incomingImages.length > 0,
+          Boolean(incomingAudio),
+        ),
         model,
         projectCheck.projectId,
       );
     }
 
     const userMessageId = newId();
-    db.prepare(
-      `INSERT INTO messages (id, conversation_id, role, content)
-       VALUES (?, ?, 'user', ?)`,
-    ).run(userMessageId, conversationId, message);
+    const saved = saveMessageImages(
+      conversationId,
+      userMessageId,
+      incomingImages,
+      incomingAudio,
+    );
+    if (saved.error) {
+      return Response.json({ error: saved.error }, { status: 400 });
+    }
 
-    const history = db
-      .prepare(
-        `SELECT role, content FROM messages
-         WHERE conversation_id = ?
-         ORDER BY created_at ASC`,
-      )
-      .all(conversationId) as ChatMessage[];
+    db.prepare(
+      `INSERT INTO messages (id, conversation_id, role, content, attachments)
+       VALUES (?, ?, 'user', ?, ?)`,
+    ).run(
+      userMessageId,
+      conversationId,
+      message,
+      saved.attachments.length ? JSON.stringify(saved.attachments) : null,
+    );
+
+    const historyLimit = getUserHistoryLimitSetting();
+    const fetchCap = historyLimit > 0 ? historyLimit : LLM_HISTORY_HARD_CAP;
+    const historyRows = loadRecentMessages(conversationId, fetchCap);
+    const history = toLlmHistory(conversationId, historyRows);
 
     let conversation = db
       .prepare(
@@ -806,11 +964,22 @@ export async function POST(request: Request) {
       )
       .get(conversationId) as Conversation;
 
-    const isFirstExchange =
-      history.filter((m) => m.role === "user").length === 1;
+    const userCount = (
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM messages
+           WHERE conversation_id = ? AND role = 'user'`,
+        )
+        .get(conversationId) as { n: number }
+    ).n;
+    const isFirstExchange = userCount === 1;
 
     if (isFirstExchange && conversation.title === "New chat") {
-      const title = titleFromMessage(message);
+      const title = titleFromPrompt(
+        message,
+        incomingImages.length > 0,
+        Boolean(incomingAudio),
+      );
       db.prepare(
         `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
       ).run(title, conversationId);
@@ -826,6 +995,7 @@ export async function POST(request: Request) {
       role: "user",
       content: message,
       created_at: new Date().toISOString(),
+      attachments: saved.attachments.length ? saved.attachments : null,
     };
 
     return streamAssistantReply({
@@ -834,9 +1004,10 @@ export async function POST(request: Request) {
       conversationId,
       conversation,
       model,
-      promptText: message,
+      promptText: message || (incomingAudio ? "[audio]" : "[image]"),
       userMessage,
       history,
+      uiLocale,
     });
   } catch (error) {
     console.error("chat error", error);

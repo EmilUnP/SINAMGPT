@@ -66,7 +66,7 @@ export async function PATCH(request: Request) {
           name: parsed.data.name,
           size: 0,
           modified_at: "",
-          is_enabled: parsed.data.is_enabled ?? true,
+          is_enabled: parsed.data.is_enabled ?? false,
           display_name:
             parsed.data.display_name?.trim() || parsed.data.name,
         },

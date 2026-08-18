@@ -1,6 +1,7 @@
 import type { AppLocale } from "@/lib/locale";
 import { az } from "./az";
 import { en, type Messages } from "./en";
+import { ru } from "./ru";
 
 export type { Messages };
 export type MessageNamespace = keyof Messages;
@@ -8,6 +9,7 @@ export type MessageNamespace = keyof Messages;
 export const catalogs: Record<AppLocale, Messages> = {
   en,
   az,
+  ru,
 };
 
 type NestedKeyOf<T, Prefix extends string = ""> = T extends object

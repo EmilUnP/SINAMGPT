@@ -1,10 +1,17 @@
 import { getDb } from "@/lib/db";
+import { inferCapabilities } from "@/lib/llm/capabilities";
+import { fleetDisplayName } from "@/lib/model-fleet";
 import {
   getDefaultModel,
   listModels,
   type LlmBackend,
   type LlmModel,
 } from "@/lib/llm";
+import {
+  getFeatureFlags,
+  setFeatureFlags,
+  type FeatureFlags,
+} from "@/lib/features";
 
 const KEY_GUEST_DAILY_LIMIT = "guest_daily_limit";
 const KEY_GUEST_MAX_CHARS = "guest_max_message_chars";
@@ -12,8 +19,6 @@ const KEY_GUEST_ENABLED = "guest_enabled";
 const KEY_GUEST_HISTORY_LIMIT = "guest_history_limit";
 const KEY_REGISTRATION_ENABLED = "registration_enabled";
 const KEY_DEFAULT_MODEL = "default_model";
-const KEY_FAST_MODEL = "fast_model";
-const KEY_SMART_MODEL = "smart_model";
 const KEY_USER_MAX_CHARS = "user_max_message_chars";
 const KEY_USER_HISTORY_LIMIT = "user_history_limit";
 const KEY_TEMPERATURE = "chat_temperature";
@@ -27,6 +32,10 @@ export type ManagedModel = LlmModel & {
 
 export type PublicModel = LlmModel & {
   display_name: string;
+  vision: boolean;
+  tools: boolean;
+  audio: boolean;
+  video: boolean;
 };
 
 export type AppSettings = {
@@ -36,16 +45,17 @@ export type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
-  /** Preset for chat “Fast” toggle (empty = fall back to default) */
-  fastModel: string;
-  /** Preset for chat “Smart” toggle (empty = fall back to default) */
-  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
   numPredict: number;
   topP: number;
   loggedInUnlimited: true;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 const getSetting = (key: string): string | null => {
@@ -158,26 +168,8 @@ export const setDefaultModelSetting = (model: string) => {
   return safe;
 };
 
-export const getFastModelSetting = (): string =>
-  (getSetting(KEY_FAST_MODEL) ?? "").trim();
-
-export const setFastModelSetting = (model: string) => {
-  const safe = model.trim().slice(0, 120);
-  setSetting(KEY_FAST_MODEL, safe);
-  return safe;
-};
-
-export const getSmartModelSetting = (): string =>
-  (getSetting(KEY_SMART_MODEL) ?? "").trim();
-
-export const setSmartModelSetting = (model: string) => {
-  const safe = model.trim().slice(0, 120);
-  setSetting(KEY_SMART_MODEL, safe);
-  return safe;
-};
-
 export const getUserMaxCharsSetting = (): number =>
-  parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 12000, 500, 32000);
+  parseIntClamped(getSetting(KEY_USER_MAX_CHARS), 5000, 500, 32000);
 
 export const setUserMaxCharsSetting = (chars: number) => {
   const safe = Math.max(500, Math.min(32000, Math.floor(chars)));
@@ -232,22 +224,28 @@ export const setTopPSetting = (value: number) => {
   return safe;
 };
 
-export const getAppSettings = (): AppSettings => ({
-  guestEnabled: getGuestEnabledSetting(),
-  guestDailyLimit: getGuestDailyLimitSetting(),
-  guestMaxMessageChars: getGuestMaxCharsSetting(),
-  guestHistoryLimit: getGuestHistoryLimitSetting(),
-  registrationEnabled: getRegistrationEnabledSetting(),
-  defaultModel: getDefaultModelSetting(),
-  fastModel: getFastModelSetting(),
-  smartModel: getSmartModelSetting(),
-  userMaxMessageChars: getUserMaxCharsSetting(),
-  userHistoryLimit: getUserHistoryLimitSetting(),
-  temperature: getTemperatureSetting(),
-  numPredict: getNumPredictSetting(),
-  topP: getTopPSetting(),
-  loggedInUnlimited: true,
-});
+export const getAppSettings = (): AppSettings => {
+  const features = getFeatureFlags();
+  return {
+    guestEnabled: getGuestEnabledSetting(),
+    guestDailyLimit: getGuestDailyLimitSetting(),
+    guestMaxMessageChars: getGuestMaxCharsSetting(),
+    guestHistoryLimit: getGuestHistoryLimitSetting(),
+    registrationEnabled: getRegistrationEnabledSetting(),
+    defaultModel: getDefaultModelSetting(),
+    userMaxMessageChars: getUserMaxCharsSetting(),
+    userHistoryLimit: getUserHistoryLimitSetting(),
+    temperature: getTemperatureSetting(),
+    numPredict: getNumPredictSetting(),
+    topP: getTopPSetting(),
+    loggedInUnlimited: true,
+    developerApiEnabled: features.developerApi,
+    devLabEnabled: features.devLab,
+    fileUploadEnabled: features.fileUpload,
+    fileImportEnabled: features.fileImport,
+    microphoneEnabled: features.microphone,
+  };
+};
 
 export const getPublicAppSettings = () => {
   const s = getAppSettings();
@@ -256,8 +254,16 @@ export const getPublicAppSettings = () => {
     registrationEnabled: s.registrationEnabled,
     guestDailyLimit: s.guestDailyLimit,
     guestMaxMessageChars: s.guestMaxMessageChars,
+    developerApiEnabled: s.developerApiEnabled,
+    devLabEnabled: s.devLabEnabled,
+    fileUploadEnabled: s.fileUploadEnabled,
+    fileImportEnabled: s.fileImportEnabled,
+    microphoneEnabled: s.microphoneEnabled,
   };
 };
+
+export const setAppFeatureFlags = (next: Partial<FeatureFlags>): FeatureFlags =>
+  setFeatureFlags(next);
 
 export const getChatRuntimeOptions = () => ({
   temperature: getTemperatureSetting(),
@@ -265,33 +271,63 @@ export const getChatRuntimeOptions = () => ({
   topP: getTopPSetting(),
 });
 
-const normalizeDisplayName = (
-  value: string | null | undefined,
-  fallback: string,
-) => {
-  const trimmed = (value ?? "").trim();
-  return trimmed || fallback;
-};
-
-/** Sync live backends (Ollama and/or vLLM in parallel) into DB. */
+/** Sync live Ollama models into DB. New names stay inactive until an admin activates them. */
 export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
   const liveModels = await listModels();
   const db = getDb();
+  const hadAny = Boolean(
+    db.prepare(`SELECT 1 AS ok FROM models LIMIT 1`).get(),
+  );
+  // First catalog fill (empty table) enables current Ollama models so setup works.
+  // Later pulls insert as inactive until Admin → Models → Activate.
+  const enableNew = hadAny ? 0 : 1;
 
   const upsert = db.prepare(
-    `INSERT INTO models (name, is_enabled, backend, updated_at)
-     VALUES (?, 1, ?, datetime('now'))
+    `INSERT INTO models (name, is_enabled, backend, vision, tools, audio, video, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(name) DO UPDATE SET
        backend = excluded.backend,
+       vision = excluded.vision,
+       tools = excluded.tools,
+       audio = excluded.audio,
+       video = excluded.video,
        updated_at = datetime('now')`,
   );
 
   const sync = db.transaction(
-    (rows: Array<{ name: string; backend: LlmBackend }>) => {
-      for (const row of rows) upsert.run(row.name, row.backend);
+    (
+      rows: Array<{
+        name: string;
+        backend: LlmBackend;
+        vision: boolean;
+        tools: boolean;
+        audio: boolean;
+        video: boolean;
+      }>,
+    ) => {
+      for (const row of rows) {
+        upsert.run(
+          row.name,
+          enableNew,
+          row.backend,
+          row.vision ? 1 : 0,
+          row.tools ? 1 : 0,
+          row.audio ? 1 : 0,
+          row.video ? 1 : 0,
+        );
+      }
     },
   );
-  sync(liveModels.map((m) => ({ name: m.name, backend: m.backend })));
+  sync(
+    liveModels.map((m) => ({
+      name: m.name,
+      backend: m.backend,
+      vision: Boolean(m.vision),
+      tools: Boolean(m.tools),
+      audio: Boolean(m.audio),
+      video: Boolean(m.video),
+    })),
+  );
 
   const rows = db
     .prepare(`SELECT name, is_enabled, display_name, backend FROM models`)
@@ -312,13 +348,42 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     ]),
   );
 
+  const persistName = db.prepare(
+    `UPDATE models SET display_name = ?, updated_at = datetime('now') WHERE name = ?`,
+  );
+  const persistFleetNames = db.transaction(
+    (items: Array<{ name: string; display_name: string }>) => {
+      for (const item of items) persistName.run(item.display_name, item.name);
+    },
+  );
+  persistFleetNames(
+    liveModels.flatMap((m) => {
+      const storedName = metaMap.get(m.name)?.display_name?.trim() ?? "";
+      const friendly = fleetDisplayName(m.name);
+      if (!friendly) return [];
+      if (storedName && storedName !== m.name) return [];
+      if (storedName === friendly) return [];
+      return [{ name: m.name, display_name: friendly }];
+    }),
+  );
+
   return liveModels.map((m) => {
     const meta = metaMap.get(m.name);
+    const storedName = meta?.display_name?.trim() ?? "";
+    const friendly = fleetDisplayName(m.name);
+    const display_name =
+      storedName && storedName !== m.name
+        ? storedName
+        : friendly || storedName || m.name;
     return {
       ...m,
       backend: meta?.backend ?? m.backend,
-      is_enabled: meta?.is_enabled ?? true,
-      display_name: normalizeDisplayName(meta?.display_name, m.name),
+      is_enabled: meta?.is_enabled ?? false,
+      display_name,
+      vision: Boolean(m.vision),
+      tools: Boolean(m.tools),
+      audio: Boolean(m.audio),
+      video: Boolean(m.video),
     };
   });
 };
@@ -342,7 +407,7 @@ export const setModelDisplayName = (name: string, displayName: string) => {
   getDb()
     .prepare(
       `INSERT INTO models (name, display_name, is_enabled, updated_at)
-       VALUES (?, ?, 1, datetime('now'))
+       VALUES (?, ?, 0, datetime('now'))
        ON CONFLICT(name) DO UPDATE SET
          display_name = excluded.display_name,
          updated_at = datetime('now')`,
@@ -378,34 +443,49 @@ export const isModelEnabled = (name: string): boolean => {
     .prepare(`SELECT is_enabled FROM models WHERE name = ?`)
     .get(resolved) as { is_enabled: number } | undefined;
 
-  // Unknown model (not synced yet): allow until admin disables after sync
-  if (!row) return true;
+  // Unknown / not yet activated: keep it off the user picker
+  if (!row) return false;
   return row.is_enabled === 1;
+};
+
+export const modelSupportsVision = (name: string): boolean => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT vision FROM models WHERE name = ?`)
+    .get(resolved) as { vision: number } | undefined;
+  if (row) return row.vision === 1;
+  return inferCapabilities(resolved).vision;
+};
+
+export const modelSupportsAudio = (name: string): boolean => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT audio FROM models WHERE name = ?`)
+    .get(resolved) as { audio: number } | undefined;
+  if (row) return row.audio === 1;
+  return inferCapabilities(resolved).audio;
 };
 
 export const getEnabledModels = async (): Promise<{
   models: PublicModel[];
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
 }> => {
   const all = await syncModelsFromOllama();
-  const enabled = all.filter((m) => m.is_enabled);
+  const enabled = all.filter((m) => m.is_enabled && m.backend !== "vllm");
   const names = enabled.map((m) => m.name);
   const preferred = getDefaultModelSetting();
   const defaultModel =
     preferred && names.includes(preferred)
       ? preferred
       : getDefaultModel(names);
-  const pickPreset = (configured: string) => {
-    const c = configured.trim();
-    if (c && names.includes(c)) return c;
-    return defaultModel;
-  };
   return {
-    models: enabled.map(({ is_enabled: _ignored, ...rest }) => rest),
+    models: enabled.map(({ is_enabled: _ignored, ...rest }) => ({
+      ...rest,
+      vision: Boolean(rest.vision),
+      tools: Boolean(rest.tools),
+      audio: Boolean(rest.audio),
+      video: Boolean(rest.video),
+    })),
     defaultModel,
-    fastModel: pickPreset(getFastModelSetting()),
-    smartModel: pickPreset(getSmartModelSetting()),
   };
 };

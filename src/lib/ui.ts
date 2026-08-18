@@ -1,10 +1,18 @@
-import type { AppLocale } from "@/lib/locale";
+import { LOCALE_BCP47, type AppLocale } from "@/lib/locale";
 import { translate } from "@/messages";
 
 export const autoResizeTextarea = (el: HTMLTextAreaElement | null) => {
   if (!el) return;
   el.style.height = "0px";
   el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+};
+
+/** Put a write-helper starter in the composer, keeping text the user already typed. */
+export const withComposerStarter = (current: string, starter: string): string => {
+  const trimmed = current.trim();
+  if (!trimmed) return starter;
+  if (trimmed.startsWith(starter.trim())) return current;
+  return `${starter}${trimmed}`;
 };
 
 export const copyText = async (text: string): Promise<boolean> => {
@@ -16,8 +24,7 @@ export const copyText = async (text: string): Promise<boolean> => {
   }
 };
 
-const bcp47 = (locale: AppLocale = "en"): string =>
-  locale === "az" ? "az-AZ" : "en-US";
+const bcp47 = (locale: AppLocale = "en"): string => LOCALE_BCP47[locale];
 
 export const relativeTime = (
   value: string,
@@ -67,4 +74,34 @@ export const formatChatTime = (
     day: "numeric",
   });
   return `${day}, ${time}`;
+};
+
+export const formatDateTime = (
+  value: string | null | undefined,
+  locale: AppLocale = "en",
+): string => {
+  if (!value) return "";
+  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(bcp47(locale));
+};
+
+export const usageStatusLabel = (
+  status: string,
+  locale: AppLocale = "en",
+): string => {
+  if (status === "ok") return translate(locale, "common.statusOk");
+  if (status === "error") return translate(locale, "common.statusError");
+  if (status === "aborted") return translate(locale, "common.statusAborted");
+  if (status === "rejected") return translate(locale, "common.statusRejected");
+  return status;
+};
+
+export const formatModelSize = (bytes: number): string => {
+  if (!bytes) return "—";
+  const gb = bytes / (1024 * 1024 * 1024);
+  return gb >= 1
+    ? `${gb.toFixed(1)} GB`
+    : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 };

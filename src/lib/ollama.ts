@@ -3,6 +3,7 @@
  * Kept so existing imports (`@/lib/ollama`) keep working.
  */
 export {
+  completeChat,
   getDefaultModel,
   listModels,
   streamChat,

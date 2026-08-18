@@ -38,6 +38,23 @@ export const LocaleFlag = ({
     );
   }
 
+  if (locale === "ru") {
+    return (
+      <svg
+        viewBox="0 0 36 24"
+        className={`shrink-0 overflow-hidden rounded-[3px] shadow-[0_0_0_1px_rgba(0,0,0,0.12)] ${className}`}
+        aria-hidden={title ? undefined : true}
+        role={title ? "img" : undefined}
+        aria-label={title}
+      >
+        {title ? <title>{title}</title> : null}
+        <rect width="36" height="8" y="0" fill="#fff" />
+        <rect width="36" height="8" y="8" fill="#0039A6" />
+        <rect width="36" height="8" y="16" fill="#D52B1E" />
+      </svg>
+    );
+  }
+
   return (
     <svg
       viewBox="0 0 36 24"

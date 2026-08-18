@@ -16,22 +16,27 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Number(searchParams.get("page") || "1");
   const limit = Number(searchParams.get("limit") || "25");
+  const overview = searchParams.get("overview") === "1";
 
   const [llm, analytics, recentPage] = await Promise.all([
     pingLlm(),
     Promise.resolve(getUsageAnalytics()),
-    Promise.resolve(getPagedUsage(page, limit)),
+    overview
+      ? Promise.resolve(null)
+      : Promise.resolve(getPagedUsage(page, limit)),
   ]);
 
   return NextResponse.json({
     live: listActiveUsage(),
-    recent: recentPage.rows,
-    recentPage: {
-      page: recentPage.page,
-      limit: recentPage.limit,
-      total: recentPage.total,
-      totalPages: recentPage.totalPages,
-    },
+    recent: recentPage?.rows ?? [],
+    recentPage: recentPage
+      ? {
+          page: recentPage.page,
+          limit: recentPage.limit,
+          total: recentPage.total,
+          totalPages: recentPage.totalPages,
+        }
+      : undefined,
     analytics,
     /** Primary / best available backend (compat) */
     ollama: {

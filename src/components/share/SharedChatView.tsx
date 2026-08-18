@@ -6,9 +6,12 @@ import { ArrowLeft, Lock, UserRound } from "lucide-react";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { KnowledgeCitations } from "@/components/chat/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
+import { MessageAudio } from "@/components/chat/MessageAudio";
+import { MessageImages } from "@/components/chat/MessageImages";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { attachmentUrl } from "@/lib/image-limits";
 import type { Message } from "@/lib/types";
 
 type SharedChatViewProps = {
@@ -16,6 +19,7 @@ type SharedChatViewProps = {
   ownerUsername: string;
   model: string;
   messages: Message[];
+  shareToken: string;
 };
 
 export const SharedChatView = ({
@@ -23,18 +27,20 @@ export const SharedChatView = ({
   ownerUsername,
   model,
   messages,
+  shareToken,
 }: SharedChatViewProps) => {
   const t = useTranslations();
 
   return (
     <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--text)]">
-      <header className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-4 py-3 backdrop-blur">
+      <header className="page-chrome safe-x flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur sm:gap-3 sm:px-4">
         <Link
           href="/chat"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          className="touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+          aria-label={t("share.back")}
         >
           <ArrowLeft size={16} />
-          {t("share.back")}
+          <span className="hidden sm:inline">{t("share.back")}</span>
         </Link>
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Image
@@ -58,7 +64,7 @@ export const SharedChatView = ({
                 <UserRound size={11} />
                 {ownerUsername}
               </span>
-              <span className="truncate">{model}</span>
+              <span className="truncate max-w-[8rem] sm:max-w-none sm:inline">{model}</span>
             </p>
           </div>
         </div>
@@ -66,8 +72,8 @@ export const SharedChatView = ({
         <ThemeToggle size="sm" />
       </header>
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+      <div className="safe-bottom chat-scroll min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl space-y-4 px-3 py-4 sm:px-4 sm:py-6">
           {messages.length === 0 ? (
             <p className="text-center text-sm text-[var(--text-muted)]">
               {t("share.empty")}
@@ -81,7 +87,7 @@ export const SharedChatView = ({
                   className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[min(100%,42rem)] ${
+                    className={`max-w-[min(100%,42rem)] sm:max-w-[92%] md:max-w-[85%] ${
                       isUser ? "items-end" : "items-start"
                     }`}
                   >
@@ -93,7 +99,40 @@ export const SharedChatView = ({
                       }`}
                     >
                       {isUser ? (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <div className="space-y-2">
+                          <MessageImages
+                            items={
+                              message.attachments
+                                ?.filter((item) => item.type === "image")
+                                .map((item) => ({
+                                  src: attachmentUrl(
+                                    message.id,
+                                    item.index,
+                                    shareToken,
+                                  ),
+                                  name: item.name,
+                                })) ?? []
+                            }
+                          />
+                          {message.attachments
+                            ?.filter((item) => item.type === "audio")
+                            .map((item) => (
+                              <MessageAudio
+                                key={item.index}
+                                src={attachmentUrl(
+                                  message.id,
+                                  item.index,
+                                  shareToken,
+                                )}
+                                name={item.name}
+                              />
+                            ))}
+                          {message.content ? (
+                            <p className="whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                          ) : null}
+                        </div>
                       ) : (
                         <MarkdownMessage content={message.content} />
                       )}

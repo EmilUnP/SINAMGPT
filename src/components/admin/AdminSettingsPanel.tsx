@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   Bot,
   MessageSquare,
+  Puzzle,
   Settings2,
   SlidersHorizontal,
   UserPlus,
@@ -27,13 +28,16 @@ export type SettingsDraft = {
   guestHistoryLimit: string;
   registrationEnabled: boolean;
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
   userMaxMessageChars: string;
   userHistoryLimit: string;
   temperature: string;
   numPredict: string;
   topP: string;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 type ModelOption = {
@@ -42,7 +46,7 @@ type ModelOption = {
   is_enabled: boolean;
 };
 
-type SettingsTab = "access" | "chat" | "generation";
+type SettingsTab = "access" | "chat" | "generation" | "features";
 
 type Props = {
   draft: SettingsDraft;
@@ -149,6 +153,11 @@ export const AdminSettingsPanel = ({
               label: t("admin.settings.tabGeneration"),
               icon: SlidersHorizontal,
             },
+            {
+              id: "features",
+              label: t("admin.settings.tabFeatures"),
+              icon: Puzzle,
+            },
           ]}
         />
       </div>
@@ -252,47 +261,19 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.modelPresets")}
             description={t("admin.settings.modelPresetsDesc")}
           >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field
-                label={t("admin.settings.defaultModel")}
-                hint={t("admin.settings.defaultModelHint")}
+            <Field
+              label={t("admin.settings.defaultModel")}
+              hint={t("admin.settings.defaultModelHint")}
+            >
+              <select
+                value={draft.defaultModel}
+                onChange={(e) => patch({ defaultModel: e.target.value })}
+                className={adminFieldClass}
               >
-                <select
-                  value={draft.defaultModel}
-                  onChange={(e) => patch({ defaultModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.firstEnabled")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-              <Field
-                label={t("admin.settings.fastModel")}
-                hint={t("admin.settings.fastHint")}
-              >
-                <select
-                  value={draft.fastModel}
-                  onChange={(e) => patch({ fastModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.sameAsDefault")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-              <Field
-                label={t("admin.settings.smartModel")}
-                hint={t("admin.settings.smartHint")}
-              >
-                <select
-                  value={draft.smartModel}
-                  onChange={(e) => patch({ smartModel: e.target.value })}
-                  className={adminFieldClass}
-                >
-                  <option value="">{t("admin.settings.sameAsDefault")}</option>
-                  {modelOptions}
-                </select>
-              </Field>
-            </div>
+                <option value="">{t("admin.settings.firstEnabled")}</option>
+                {modelOptions}
+              </select>
+            </Field>
           </SectionCard>
 
           <SectionCard
@@ -405,6 +386,60 @@ export const AdminSettingsPanel = ({
             </strong>{" "}
             {t("admin.settings.genHintAfter")}
           </AdminHint>
+        </div>
+      ) : null}
+
+      {tab === "features" ? (
+        <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
+          <SectionCard
+            title={t("admin.settings.featuresTitle")}
+            description={t("admin.settings.featuresDesc")}
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AdminToggleCard
+                emphasize
+                checked={draft.developerApiEnabled}
+                onChange={(v) => patch({ developerApiEnabled: v })}
+                label={t("admin.settings.developerApi")}
+                hint={t("admin.settings.developerApiHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.devLabEnabled}
+                onChange={(v) => patch({ devLabEnabled: v })}
+                label={t("admin.settings.devLab")}
+                hint={t("admin.settings.devLabHint")}
+              />
+            </div>
+          </SectionCard>
+          <SectionCard
+            title={t("admin.settings.chatInputsTitle")}
+            description={t("admin.settings.chatInputsDesc")}
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AdminToggleCard
+                emphasize
+                checked={draft.fileUploadEnabled}
+                onChange={(v) => patch({ fileUploadEnabled: v })}
+                label={t("admin.settings.fileUpload")}
+                hint={t("admin.settings.fileUploadHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.fileImportEnabled}
+                onChange={(v) => patch({ fileImportEnabled: v })}
+                label={t("admin.settings.fileImport")}
+                hint={t("admin.settings.fileImportHint")}
+              />
+              <AdminToggleCard
+                emphasize
+                checked={draft.microphoneEnabled}
+                onChange={(v) => patch({ microphoneEnabled: v })}
+                label={t("admin.settings.microphone")}
+                hint={t("admin.settings.microphoneHint")}
+              />
+            </div>
+          </SectionCard>
         </div>
       ) : null}
 

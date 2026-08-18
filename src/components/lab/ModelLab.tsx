@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   BarChart3,
   FlaskConical,
+  KeyRound,
   LineChart,
   MessageSquare,
   Play,
@@ -23,11 +22,10 @@ import {
   adminBtnPrimary,
   adminFieldClass,
 } from "@/components/admin/AdminChrome";
+import { PageHeader } from "@/components/PageHeader";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { LabCharts } from "@/components/lab/LabCharts";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LAB_SUITES,
   citeHintPreview,
@@ -41,7 +39,7 @@ import {
 import type { MessageKey } from "@/messages";
 import type { User } from "@/lib/types";
 
-type Props = { admin: User };
+type Props = { admin: User; devLabEnabled?: boolean };
 
 type LabTab = "live" | "results" | "charts";
 
@@ -83,8 +81,10 @@ const parseSseChunk = (raw: string) => {
 const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   greetingEn: "lab.case.greetingEn",
   greetingAz: "lab.case.greetingAz",
+  greetingRu: "lab.case.greetingRu",
   company: "lab.case.company",
   companyEn: "lab.case.companyEn",
+  companyRu: "lab.case.companyRu",
   contact: "lab.case.contact",
   contactEn: "lab.case.contactEn",
   hours: "lab.case.hours",
@@ -118,6 +118,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   sinamgpt: "lab.case.sinamgpt",
   email: "lab.case.email",
   emailAz: "lab.case.emailAz",
+  emailRu: "lab.case.emailRu",
   emailFarabi: "lab.case.emailFarabi",
   emailBiletim: "lab.case.emailBiletim",
   standup: "lab.case.standup",
@@ -134,6 +135,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   summary: "lab.case.summary",
   translateAz: "lab.case.translateAz",
   translateEn: "lab.case.translateEn",
+  translateRu: "lab.case.translateRu",
   compare: "lab.case.compare",
   bullets: "lab.case.bullets",
   politeDecline: "lab.case.politeDecline",
@@ -157,6 +159,7 @@ const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {
   refuseReveal: "lab.case.refuseReveal",
   refuseIgnoreAz: "lab.case.refuseIgnoreAz",
   refuseIgnoreEn: "lab.case.refuseIgnoreEn",
+  refuseIgnoreRu: "lab.case.refuseIgnoreRu",
   refuseSecrets: "lab.case.refuseSecrets",
   refuseGithub: "lab.case.refuseGithub",
   refuseHack: "lab.case.refuseHack",
@@ -228,6 +231,12 @@ const NOTE_KEY: Record<string, MessageKey> = {
   empty: "lab.noteEmpty",
   blocked: "lab.noteBlocked",
   error: "lab.chatFailed",
+};
+
+const CASE_LANG_KEY: Record<NonNullable<LabCase["lang"]>, MessageKey> = {
+  en: "lab.langEn",
+  az: "lab.langAz",
+  ru: "lab.langRu",
 };
 
 const LANG_KEY: Record<LabEvaluation["langDetected"], MessageKey> = {
@@ -418,7 +427,7 @@ const LabLiveView = ({
   );
 };
 
-export const ModelLab = ({ admin }: Props) => {
+export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
   const t = useTranslations();
   const [models, setModels] = useState<ModelRow[]>([]);
   const [model, setModel] = useState("");
@@ -453,7 +462,9 @@ export const ModelLab = ({ admin }: Props) => {
   }, [t]);
 
   useEffect(() => {
-    void loadModels();
+    void (async () => {
+      await loadModels();
+    })();
   }, [loadModels]);
 
   const runOne = async (
@@ -480,12 +491,12 @@ export const ModelLab = ({ admin }: Props) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal,
-      body: JSON.stringify({
-        message: test.prompt,
-        model,
-        mode: "send",
-        ...(conversationId ? { conversationId } : {}),
-      }),
+        body: JSON.stringify({
+          message: test.prompt,
+          model,
+          mode: "send",
+          ...(conversationId ? { conversationId } : {}),
+        }),
     });
 
     if (res.status === 422) {
@@ -856,53 +867,20 @@ export const ModelLab = ({ admin }: Props) => {
         }}
       />
 
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("lab.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <FlaskConical size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("lab.title")}
-                  </h1>
-                  <span className="status-pill status-info">{t("lab.badge")}</span>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {admin.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <Shield size={14} />
-              {t("lab.admin")}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        maxWidthClass="max-w-7xl"
+        backLabel={t("lab.backToChat")}
+        icon={FlaskConical}
+        title={t("lab.title")}
+        badge={t("lab.badge")}
+        subtitle={`${admin.username} · ${t("common.brand")}`}
+        links={[
+          ...(devLabEnabled
+            ? [{ href: "/devlab", label: t("chat.devLab"), icon: KeyRound }]
+            : []),
+          { href: "/admin", label: t("lab.admin"), icon: Shield },
+        ]}
+      />
 
       <main className="relative z-10 mx-auto max-w-7xl space-y-5 px-4 py-6">
         <AdminPanelCard>
@@ -1113,7 +1091,7 @@ export const ModelLab = ({ admin }: Props) => {
                     ) : null}
                     {item.lang ? (
                       <span className="rounded-md bg-[var(--admin-surface-soft)] px-1.5 py-0.5 text-[11px] text-[var(--admin-fg)]">
-                        {t("lab.lang")}: {t(item.lang === "az" ? "lab.langAz" : "lab.langEn")}
+                        {t("lab.lang")}: {t(CASE_LANG_KEY[item.lang])}
                       </span>
                     ) : null}
                     {item.tone ? (

@@ -81,6 +81,21 @@ html {
   --status-info-bg: #dbeafe;
   --status-info-fg: #1e40af;
   --status-info-border: #93c5fd;
+  --cap-text-bg: #dbeafe;
+  --cap-text-fg: #1e40af;
+  --cap-text-border: #93c5fd;
+  --cap-image-bg: #e0f2fe;
+  --cap-image-fg: #0c4a6e;
+  --cap-image-border: #7dd3fc;
+  --cap-audio-bg: #fef3c7;
+  --cap-audio-fg: #92400e;
+  --cap-audio-border: #fcd34d;
+  --cap-video-bg: #ffe4e6;
+  --cap-video-fg: #9f1239;
+  --cap-video-border: #fda4af;
+  --cap-fn-bg: #ede9fe;
+  --cap-fn-fg: #5b21b6;
+  --cap-fn-border: #c4b5fd;
 }
 
 html[data-theme="dark"] {
@@ -163,6 +178,21 @@ html[data-theme="dark"] {
   --status-info-bg: rgba(56, 189, 248, 0.14);
   --status-info-fg: #7dd3fc;
   --status-info-border: rgba(56, 189, 248, 0.3);
+  --cap-text-bg: rgba(56, 189, 248, 0.14);
+  --cap-text-fg: #7dd3fc;
+  --cap-text-border: rgba(56, 189, 248, 0.3);
+  --cap-image-bg: rgba(14, 165, 233, 0.16);
+  --cap-image-fg: #7dd3fc;
+  --cap-image-border: rgba(125, 211, 252, 0.32);
+  --cap-audio-bg: rgba(245, 158, 11, 0.16);
+  --cap-audio-fg: #fcd34d;
+  --cap-audio-border: rgba(252, 211, 77, 0.32);
+  --cap-video-bg: rgba(244, 63, 94, 0.16);
+  --cap-video-fg: #fda4af;
+  --cap-video-border: rgba(253, 164, 175, 0.32);
+  --cap-fn-bg: rgba(139, 92, 246, 0.18);
+  --cap-fn-fg: #c4b5fd;
+  --cap-fn-border: rgba(196, 181, 253, 0.35);
 }
 
 @theme inline {
@@ -189,6 +219,7 @@ html[data-theme="dark"] {
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -196,6 +227,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color 0.25s ease,
     color 0.2s ease;
@@ -298,6 +330,50 @@ html[data-theme="dark"] ::selection {
     height: max(100%, 44px);
     transform: translate(-50%, -50%);
   }
+
+  /* Hover-only row actions (pin/delete, rename) stay visible on touch. */
+  .touch-reveal {
+    opacity: 1 !important;
+  }
+
+  /* Icon buttons in chat/auth headers — 44px hit area without changing layout. */
+  .touch-target {
+    position: relative;
+  }
+
+  .touch-target::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  .menu-item {
+    min-height: 44px;
+  }
+}
+
+.page-chrome::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.safe-x {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+.safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
 }
 
 /*
@@ -362,6 +438,27 @@ html[data-theme="dark"] ::selection {
   color: var(--home-chip-fg);
 }
 
+/* Compact pill inside the chat box — same height as + / mic / send. */
+.model-picker-trigger.in-composer {
+  width: auto;
+  max-width: 7.5rem;
+  margin-bottom: 0.125rem;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+
+.model-picker-trigger.in-composer:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+@media (min-width: 640px) {
+  .model-picker-trigger.in-composer {
+    max-width: 11rem;
+  }
+}
+
 .theme-toggle-dot {
   width: 6px;
   height: 6px;
@@ -379,6 +476,43 @@ html[data-theme="dark"] ::selection {
   border: 1px solid var(--chip-info-border);
   background: var(--chip-info-bg);
   color: var(--chip-info-text);
+}
+
+.cap-chip {
+  border: 1px solid;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cap-chip-text {
+  background: var(--cap-text-bg);
+  color: var(--cap-text-fg);
+  border-color: var(--cap-text-border);
+}
+
+.cap-chip-image {
+  background: var(--cap-image-bg);
+  color: var(--cap-image-fg);
+  border-color: var(--cap-image-border);
+}
+
+.cap-chip-audio {
+  background: var(--cap-audio-bg);
+  color: var(--cap-audio-fg);
+  border-color: var(--cap-audio-border);
+}
+
+.cap-chip-video {
+  background: var(--cap-video-bg);
+  color: var(--cap-video-fg);
+  border-color: var(--cap-video-border);
+}
+
+.cap-chip-fn {
+  background: var(--cap-fn-bg);
+  color: var(--cap-fn-fg);
+  border-color: var(--cap-fn-border);
 }
 
 .status-pill {
@@ -899,6 +1033,7 @@ html:not([data-theme="dark"]) .ambient-grid {
 }
 
 .composer-shell {
+  overflow: visible;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -908,6 +1043,8 @@ html:not([data-theme="dark"]) .ambient-grid {
 .chat-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .chat-scroll::-webkit-scrollbar {
@@ -934,26 +1071,6 @@ html:not([data-theme="dark"]) .ambient-grid {
   }
 }
 
-.logo-breathe {
-  animation: logo-breathe 4.5s ease-in-out infinite;
-}
-
-@keyframes logo-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.28));
-  }
-  50% {
-    transform: scale(1.03);
-    filter: drop-shadow(0 0 28px rgba(56, 189, 248, 0.42));
-  }
-}
-
-html:not([data-theme="dark"]) .logo-breathe {
-  filter: drop-shadow(0 0 14px rgba(37, 99, 235, 0.2));
-}
-
 .chip {
   display: inline-flex;
   align-items: center;
@@ -963,10 +1080,6 @@ html:not([data-theme="dark"]) .logo-breathe {
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-}
-
-.hero-brand {
-  animation: soft-rise 0.55s ease both;
 }
 
 .hero-copy {
@@ -997,9 +1110,7 @@ html:not([data-theme="dark"]) .logo-breathe {
   .particle,
   .shimmer-sweep,
   .ambient-grid,
-  .logo-breathe,
   .soft-rise,
-  .hero-brand,
   .hero-copy,
   .hero-actions {
     animation: none !important;

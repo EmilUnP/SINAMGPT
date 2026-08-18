@@ -10,6 +10,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import type { MessageKey } from "@/messages";
 
 type Mode = "login" | "register";
 
@@ -22,6 +23,34 @@ const safeNextPath = (raw: string | null): string | null => {
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
   if (raw.includes("://")) return null;
   return raw;
+};
+
+const AUTH_ERROR_KEYS: Record<string, MessageKey> = {
+  "Invalid username or password": "auth.invalidCredentials",
+  "Too many login attempts. Try again later.": "auth.tooManyAttempts",
+  "Username and password are required": "auth.usernamePasswordRequired",
+  "Could not log in": "auth.couldNotLogIn",
+  "Too many registration attempts. Try again later.": "auth.tooManyRegister",
+  "Username must be at least 3 characters": "auth.usernameMin",
+  "Username is too long": "auth.usernameMax",
+  "Use letters, numbers, . _ - only": "auth.usernameChars",
+  "Password must be at least 6 characters": "auth.passwordMin",
+  "Invalid input": "auth.invalidInput",
+  "This username is reserved": "auth.usernameReserved",
+  "Username already taken": "auth.usernameTaken",
+  "Could not create account": "auth.couldNotCreate",
+};
+
+const mapAuthError = (
+  message: string,
+  t: (key: MessageKey) => string,
+): string => {
+  const key = AUTH_ERROR_KEYS[message];
+  if (key) return t(key);
+  if (message.toLowerCase().includes("registration is currently closed")) {
+    return t("auth.registrationClosedError");
+  }
+  return message;
 };
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
@@ -80,7 +109,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       const data = (await res.json()) as { error?: string };
 
       if (!res.ok) {
-        setError(data.error || t("auth.somethingWrong"));
+        setError(mapAuthError(data.error || t("auth.somethingWrong"), t));
         return;
       }
 
@@ -94,10 +123,10 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   };
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)]">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 text-[var(--home-fg)] safe-x pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <AnimatedBackground />
 
-      <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5 sm:right-6 sm:top-6">
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top,0px))] z-20 flex items-center gap-1.5 sm:right-6">
         <LanguageToggle size="sm" />
         <ThemeToggle size="sm" />
       </div>
@@ -107,7 +136,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           <Link href="/" className="inline-flex flex-col items-center gap-3">
             <Image
               src={sinamLogo}
-              alt="SINAMGPT"
+              alt={t("common.brand")}
               width={48}
               height={48}
               className="h-12 w-12 rounded-full"
@@ -115,7 +144,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               priority
             />
             <span className="text-sm font-semibold tracking-wide text-[var(--home-fg)]">
-              SINAMGPT
+              {t("common.brand")}
             </span>
           </Link>
           <h1 className="mt-5 text-2xl font-semibold tracking-tight text-[var(--home-fg)] sm:text-3xl">
@@ -143,7 +172,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-6 backdrop-blur-md"
+          className="rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 backdrop-blur-md sm:p-6"
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           <label className="block text-sm font-medium text-[var(--home-fg)]/80">

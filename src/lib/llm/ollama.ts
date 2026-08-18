@@ -1,3 +1,8 @@
+import {
+  inferCapabilities,
+  parseOllamaCapabilities,
+  type ModelCapabilities,
+} from "./capabilities";
 import type { BackendHealth, ChatMessage, ChatOptions, LlmModel } from "./types";
 
 const getBaseUrl = (): string =>
@@ -6,14 +11,7 @@ const getBaseUrl = (): string =>
 const getKeepAlive = (): string =>
   process.env.OLLAMA_KEEP_ALIVE?.trim() || "30m";
 
-export const isOllamaEnabled = (): boolean => {
-  const backends = (process.env.LLM_BACKENDS || "ollama")
-    .toLowerCase()
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return backends.includes("ollama") || backends.includes("both");
-};
+export const isOllamaEnabled = (): boolean => true;
 
 export const listOllamaModels = async (): Promise<LlmModel[]> => {
   const res = await fetch(`${getBaseUrl()}/api/tags`, {
@@ -30,19 +28,84 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
     models?: Array<{ name: string; size: number; modified_at: string }>;
   };
 
-  return (data.models ?? []).map((m) => ({
+  const listed = data.models ?? [];
+  const caps = await Promise.all(
+    listed.map((m) => inspectOllamaCapabilities(m.name)),
+  );
+
+  return listed.map((m, i) => ({
     name: m.name,
     size: m.size,
     modified_at: m.modified_at,
     backend: "ollama" as const,
+    vision: caps[i]?.vision ?? false,
+    tools: caps[i]?.tools ?? false,
+    audio: caps[i]?.audio ?? false,
+    video: caps[i]?.video ?? false,
   }));
 };
 
-export const streamOllamaChat = async (
-  model: string,
-  messages: ChatMessage[],
-  options?: ChatOptions,
-): Promise<Response> => {
+const inspectOllamaCapabilities = async (
+  name: string,
+): Promise<ModelCapabilities> => {
+  const heuristic = inferCapabilities(name);
+  try {
+    const res = await fetch(`${getBaseUrl()}/api/show`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: name, name }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return heuristic;
+    const data = (await res.json()) as { capabilities?: unknown };
+    return parseOllamaCapabilities(data.capabilities, name);
+  } catch {
+    return heuristic;
+  }
+};
+
+const isWavBase64 = (b64: string): boolean => {
+  try {
+    const buf = Buffer.from(b64.slice(0, 24), "base64");
+    return (
+      buf.length >= 12 &&
+      buf.toString("ascii", 0, 4) === "RIFF" &&
+      buf.toString("ascii", 8, 12) === "WAVE"
+    );
+  } catch {
+    return false;
+  }
+};
+
+const messagesHaveAudio = (messages: ChatMessage[]): boolean =>
+  messages.some((message) => message.images?.some(isWavBase64));
+
+/**
+ * Gemma 4 E2B treats WAV-in-images as “no file” unless we say it can hear
+ * the clip. Keep audio on the same native /api/chat user message as the text
+ * — Ollama’s /v1 input_audio path splits them onto two user turns and E2B
+ * then asks for the recording.
+ */
+const AUDIO_SYSTEM = `AUDIO INPUT: The user attached a WAV recording you can hear. It is audio, not an image and not a missing file. Listen to it. Never say the recording is missing or ask them to provide it. Transcribe what was spoken if needed, then answer.`;
+
+const withAudioSystem = (messages: ChatMessage[]): ChatMessage[] => {
+  if (!messagesHaveAudio(messages)) return messages;
+  const index = messages.findIndex((message) => message.role === "system");
+  if (index < 0) {
+    return [{ role: "system", content: AUDIO_SYSTEM }, ...messages];
+  }
+  const next = [...messages];
+  const current = next[index].content?.trim() ?? "";
+  if (current.includes("AUDIO INPUT:")) return messages;
+  next[index] = {
+    ...next[index],
+    content: current ? `${current}\n\n${AUDIO_SYSTEM}` : AUDIO_SYSTEM,
+  };
+  return next;
+};
+
+const numericOptions = (options?: ChatOptions): Record<string, number> => {
   const ollamaOptions: Record<string, number> = {};
   if (options?.temperature != null) {
     ollamaOptions.temperature = options.temperature;
@@ -53,27 +116,82 @@ export const streamOllamaChat = async (
   if (options?.topP != null) {
     ollamaOptions.top_p = options.topP;
   }
+  return ollamaOptions;
+};
 
+const thinkDisabled = (
+  messages: ChatMessage[],
+  options?: ChatOptions,
+): boolean => options?.think === false || messagesHaveAudio(messages);
+
+const nativeChatBody = (
+  model: string,
+  messages: ChatMessage[],
+  options: ChatOptions | undefined,
+  stream: boolean,
+) => {
+  const nums = numericOptions(options);
+  const disableThink = thinkDisabled(messages, options);
+  const hasAudio = messagesHaveAudio(messages);
+  const ollamaOptions: Record<string, number | boolean> = { ...nums };
+  if (disableThink) {
+    ollamaOptions.think = false;
+    ollamaOptions.thinking = false;
+  }
+  if (hasAudio) {
+    ollamaOptions.num_ctx = 8192;
+  }
+  return {
+    model,
+    messages: withAudioSystem(messages),
+    stream,
+    keep_alive: getKeepAlive(),
+    ...(disableThink ? { think: false } : {}),
+    ...(Object.keys(ollamaOptions).length ? { options: ollamaOptions } : {}),
+  };
+};
+
+const postNativeChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options: ChatOptions | undefined,
+  stream: boolean,
+  timeoutMs?: number,
+): Promise<Response> => {
   const res = await fetch(`${getBaseUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: true,
-      keep_alive: getKeepAlive(),
-      ...(Object.keys(ollamaOptions).length
-        ? { options: ollamaOptions }
-        : {}),
-    }),
+    body: JSON.stringify(nativeChatBody(model, messages, options, stream)),
+    cache: "no-store",
+    ...(timeoutMs != null ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
   });
-
-  if (!res.ok || !res.body) {
+  if (!res.ok || (stream && !res.body)) {
     const text = await res.text().catch(() => "");
     throw new Error(formatOllamaError(text, res.status, model));
   }
-
   return res;
+};
+
+export const streamOllamaChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions,
+): Promise<Response> => postNativeChat(model, messages, options, true);
+
+export const completeOllamaChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<string> => {
+  const hasAudio = messagesHaveAudio(messages);
+  const timeoutMs = options?.timeoutMs ?? (hasAudio ? 60_000 : 8000);
+  const res = await postNativeChat(model, messages, options, false, timeoutMs);
+  const data = (await res.json()) as {
+    message?: { content?: string };
+    error?: string;
+  };
+  if (data.error) throw new Error(data.error);
+  return (data.message?.content ?? "").trim();
 };
 
 export const pingOllama = async (): Promise<BackendHealth> => {

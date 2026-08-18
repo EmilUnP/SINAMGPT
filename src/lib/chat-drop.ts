@@ -1,0 +1,13 @@
+import { isAllowedImageMime } from "@/lib/image-limits";
+
+const IMAGE_NAME_RE = /\.(jpe?g|png|webp|gif)$/i;
+
+export const dropHasFiles = (types: readonly string[] | undefined): boolean =>
+  (types ?? []).includes("Files");
+
+export const isDroppedImageFile = (file: File): boolean => {
+  const type = file.type.trim().toLowerCase();
+  if (type === "image/jpg" || isAllowedImageMime(type)) return true;
+  if (type.startsWith("image/")) return false;
+  return IMAGE_NAME_RE.test(file.name);
+};

@@ -3,9 +3,12 @@ import { getDb } from "@/lib/db";
 import {
   expandQueryTokens,
   looksLikeCompanyQuestion,
+  KNOWLEDGE_BRAND_TOKENS,
+  MULTILANG_STOP_WORDS,
   tokenizeMultilang,
   tokensAlign,
 } from "@/lib/multilang";
+import { glossUserQuery, retrievalQuery } from "@/lib/query-gloss";
 import {
   DEPRECATED_KNOWLEDGE_TITLES,
   SINAM_SEED_DOCS,
@@ -95,7 +98,7 @@ export const setKnowledgeSettings = (
     ...next,
   };
   merged.maxDocs = Math.max(1, Math.min(10, Math.floor(merged.maxDocs)));
-  merged.maxChars = Math.max(500, Math.min(12000, Math.floor(merged.maxChars)));
+  merged.maxChars = Math.max(500, Math.min(5000, Math.floor(merged.maxChars)));
 
   getDb()
     .prepare(
@@ -115,6 +118,21 @@ export const listKnowledgeDocs = (): KnowledgeDoc[] => {
        ORDER BY priority DESC, updated_at DESC`,
     )
     .all() as KnowledgeDoc[];
+};
+
+export const getKnowledgeOverview = (): {
+  total: number;
+  enabled: number;
+} => {
+  seedSinamKnowledgeIfEmpty();
+  const row = getDb()
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              COALESCE(SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END), 0) AS enabled
+       FROM knowledge_docs`,
+    )
+    .get() as { total: number; enabled: number };
+  return { total: row.total, enabled: row.enabled };
 };
 
 export const getKnowledgeDoc = (id: string): KnowledgeDoc | null => {
@@ -218,20 +236,55 @@ export const deleteKnowledgeDoc = (id: string) => {
   getDb().prepare(`DELETE FROM knowledge_docs WHERE id = ?`).run(id);
 };
 
-/** Lightweight retrieval — multi-language keyword overlap + always-include (RAG-lite). */
+/** Lightweight retrieval — multi-language keyword overlap + always-include (RAG-lite).
+ * Pass a query already unioned with EN/AZ/RU gloss terms (see glossUserQuery). */
 export const retrieveKnowledge = (
   query: string,
   settings = getKnowledgeSettings(),
   projectId?: string | null,
+  opts?: {
+    categoryHint?: KnowledgeCategory | "none" | null;
+    /** Company-intent from the user's words — not from search-keyword expansion. */
+    companyIntent?: boolean;
+    /** Raw user text; gloss keywords cannot invent product hits from this. */
+    originalQuery?: string;
+  },
 ): KnowledgeDoc[] => {
   if (!settings.enabled) return [];
 
   const docs = listKnowledgeDocs().filter((d) => d.is_enabled === 1);
   if (!docs.length) return [];
 
-  const queryTokens = new Set(expandQueryTokens(query));
-  const companyIntent = looksLikeCompanyQuestion(query);
+  const originalQuery = (opts?.originalQuery ?? query).trim() || query;
+  const originalTokens = new Set(
+    expandQueryTokens(originalQuery).filter(
+      (token) => token.length >= 3 && !MULTILANG_STOP_WORDS.has(token),
+    ),
+  );
+  const queryTokens = expandQueryTokens(query).filter((token) => {
+    if (token.length < 3 || MULTILANG_STOP_WORDS.has(token)) return false;
+    if (!KNOWLEDGE_BRAND_TOKENS.has(token)) return true;
+    return originalTokens.has(token);
+  });
+  const queryTokenSet = new Set(queryTokens);
+  const companyIntent =
+    opts?.companyIntent ?? looksLikeCompanyQuestion(originalQuery);
+  const tokenIsGrounded = (token: string) => {
+    if (originalTokens.has(token)) return true;
+    for (const item of originalTokens) {
+      if (tokensAlign(token, item)) return true;
+    }
+    return false;
+  };
   const activeProject = projectId?.trim() || null;
+  const categoryHint =
+    opts?.categoryHint && opts.categoryHint !== "none"
+      ? opts.categoryHint
+      : null;
+  const wantsContact =
+    /\b(contact|əlaqə|elaqe|kontakt|телефон|phone|email|office|офис|ünvan|unvan|hours|saat)\b/i.test(
+      originalQuery,
+    );
 
   const tokenHit = (haystack: Set<string>, token: string) => {
     if (haystack.has(token)) return true;
@@ -242,42 +295,96 @@ export const retrieveKnowledge = (
     return false;
   };
 
-  const scored = docs.map((doc) => {
+  const docFields = docs.map((doc) => {
     const titleTokens = new Set(tokenizeMultilang(doc.title));
     const tagTokens = new Set(tokenizeMultilang(doc.tags));
     const contentTokens = new Set(tokenizeMultilang(doc.content));
-    const titleNorm = ` ${[...titleTokens].join(" ")} `;
-    let matchScore = 0;
-    let strongHits = 0;
+    const all = new Set([...titleTokens, ...tagTokens, ...contentTokens]);
+    return {
+      doc,
+      titleTokens,
+      tagTokens,
+      contentTokens,
+      all,
+      titleNorm: ` ${[...titleTokens].join(" ")} `,
+      contentNorm: ` ${normalizeForPhrase(doc.content)} `,
+      tagNorm: ` ${[...tagTokens].join(" ")} `,
+    };
+  });
 
-    for (const token of queryTokens) {
-      if (token.length < 3) continue;
-      if (tokenHit(titleTokens, token)) {
-        matchScore += 6;
-        strongHits += 1;
+  const df = new Map<string, number>();
+  for (const token of queryTokenSet) {
+    let n = 0;
+    for (const row of docFields) {
+      if (tokenHit(row.all, token)) n += 1;
+    }
+    df.set(token, n);
+  }
+  const idf = (token: string): number => {
+    const n = df.get(token) ?? 0;
+    if (n <= 0) return 1;
+    return Math.log(1 + docs.length / n);
+  };
+
+  const scored = docFields.map((row) => {
+    const { doc, titleTokens, tagTokens, contentTokens, titleNorm, contentNorm, tagNorm } =
+      row;
+    let matchScore = 0;
+    const strongTokens = new Set<string>();
+    const contentOnly = new Set<string>();
+
+    for (const token of queryTokenSet) {
+      const weight = idf(token);
+      const grounded = tokenIsGrounded(token);
+      const inTitle = tokenHit(titleTokens, token);
+      const inTags = tokenHit(tagTokens, token);
+      const inContent = tokenHit(contentTokens, token);
+      if (inTitle) {
+        matchScore += grounded ? 6 * weight : 2 * weight;
+        if (grounded) strongTokens.add(token);
       }
-      if (tokenHit(tagTokens, token)) {
-        matchScore += 4;
-        strongHits += 1;
+      if (inTags) {
+        matchScore += grounded ? 4 * weight : 1 * weight;
+        if (grounded) strongTokens.add(token);
       }
-      if (tokenHit(contentTokens, token)) matchScore += 2;
+      if (inContent) {
+        matchScore += 2 * weight;
+        if (!inTitle && !inTags) contentOnly.add(token);
+      }
     }
 
-    // Phrase in title (e.g. "iş saatları", "həllər kataloqu")
-    const queryWords = [...queryTokens].filter((t) => t.length >= 4);
+    const queryWords = [...queryTokenSet].filter((t) => t.length >= 4);
     for (let i = 0; i < queryWords.length - 1; i += 1) {
       const phrase = ` ${queryWords[i]} ${queryWords[i + 1]} `;
+      const groundedPhrase =
+        tokenIsGrounded(queryWords[i]) || tokenIsGrounded(queryWords[i + 1]);
       if (titleNorm.includes(phrase)) {
-        matchScore += 8;
-        strongHits += 1;
+        matchScore += groundedPhrase ? 10 : 3;
+        if (groundedPhrase) strongTokens.add(queryWords[i]);
+      } else if (tagNorm.includes(phrase) || contentNorm.includes(phrase)) {
+        matchScore += groundedPhrase ? 6 : 2;
+        if (groundedPhrase) strongTokens.add(queryWords[i]);
       }
+    }
+
+    const coverage =
+      queryTokenSet.size > 0 ? strongTokens.size / queryTokenSet.size : 0;
+    matchScore += coverage * 8;
+
+    if (categoryHint && doc.category === categoryHint) {
+      matchScore += 4;
+    }
+    if (wantsContact && /contact|əlaqə|elaqe|phone|email|hours|saat/i.test(
+      `${doc.title} ${doc.tags}`,
+    )) {
+      matchScore += 6;
     }
 
     if (
       companyIntent &&
       (doc.category === "company" || doc.category === "product")
     ) {
-      matchScore += 3;
+      matchScore += 2;
     }
 
     if (activeProject) {
@@ -287,24 +394,34 @@ export const retrieveKnowledge = (
       }
     }
 
+    const strongHits = strongTokens.size;
     const alwaysEligible = doc.always_include === 1 && companyIntent;
-    const hasMatch = strongHits > 0 || matchScore >= 6;
-    // Small pin only — specific stats/catalog hits must still outrank generic always-include.
-    const score = matchScore + doc.priority / 1000 + (alwaysEligible ? 2 : 0);
+    const hasMatch = strongHits > 0 || matchScore >= 8;
+    const score = matchScore + doc.priority / 1000 + (alwaysEligible ? 1 : 0);
 
-    return { doc, score, hasMatch, alwaysEligible, strongHits };
+    return {
+      doc,
+      score,
+      hasMatch,
+      alwaysEligible,
+      strongHits,
+      contentOnly: contentOnly.size,
+    };
   });
 
   const specific = scored
     .filter((s) => s.hasMatch && s.strongHits > 0)
-    .sort((a, b) => b.score - a.score || b.strongHits - a.strongHits);
+    .sort(
+      (a, b) =>
+        b.score - a.score || b.strongHits - a.strongHits || a.contentOnly - b.contentOnly,
+    );
 
   const always = scored
     .filter((s) => s.alwaysEligible)
     .sort((a, b) => b.score - a.score);
 
   const weak = scored
-    .filter((s) => s.hasMatch && s.strongHits === 0 && s.score >= 6)
+    .filter((s) => s.hasMatch && s.strongHits === 0 && s.score >= 8)
     .sort((a, b) => b.score - a.score);
 
   const picked: KnowledgeDoc[] = [];
@@ -318,12 +435,18 @@ export const retrieveKnowledge = (
     }
   };
 
-  // Specific matches first so "employees / products" beat About + Contact.
   take(specific);
-  take(always);
-  take(weak);
+  const bestSpecific = specific[0];
+  const specificIsStrong = Boolean(
+    bestSpecific && (bestSpecific.strongHits >= 2 || bestSpecific.score >= 14),
+  );
+  if (companyIntent && !specificIsStrong) {
+    take(always);
+  }
+  if (companyIntent) {
+    take(weak);
+  }
 
-  // Fallback company doc only for real company questions
   if (!picked.length && companyIntent) {
     const fallback = docs
       .filter((d) => d.category === "company")
@@ -334,11 +457,15 @@ export const retrieveKnowledge = (
   return picked;
 };
 
-export const resolveKnowledgeContext = (
+const normalizeForPhrase = (value: string): string =>
+  tokenizeMultilang(value, 2).join(" ");
+
+export const resolveKnowledgeContext = async (
   query: string,
   audience: "guest" | "user",
   projectId?: string | null,
-): { block: string; sources: KnowledgeSource[]; showCitations: boolean } => {
+  opts?: { model?: string },
+): Promise<{ block: string; sources: KnowledgeSource[]; showCitations: boolean }> => {
   const settings = getKnowledgeSettings();
   if (!settings.enabled) {
     return { block: "", sources: [], showCitations: false };
@@ -350,7 +477,19 @@ export const resolveKnowledgeContext = (
     return { block: "", sources: [], showCitations: false };
   }
 
-  const docs = retrieveKnowledge(query, settings, projectId);
+  const gloss = await glossUserQuery(query, { model: opts?.model });
+  const companyIntent = looksLikeCompanyQuestion(query);
+  const glossCat = gloss.category ?? "none";
+  if (!companyIntent && (glossCat === "none" || glossCat === "other")) {
+    return { block: "", sources: [], showCitations: settings.showCitations };
+  }
+
+  const docs = retrieveKnowledge(
+    retrievalQuery(query, gloss),
+    settings,
+    projectId,
+    { categoryHint: gloss.category, companyIntent, originalQuery: query },
+  );
   if (!docs.length) {
     return { block: "", sources: [], showCitations: settings.showCitations };
   }
@@ -361,7 +500,7 @@ export const resolveKnowledgeContext = (
     "- Answer from these notes. Prefer the first / most specific section over generic About/Contact.",
     "- Put concrete facts in the reply: years, headcount, phones, emails, product names (SESDA, Farabi, Biletim, GoMap, GoNav, YURDUM).",
     "- Never answer with only a URL or a single markdown link.",
-    "- Rewrite into the REPLY LANGUAGE. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
+    "- Rewrite into the REPLY LANGUAGE. If that language is Azerbaijani or Russian, do not translate the answer into English. Clarifying questions stay in the reply language. One language only — no parenthetical translations. Keep names, phones, emails, and URLs exact.",
     "- Do not invent numbers or products that are not in the notes.",
     "If the user is not asking about the company, ignore this block and answer normally.",
   ];
@@ -394,10 +533,10 @@ export const resolveKnowledgeContext = (
 };
 
 /** @deprecated Prefer resolveKnowledgeContext — kept for simple string callers */
-export const buildKnowledgeBlock = (
+export const buildKnowledgeBlock = async (
   query: string,
   audience: "guest" | "user",
-): string => resolveKnowledgeContext(query, audience).block;
+): Promise<string> => (await resolveKnowledgeContext(query, audience)).block;
 
 export const seedSinamKnowledgeIfEmpty = () => {
   const count = getDb()

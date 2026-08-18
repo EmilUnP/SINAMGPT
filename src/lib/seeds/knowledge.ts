@@ -185,7 +185,7 @@ Dərc olunmuş keys: Azərbaycan Kənd Təsərrüfatı Nazirliyi (2021–2024) �
     title: "SINAMGPT məhsul qeydi",
     category: "project",
     content: `SINAMGPT SINAM-ın daxili/yerli şirkət AI söhbət köməkçisidir.
-Şirkət mühitində yerli modellərdə (Ollama / istəyə bağlı vLLM) işləyir.
+Şirkət mühitində yerli Ollama modellərində işləyir (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B, Qwen 3 32B).
 Admin tərəfindən idarə olunan Şirkət Bilik bazasından (bu paket) və qoruyucu qaydalardan (guardrails) istifadə edir — ictimai cloud fine-tune modeli deyil.
 Əməkdaşlar SINAM məhsulları (SESDA, Farabi, Biletim, GoMap, GoNav, Yurdum və s.), mətn hazırlama, xülasə və ümumi iş köməyi barədə sual verə bilər. Şəxsi söhbətlər yerli maşında qalır.`,
     tags: "sinamgpt, owngpt, ai, assistant, internal, project, köməkçi, komekci, ассистент",

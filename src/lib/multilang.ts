@@ -263,6 +263,37 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ["price", "qiymət", "qiymet", "цена", "тариф", "pricing", "paket", "package"],
   ["employee", "işçi", "isci", "əməkdaş", "emekdas", "сотрудник", "staff", "workers", "headcount"],
   [
+    "leave",
+    "vacation",
+    "holiday",
+    "pto",
+    "отпуск",
+    "отпуска",
+    "məzuniyyət",
+    "mezuniyyet",
+    "izin",
+  ],
+  [
+    "salary",
+    "wage",
+    "payroll",
+    "maaş",
+    "maas",
+    "зарплата",
+    "зарплату",
+    "əməkhaqqı",
+    "emekhaqqi",
+  ],
+  [
+    "password",
+    "passwords",
+    "şifrə",
+    "sifre",
+    "пароль",
+    "пароли",
+    "parol",
+  ],
+  [
     "year",
     "years",
     "ildir",
@@ -276,12 +307,19 @@ const QUERY_SYNONYM_GROUPS: string[][] = [
   ],
 ];
 
-/** AZ/RU inflections: əməkdaşı ↔ əməkdaş, məhsulları ↔ məhsul. */
+/** AZ/RU inflections: əməkdaşı ↔ əməkdaş, компания ↔ компании. */
 export const tokensAlign = (a: string, b: string): boolean => {
   if (!a || !b) return false;
   if (a === b) return true;
   if (a.length < 4 || b.length < 4) return false;
-  return a.startsWith(b) || b.startsWith(a);
+  if (a.startsWith(b) || b.startsWith(a)) return true;
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  if (shorter.length < 5) return false;
+  if (longer.length - shorter.length > 3) return false;
+  let i = 0;
+  while (i < shorter.length && shorter[i] === longer[i]) i += 1;
+  return i >= 5 && shorter.length - i <= 2;
 };
 
 export const expandQueryTokens = (query: string): string[] => {
@@ -308,6 +346,27 @@ export const expandQueryTokens = (query: string): string[] => {
 
   return [...expanded];
 };
+
+/** Product / company names that must not leak into unrelated search glosses. */
+export const KNOWLEDGE_BRAND_TOKENS = new Set([
+  "sinam",
+  "синам",
+  "sesda",
+  "сесда",
+  "sinamgpt",
+  "farabi",
+  "farabı",
+  "фараби",
+  "biletim",
+  "билетим",
+  "gomap",
+  "gonav",
+  "yurdum",
+  "yurd",
+  "юрдум",
+  "owngpt",
+  "sgrp",
+]);
 
 /** Detect company-intent questions across languages (boost knowledge). */
 export const looksLikeCompanyQuestion = (query: string): boolean => {
@@ -336,16 +395,161 @@ export type DetectedReplyLanguage = {
   label: string;
 };
 
-/**
- * Lightweight reply-language detector for system-prompt injection.
- * Prefer script + clear lexical cues; default Latin/ambiguous → English.
- */
-export const detectReplyLanguage = (text: string): DetectedReplyLanguage => {
-  const raw = (text ?? "").trim();
-  if (!raw) return { code: "en", label: "English" };
+export type ReplyLanguageHint = {
+  /** UI flag (en / az / ru). Used only when the prompt is short or mixed. */
+  uiLocale?: "en" | "az" | "ru";
+  /** Earlier user turns — keep AZ/RU if this turn is a short follow-up. */
+  priorText?: string;
+};
 
-  const letters = raw.replace(/[^\p{L}]/gu, "");
-  if (!letters) return { code: "en", label: "English" };
+/** In-app rewrite stubs are English; do not treat them as the user's language. */
+export const isInternalRewritePrompt = (text: string): boolean => {
+  const t = text.trim();
+  return (
+    t.startsWith("Rewrite your previous answer") ||
+    t.startsWith("Continue your previous answer")
+  );
+};
+
+const LANG_LABEL: Record<DetectedReplyLanguage["code"], string> = {
+  en: "English",
+  ru: "Russian",
+  az: "Azerbaijani",
+  tr: "Turkish",
+  other: "the user's language",
+};
+
+const foldAzLatin = (value: string): string =>
+  value
+    .replace(/ə/gu, "e")
+    .replace(/ı/gu, "i")
+    .replace(/ö/gu, "o")
+    .replace(/ü/gu, "u")
+    .replace(/ğ/gu, "g")
+    .replace(/ş/gu, "s")
+    .replace(/ç/gu, "c");
+
+/** Distinctive AZ (ASCII-folded). People often type without ə/ş/ü. */
+const AZ_WORDS = new Set([
+  "salam",
+  "salamlar",
+  "necesen",
+  "nece",
+  "nedir",
+  "niye",
+  "ucun",
+  "haqqinda",
+  "zehmet",
+  "zehmetolmasa",
+  "xahis",
+  "xahisedirem",
+  "tesekkur",
+  "tesekkurler",
+  "melumat",
+  "komek",
+  "komekci",
+  "sual",
+  "suallar",
+  "cavab",
+  "yazin",
+  "izah",
+  "qisa",
+  "mektub",
+  "sirket",
+  "emekdas",
+  "elaqe",
+  "menim",
+  "mene",
+  "men",
+  "olsun",
+  "olmaz",
+  "isteyirem",
+  "goster",
+  "tapin",
+  "harada",
+  "kimdir",
+  "isleyir",
+  "bilmek",
+  "buyurun",
+  "sagol",
+  "sagolun",
+  "unvan",
+  "poct",
+  "qeyd",
+  "layihe",
+  "mehsul",
+  "azerbaycan",
+  "verin",
+  "edin",
+  "deyin",
+  "hansi",
+  "beli",
+  "xeyr",
+  "xeyir",
+  "sabahin",
+  "axsaminiz",
+  "axsam",
+  "yox",
+  "mence",
+  "sizce",
+]);
+
+const TR_WORDS = new Set([
+  "merhaba",
+  "nasilsin",
+  "lutfen",
+  "misiniz",
+  "nasil",
+]);
+
+const EN_WORDS = new Set([
+  "the",
+  "and",
+  "please",
+  "hello",
+  "hey",
+  "what",
+  "how",
+  "can",
+  "you",
+  "this",
+  "that",
+  "with",
+  "from",
+  "about",
+  "write",
+  "explain",
+  "thanks",
+  "thank",
+  "help",
+  "could",
+  "would",
+  "there",
+  "have",
+  "will",
+  "your",
+  "our",
+  "tell",
+  "make",
+  "need",
+  "want",
+  "which",
+  "where",
+  "when",
+  "why",
+]);
+
+const scoredLang = (code: DetectedReplyLanguage["code"]): DetectedReplyLanguage => ({
+  code,
+  label: LANG_LABEL[code],
+});
+
+const scorePromptLanguage = (raw: string): DetectedReplyLanguage | null => {
+  const text = raw.trim();
+  if (!text) return null;
+
+  const letters = text.replace(/[^\p{L}]/gu, "");
+  if (!letters) return null;
 
   const cyrillic = (letters.match(/\p{Script=Cyrillic}/gu) ?? []).length;
   const latin = (letters.match(/\p{Script=Latin}/gu) ?? []).length;
@@ -353,68 +557,94 @@ export const detectReplyLanguage = (text: string): DetectedReplyLanguage => {
   const total = Math.max(1, letters.length);
 
   if (cyrillic / total >= 0.35 && cyrillic >= latin && cyrillic >= arabic) {
-    return { code: "ru", label: "Russian" };
+    return scoredLang("ru");
   }
 
-  const lower = normalizeMultilangText(raw);
+  if (arabic / total >= 0.35) return scoredLang("other");
 
-  // Azerbaijani (Latin) — ə is a strong cue
-  if (
-    /[ə]/u.test(lower) ||
-    /\b(salam|necesen|necəsən|tesekkur|təşəkkür|zehmet|zəhmət|xahis|xahiş|men|mən)\b/u.test(
-      lower,
-    )
-  ) {
-    return { code: "az", label: "Azerbaijani" };
+  const folded = foldAzLatin(normalizeMultilangText(text));
+  const tokens = folded.split(" ").filter(Boolean);
+  let azScore = 0;
+  let enScore = 0;
+  let trScore = 0;
+
+  if (/[ə]/u.test(text)) azScore += 5;
+
+  for (const token of tokens) {
+    if (AZ_WORDS.has(token)) azScore += 2;
+    if (EN_WORDS.has(token)) enScore += 2;
+    if (TR_WORDS.has(token)) trScore += 2;
   }
 
-  // Turkish cues (without Azerbaijani ə)
-  if (
-    /\b(merhaba|nasilsin|nasılsın|tesekkur|teşekkür|lutfen|lütfen|nedir|misiniz)\b/u.test(
-      lower,
-    )
-  ) {
-    return { code: "tr", label: "Turkish" };
+  if (/^(salam|salamlar)[!?.,]*$/i.test(text)) return scoredLang("az");
+  if (/^(hi|hello|hey|yo)[!?.,]*$/i.test(text)) return scoredLang("en");
+  if (/^merhaba[!?.,]*$/i.test(text)) return scoredLang("tr");
+
+  if (azScore >= 2 && azScore >= enScore && azScore >= trScore) {
+    return scoredLang("az");
   }
-
-  // Clear English
-  if (
-    /\b(the|and|please|hello|hi|hey|what|how|can|you|say|help|with|this|that|for|from|about|write|explain|thanks|thank)\b/i.test(
-      raw,
-    )
-  ) {
-    return { code: "en", label: "English" };
+  if (trScore >= 2 && trScore > azScore && trScore >= enScore) {
+    return scoredLang("tr");
   }
+  if (enScore >= 2 && enScore > azScore) return scoredLang("en");
+  if (azScore >= 1 && azScore >= enScore) return scoredLang("az");
+  if (enScore >= 1 && azScore === 0 && trScore === 0) return scoredLang("en");
 
-  // Short ambiguous Latin greetings → English (company default)
-  if (/^(hi|hello|hey|yo|salam|salamlar|merhaba)$/i.test(raw)) {
-    return { code: "en", label: "English" };
-  }
-
-  if (arabic / total >= 0.35) {
-    return { code: "other", label: "the user's language" };
-  }
-
-  // Mostly Latin without strong cues → English
-  if (latin >= cyrillic) return { code: "en", label: "English" };
-
-  return { code: "other", label: "the user's language" };
+  return null;
 };
 
-export const replyLanguageInstruction = (text: string): string => {
-  const lang = detectReplyLanguage(text);
+/**
+ * Lightweight reply-language detector for system-prompt injection.
+ * Azerbaijani typed without ə (nedir, nece, menim) still counts as AZ.
+ */
+export const detectReplyLanguage = (
+  text: string,
+  hint?: ReplyLanguageHint,
+): DetectedReplyLanguage => {
+  const raw = (text ?? "").trim();
+  const fromPrompt = scorePromptLanguage(raw);
+  if (fromPrompt) return fromPrompt;
+
+  const prior = hint?.priorText?.trim() ?? "";
+  if (raw.length < 64 && prior) {
+    const fromPrior = scorePromptLanguage(prior);
+    if (fromPrior && fromPrior.code !== "en") return fromPrior;
+  }
+
+  if (hint?.uiLocale === "az") return scoredLang("az");
+  if (hint?.uiLocale === "ru") return scoredLang("ru");
+  return scoredLang("en");
+};
+
+const NATIVE_PIN: Record<DetectedReplyLanguage["code"], string> = {
+  az: "CAVAB DİLİ: Azərbaycan. Bütün cavabı yalnız Azərbaycan dilində yaz. Aydınlaşdırıcı sual lazımdırsa, onu da Azərbaycanca ver. İngiliscə yazma və mötərizədə tərcümə əlavə etmə.",
+  ru: "ЯЗЫК ОТВЕТА: русский. Пиши весь ответ только по-русски. Уточняющие вопросы тоже по-русски. Не переходи на английский и не дублируй перевод в скобках.",
+  tr: "CEVAP DİLİ: Türkçe. Tüm yanıtı yalnızca Türkçe yaz. İngilizce sorma; parantez içinde çeviri ekleme.",
+  en: "REPLY LANGUAGE: English. Write the entire reply in English only. Do not add a second language in parentheses.",
+  other:
+    "Write the entire reply in the user's language only. Do not switch to English unless the user wrote in English.",
+};
+
+export const replyLanguageInstruction = (
+  text: string,
+  hint?: ReplyLanguageHint,
+): string => {
+  const lang = detectReplyLanguage(text, hint);
   return `REPLY LANGUAGE (mandatory for this turn): ${lang.label}.
 Write the entire assistant message in ${lang.label} only.
-Do NOT use any other language. Do NOT add translations or glosses in parentheses (never "… (Hello!)").`;
+Clarifying questions MUST be in ${lang.label} — never switch to English to ask what the user meant.
+Do NOT add translations or glosses in parentheses (never "… (Hello!)").
+${NATIVE_PIN[lang.code]}`;
 };
 
 /** Always-on language instruction for the system prompt. */
 export const MULTILANG_SYSTEM_RULES = `LANGUAGE:
-- Reply in the user's language only (see REPLY LANGUAGE below when present). Supported well: English, Azerbaijani, Russian, Turkish.
-- Write the entire reply in ONE language. Do NOT add translations, glosses, or a second language in parentheses.
+- Reply in the user's language only (see REPLY LANGUAGE below). Supported well: English, Azerbaijani, Russian, Turkish.
+- Azerbaijani stays Azerbaijani even when typed without special letters (nedir, nece, menim, zehmet olmasa).
+- Write the entire reply in ONE language. Clarifying questions use that same language — never ask in English because the model is small.
+- Do NOT add translations, glosses, or a second language in parentheses.
 - Never do dual-language answers like "Merhaba... (Hello...)" or "Здравствуйте... (Hello...)".
 - Keep the same language for follow-ups unless the user clearly switches.
-- If the message is ambiguous or very short (e.g. "salam", "hi"), default to English unless earlier turns already set a language.
 - Only provide a translation when the user explicitly asks for one.
 - Guardrails and safety rules apply in every language — never bypass them via translation or code-switching.
 - COMPANY KNOWLEDGE is reference material (often in Azerbaijani) — rewrite facts into the reply language; never switch the reply language because knowledge text or tags mention other languages. Keep names, emails, phones, URLs exact.`;

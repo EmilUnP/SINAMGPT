@@ -1,5 +1,8 @@
 import { adminAz } from "./admin";
+import { developerAz } from "./developer";
+import { devlabAz } from "./devlab";
 import { labAz } from "./lab";
+import { modelsAz } from "./models";
 import type { Messages } from "./en";
 
 export const az: Messages = {
@@ -10,6 +13,8 @@ export const az: Messages = {
     copied: "Kopyalandı",
     copyMessage: "Mesajı kopyala",
     cancel: "Ləğv et",
+    confirm: "Davam et",
+    confirmTitle: "Təsdiq edin",
     save: "Yadda saxla",
     add: "Əlavə et",
     delete: "Sil",
@@ -30,6 +35,15 @@ export const az: Messages = {
     minutesAgo: "{n} dəq əvvəl",
     hoursAgo: "{n} saat əvvəl",
     daysAgo: "{n} gün əvvəl",
+    more: "Daha çox",
+    moreMenu: "Digər səhifələr",
+    ms: "{n} ms",
+    sec: "{n} san",
+    rpmShort: "{n}/dəq",
+    statusOk: "ok",
+    statusError: "xəta",
+    statusAborted: "dayandırılıb",
+    statusRejected: "rədd",
   },
   auth: {
     signInTitle: "Hesabınıza daxil olun",
@@ -64,6 +78,19 @@ export const az: Messages = {
       "Qeydiyyat hazırda bağlıdır. Zəhmət olmasa daxil olun.",
     somethingWrong: "Nəsə xəta baş verdi",
     networkError: "Şəbəkə xətası. Yenidən cəhd edin.",
+    invalidCredentials: "İstifadəçi adı və ya şifrə yanlışdır",
+    tooManyAttempts: "Həddindən artıq giriş cəhdi. Bir az sonra yenidən cəhd edin.",
+    usernamePasswordRequired: "İstifadəçi adı və şifrə tələb olunur",
+    couldNotLogIn: "Daxil olmaq mümkün olmadı",
+    tooManyRegister: "Həddindən artıq qeydiyyat cəhdi. Bir az sonra yenidən cəhd edin.",
+    usernameMin: "İstifadəçi adı ən azı 3 simvol olmalıdır",
+    usernameMax: "İstifadəçi adı çox uzundur",
+    usernameChars: "Yalnız hərf, rəqəm, . _ - istifadə edin",
+    passwordMin: "Şifrə ən azı 6 simvol olmalıdır",
+    invalidInput: "Yanlış məlumat",
+    usernameReserved: "Bu istifadəçi adı rezerv olunub",
+    usernameTaken: "Bu istifadəçi adı artıq götürülüb",
+    couldNotCreate: "Hesab yaratmaq mümkün olmadı",
   },
   home: {
     tagline: "Yerli şirkət AI-sı",
@@ -129,6 +156,7 @@ export const az: Messages = {
     allChats: "Bütün söhbətlər",
     renameProjectAria: "{name} adını dəyiş",
     deleteProjectAria: "{name} sil",
+    deleteProjectTitle: "Bu layihə silinsin?",
     loadingChats: "Söhbətlər yüklənir…",
     noChatsSearch: "Axtarışa uyğun söhbət yoxdur.",
     noChatsProject: "Bu layihədə hələ söhbət yoxdur.",
@@ -139,10 +167,15 @@ export const az: Messages = {
     pin: "Bərkit",
     unpin: "Götür",
     deleteChat: "Söhbəti sil",
+    deleteChatConfirm: "Bu söhbət silinsin? Bunu geri qaytarmaq olmaz.",
     adminBadge: "admin",
     unlimitedMessages: "Limitsiz mesajlar",
     adminPanel: "Admin paneli",
+    modelsGuide: "Modellər",
+    modelsGuideHint: "Ölçü, girişlər və hər modelin nə vaxt istifadə olunacağını müqayisə edin.",
     modelLab: "Model laboratoriyası",
+    developer: "Tərtibatçı",
+    devLab: "Dev lab",
     signOut: "Çıxış",
     unlimited: "Limitsiz",
     historySaved: "Tarixçə saxlanılır",
@@ -154,9 +187,6 @@ export const az: Messages = {
     shareThisChat: "Bu söhbəti paylaş",
     shared: "Paylaşıldı",
     share: "Paylaş",
-    replySpeed: "Cavab sürəti",
-    fast: "Sürətli",
-    smart: "Ağıllı",
     model: "Model",
     noModels: "Model yoxdur",
     shareChat: "Söhbəti paylaş",
@@ -217,6 +247,78 @@ export const az: Messages = {
     suggestionFact: "Maraqlı fakt",
     suggestionFactPrompt:
       "Texnologiya haqqında bir maraqlı fakt de. 2 cümlə ilə məhdudlaşdır.",
+    attachImage: "Şəkil əlavə et",
+    removeImage: "Şəkli sil",
+    vision: "Görüntü",
+    tools: "Funksiya",
+    visionHint: "Əlavə etdiyiniz və ya yapışdırdığınız şəkilləri oxuya bilər.",
+    toolsHint: "Əlavə funksiyalar çağıra bilər. Bu söhbətdə hələ istifadə olunmur.",
+    inputText: "Mətn",
+    inputImage: "Şəkil",
+    inputAudio: "Audio",
+    inputVideo: "Video",
+    inputTextHint: "Bu söhbətdə mesaj yaza bilərsiniz.",
+    inputImageHint:
+      "Bu söhbətdə şəkil əlavə edə, yapışdıra və ya buraxa bilərsiniz.",
+    inputAudioHint:
+      "Bu söhbətdə mikrofonla audio göndərə bilərsiniz (ən çox 30 saniyə).",
+    inputVideoHint:
+      "Ollama bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
+    imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
+    audioPlaceholder: "Sual yazın və ya yazını göndərin…",
+    visionFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin, yapışdırın və ya buraxın",
+    audioFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofonla yazın",
+    audioVisionFooterHint:
+      "Enter — göndər · Shift+Enter — yeni sətir · Mikrofon · şəkil əlavə edin və ya buraxın",
+    recordAudio: "Səs yaz",
+    stopRecording: "Yazını dayandır",
+    removeAudio: "Yazını sil",
+    voiceRecording: "Səs yazısı",
+    recording: "Yazılır… {n}s",
+    audioDefaultPrompt:
+      "Bu yazıda nə deyildiyini yaz, sonra deyilənə cavab ver.",
+    micDenied:
+      "Mikrofon icazəsi bağlanıb. Brauzerdə icazə verin, sonra yenidən yoxlayın.",
+    micNotFound: "Mikrofon tapılmadı.",
+    micSwitchFailed:
+      "Həmin mikrofona keçmək alınmadı. Siyahıdan başqasını seçin.",
+    micFailed: "Mikrofonu işə salmaq alınmadı.",
+    micQuiet:
+      "Yazı çox sakitdir. Mikrofonun yanındakı oxa klikləyin və danışdığınız noutbuk və ya qulaqlıq mikrofonunu seçin.",
+    chooseMic: "Mikrofon seç",
+    micLevel: "Mikrofon səviyyəsi",
+    dropImages: "Şəkilləri bura buraxın",
+    dropUnsupported:
+      "Bu söhbət JPEG, PNG, WebP və ya GIF şəkillərini qəbul edir. Audionu mikrofonla yazın.",
+    imageTooLarge: "Hər şəkil 8 MB-dan kiçik olmalıdır.",
+    imageType: "JPEG, PNG, WebP və ya GIF istifadə edin.",
+    imageLimit: "Ən çox {n} şəkil əlavə edə bilərsiniz.",
+    imageFailed: "Şəkli oxumaq mümkün olmadı. Başqa fayl yoxlayın.",
+    visionRequired:
+      "Bu model şəkilləri dəstəkləmir. Görüntü modelini seçin.",
+    toolsMenu: "Alətlər",
+    closeTools: "Alətləri bağla",
+    uploadImageHint: "JPEG, PNG, WebP və ya GIF",
+    uploadImageNeedVision: "Şəkil oxuya bilən model seçin.",
+    uploadImageNeedAdmin: "Admin Fayl yükləməni açmalıdır.",
+    toolSummarize: "Xülasə",
+    toolSummarizeHint: "Mətnin qısa versiyası",
+    toolSummarizePrompt: "Bunu aydın şəkildə xülasə et:\n\n",
+    toolTranslate: "Tərcümə et",
+    toolTranslateHint: "Ekran dilinə",
+    toolTranslatePrompt: "Bunu Azərbaycan dilinə tərcümə et:\n\n",
+    toolsSignIn: "Söhbətləri saxlamaq üçün daxil olun",
+    toolsSignInHint: "Tarixçə, layihələr və limitsiz mesajlar",
+    modelHint: {
+      "gemma3-4b": "Ən sürətli cavablar",
+      "gemma3-12b": "Hər iş üçün",
+      "gemma4-e4b": "Səs və şəkil",
+      "gemma4-31b": "Şəkillə güclü cavab",
+      "qwen35-9b": "Şəkil və yazı",
+      "qwen3-32b": "Güclü mətn və kod",
+    },
   },
   share: {
     back: "Geri",
@@ -228,5 +330,8 @@ export const az: Messages = {
     backToChat: "Söhbətə qayıt",
   },
   lab: labAz,
+  developer: developerAz,
+  devlab: devlabAz,
+  models: modelsAz,
   admin: adminAz,
 };

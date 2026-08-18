@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getGuestUsage } from "@/lib/guest";
+import { clientIp } from "@/lib/rate-limit";
 import {
   getEnabledModels,
   getGuestEnabledSetting,
   getGuestMaxCharsSetting,
 } from "@/lib/settings";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const guestEnabled = getGuestEnabledSetting();
     if (!guestEnabled) {
@@ -22,7 +23,7 @@ export async function GET() {
 
     const [{ models, defaultModel }, usage] = await Promise.all([
       getEnabledModels(),
-      getGuestUsage(),
+      getGuestUsage(clientIp(request)),
     ]);
     return NextResponse.json({
       models,

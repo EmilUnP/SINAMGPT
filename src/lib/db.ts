@@ -66,6 +66,7 @@ const ensureSchema = (database: Database.Database) => {
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
       content TEXT NOT NULL,
       sources TEXT,
+      attachments TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -83,9 +84,13 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE TABLE IF NOT EXISTS models (
       name TEXT PRIMARY KEY,
-      is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
+      is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
       backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
+      vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),
+      tools INTEGER NOT NULL DEFAULT 0 CHECK (tools IN (0, 1)),
+      audio INTEGER NOT NULL DEFAULT 0 CHECK (audio IN (0, 1)),
+      video INTEGER NOT NULL DEFAULT 0 CHECK (video IN (0, 1)),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -106,7 +111,16 @@ const ensureSchema = (database: Database.Database) => {
       status TEXT NOT NULL CHECK (status IN ('ok', 'error', 'aborted')),
       error_message TEXT,
       conversation_id TEXT,
+      request_payload TEXT NOT NULL DEFAULT '',
+      response_full TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS guest_ip_usage (
+      ip TEXT NOT NULL,
+      day TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (ip, day)
     );
 
     CREATE INDEX IF NOT EXISTS idx_usage_events_created
@@ -172,6 +186,54 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_audit_events_category
       ON audit_events(category, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      is_enabled INTEGER NOT NULL DEFAULT 1 CHECK (is_enabled IN (0, 1)),
+      last_used_at TEXT,
+      revoked_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_keys_user
+      ON api_keys(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS api_usage_events (
+      id TEXT PRIMARY KEY,
+      api_key_id TEXT,
+      user_id TEXT,
+      username TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT '',
+      prompt_preview TEXT NOT NULL DEFAULT '',
+      prompt_chars INTEGER NOT NULL DEFAULT 0,
+      response_chars INTEGER NOT NULL DEFAULT 0,
+      ttft_ms INTEGER,
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      tokens_eval INTEGER,
+      tokens_prompt INTEGER,
+      tokens_per_sec REAL,
+      status TEXT NOT NULL CHECK (
+        status IN ('ok', 'error', 'aborted', 'rejected')
+      ),
+      error_message TEXT,
+      ip TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_created
+      ON api_usage_events(created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_user
+      ON api_usage_events(user_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_key
+      ON api_usage_events(api_key_id, created_at DESC);
   `);
 
   // Seed defaults once (admin can change later in Admin → Settings / Guardrails)
@@ -197,6 +259,26 @@ const ensureSchema = (database: Database.Database) => {
   insertSettingIfMissing(
     "guardrail_policy_suggestions",
     JSON.stringify(DEFAULT_POLICY_SUGGESTIONS),
+  );
+  insertSettingIfMissing(
+    "api_gateway",
+    JSON.stringify({
+      enabled: true,
+      maxKeysPerUser: 5,
+      maxRequestsPerMinute: 30,
+      maxChars: 16000,
+      corsOrigins: [],
+    }),
+  );
+  insertSettingIfMissing(
+    "feature_flags",
+    JSON.stringify({
+      developerApi: false,
+      devLab: false,
+      fileUpload: false,
+      fileImport: false,
+      microphone: false,
+    }),
   );
 
   // Migrate older DBs created before admin fields existed
@@ -229,6 +311,29 @@ const ensureSchema = (database: Database.Database) => {
   if (!hasColumn(database, "messages", "sources")) {
     database.exec(`ALTER TABLE messages ADD COLUMN sources TEXT`);
   }
+  if (!hasColumn(database, "messages", "attachments")) {
+    database.exec(`ALTER TABLE messages ADD COLUMN attachments TEXT`);
+  }
+  if (!hasColumn(database, "models", "vision")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN vision INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "tools")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN tools INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "audio")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN audio INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
+  if (!hasColumn(database, "models", "video")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN video INTEGER NOT NULL DEFAULT 0`,
+    );
+  }
   if (!hasColumn(database, "conversations", "project_id")) {
     database.exec(`ALTER TABLE conversations ADD COLUMN project_id TEXT`);
   }
@@ -238,6 +343,16 @@ const ensureSchema = (database: Database.Database) => {
   if (!hasColumn(database, "conversations", "share_token")) {
     database.exec(`ALTER TABLE conversations ADD COLUMN share_token TEXT`);
   }
+  if (!hasColumn(database, "usage_events", "request_payload")) {
+    database.exec(
+      `ALTER TABLE usage_events ADD COLUMN request_payload TEXT NOT NULL DEFAULT ''`,
+    );
+  }
+  if (!hasColumn(database, "usage_events", "response_full")) {
+    database.exec(
+      `ALTER TABLE usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
+    );
+  }
   database.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_share_token
      ON conversations(share_token)
@@ -245,13 +360,19 @@ const ensureSchema = (database: Database.Database) => {
   );
 };
 
+const EXAMPLE_ADMIN_PASSWORD = "AdminChangeMe123!";
+
 const ensureAdminUser = (database: Database.Database) => {
   const username = (process.env.ADMIN_USERNAME || "admin").trim();
-  const password = process.env.ADMIN_PASSWORD || "AdminChangeMe123!";
+  const password = (process.env.ADMIN_PASSWORD || "").trim();
 
-  if (!username || password.length < 6) {
+  if (
+    !username ||
+    password.length < 10 ||
+    password === EXAMPLE_ADMIN_PASSWORD
+  ) {
     console.warn(
-      "[OwnGPT] ADMIN_USERNAME / ADMIN_PASSWORD invalid — admin not seeded",
+      "[OwnGPT] Set ADMIN_PASSWORD in .env.local (min 10 chars, not the example value) to seed the admin account",
     );
     return;
   }

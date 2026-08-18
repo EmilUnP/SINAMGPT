@@ -2,10 +2,15 @@
 
 import {
   Check,
+  Boxes,
+  Cable,
+  ChevronDown,
   FlaskConical,
+  KeyRound,
   Folder,
   FolderPlus,
   Infinity as InfinityIcon,
+  Languages,
   Link2,
   Link2Off,
   Menu,
@@ -15,14 +20,17 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Paperclip,
   RefreshCw,
   Search,
   SendHorizonal,
   Square,
+  TextQuote,
   Trash2,
   LogOut,
   Shield,
   Sparkles,
+  Mic,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -34,6 +42,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -41,12 +51,34 @@ import { useRouter } from "next/navigation";
 import sinamLogo from "@/assets/sinam_logo.png";
 import { CopyButton } from "./CopyButton";
 import { KnowledgeCitations } from "./KnowledgeCitations";
+import { OverflowNav, type OverflowNavItem } from "@/components/OverflowNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
+import { ComposerToolsMenu } from "./ComposerToolsMenu";
 import { MarkdownMessage } from "./MarkdownMessage";
-import { ModelPicker } from "./ModelPicker";
+import { MessageAudio } from "./MessageAudio";
+import { MessageImages } from "./MessageImages";
+import { ModelPicker, type ModelOption } from "./ModelPicker";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { autoResizeTextarea, formatChatTime, relativeTime } from "@/lib/ui";
+import {
+  fileToChatImage,
+  imagePreviewUrl,
+  type ChatImagePayload,
+} from "@/lib/compress-image";
+import { AUDIO_MIME, MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
+import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
+import { attachmentUrl, MAX_CHAT_IMAGES } from "@/lib/image-limits";
+import {
+  ensureMicPermission,
+  listMicDevices,
+  startMicRecording,
+  type MicDevice,
+  type MicSession,
+  type RecordedWav,
+} from "@/lib/record-mic";
+import { fleetHintKey } from "@/lib/model-fleet";
+import { autoResizeTextarea, formatChatTime, relativeTime, withComposerStarter } from "@/lib/ui";
 import { useIsMounted } from "@/lib/use-mounted";
 import type {
   Conversation,
@@ -58,24 +90,33 @@ import type {
 
 type ChatAppProps = {
   user: User;
+  features?: {
+    developerApi: boolean;
+    devLab: boolean;
+    fileUpload: boolean;
+    fileImport: boolean;
+    microphone: boolean;
+  };
 };
 
-type UiMessage = Message & { isStreaming?: boolean };
+type PendingImage = ChatImagePayload & { id: string };
 
-type ModelMode = "fast" | "smart" | "custom";
+type PendingAudio = {
+  mime: typeof AUDIO_MIME;
+  data: string;
+  name: string;
+  durationMs: number;
+  previewUrl: string;
+};
 
-const LS_MODEL_MODE = "sinamgpt_model_mode";
+type UiMessage = Message & {
+  isStreaming?: boolean;
+  localImages?: ChatImagePayload[];
+  localAudio?: PendingAudio;
+};
+
 const LS_LAST_MODEL = "sinamgpt_last_model";
-
-const readStoredModelMode = (): ModelMode => {
-  try {
-    const v = localStorage.getItem(LS_MODEL_MODE);
-    if (v === "fast" || v === "smart" || v === "custom") return v;
-  } catch {
-    /* ignore */
-  }
-  return "smart";
-};
+const LS_LAST_MIC = "sinamgpt_last_mic";
 
 const readStoredModel = (): string => {
   try {
@@ -85,10 +126,26 @@ const readStoredModel = (): string => {
   }
 };
 
-const persistModelChoice = (mode: ModelMode, modelName: string) => {
+const persistModelChoice = (modelName: string) => {
   try {
-    localStorage.setItem(LS_MODEL_MODE, mode);
     if (modelName) localStorage.setItem(LS_LAST_MODEL, modelName);
+  } catch {
+    /* ignore */
+  }
+};
+
+const readStoredMic = (): string => {
+  try {
+    return localStorage.getItem(LS_LAST_MIC)?.trim() || "";
+  } catch {
+    return "";
+  }
+};
+
+const persistMicChoice = (deviceId: string) => {
+  try {
+    if (deviceId) localStorage.setItem(LS_LAST_MIC, deviceId);
+    else localStorage.removeItem(LS_LAST_MIC);
   } catch {
     /* ignore */
   }
@@ -108,9 +165,19 @@ const parseSseChunk = (raw: string) => {
   return { event, data: JSON.parse(dataLines.join("\n")) };
 };
 
-export const ChatApp = ({ user }: ChatAppProps) => {
+export const ChatApp = ({
+  user,
+  features = {
+    developerApi: false,
+    devLab: false,
+    fileUpload: false,
+    fileImport: false,
+    microphone: false,
+  },
+}: ChatAppProps) => {
   const router = useRouter();
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const suggestions = [
     {
       title: t("chat.suggestionHello"),
@@ -132,14 +199,19 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
-  const [models, setModels] = useState<
-    Array<{ name: string; display_name?: string; backend?: string }>
-  >([]);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState("");
-  const [fastModel, setFastModel] = useState("");
-  const [smartModel, setSmartModel] = useState("");
-  const [modelMode, setModelMode] = useState<ModelMode>("smart");
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [recordElapsedMs, setRecordElapsedMs] = useState(0);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micDevices, setMicDevices] = useState<MicDevice[]>([]);
+  const [micDeviceId, setMicDeviceId] = useState("");
+  const [micPickerOpen, setMicPickerOpen] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [modelsError, setModelsError] = useState("");
@@ -165,12 +237,22 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
+  const [shareMenuPos, setShareMenuPos] = useState({
+    top: 0,
+    right: 0,
+    fullWidth: false,
+  });
   const sharePortalReady = useIsMounted();
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sendLockRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recorderRef = useRef<MicSession | null>(null);
+  const micPickerRef = useRef<HTMLDivElement | null>(null);
+  const micDeviceIdRef = useRef("");
+  const dragDepthRef = useRef(0);
   const searchTimerRef = useRef<number | null>(null);
   const shareBtnRef = useRef<HTMLButtonElement | null>(null);
   const shareMenuRef = useRef<HTMLDivElement | null>(null);
@@ -179,9 +261,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     const el = shareBtnRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    const fullWidth = window.innerWidth < 640;
     setShareMenuPos({
       top: rect.bottom + 8,
-      right: Math.max(8, window.innerWidth - rect.right),
+      right: fullWidth ? 12 : Math.max(8, window.innerWidth - rect.right),
+      fullWidth,
     });
   }, []);
 
@@ -216,6 +300,40 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     };
   }, [shareOpen]);
 
+  useEffect(() => {
+    if (!mobileSidebar) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileSidebar]);
+
+  const extraNav = useMemo((): OverflowNavItem[] => {
+    const items: OverflowNavItem[] = [];
+    if (features.developerApi) {
+      items.push({
+        href: "/developer",
+        label: t("chat.developer"),
+        icon: KeyRound,
+      });
+    }
+    if (user.role === "admin") {
+      items.push(
+        { href: "/admin", label: t("chat.adminPanel"), icon: Shield },
+        { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
+      );
+      if (features.devLab) {
+        items.push({
+          href: "/devlab",
+          label: t("chat.devLab"),
+          icon: Cable,
+        });
+      }
+    }
+    return items;
+  }, [t, user.role, features.developerApi, features.devLab]);
+
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
     [conversations, activeId],
@@ -238,6 +356,78 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const modelLabel = (name: string) =>
     models.find((m) => m.name === name)?.display_name || name;
 
+  const supportsVision = Boolean(
+    models.find((m) => m.name === model)?.vision,
+  );
+  const supportsAudio = Boolean(
+    models.find((m) => m.name === model)?.audio,
+  );
+  const canAttachImages = supportsVision && features.fileUpload === true;
+  const canImportImages = supportsVision && features.fileImport === true;
+  const canUseMic = supportsAudio && features.microphone === true;
+  const canDropFiles = canImportImages;
+  const currentMicLabel =
+    micDevices.find((device) => device.deviceId === micDeviceId)?.label || "";
+  const composerToolsLocked = ready && (isSending || !model);
+
+  const applyComposerTool = useCallback((starter: string) => {
+    setInput((prev) => withComposerStarter(prev, starter));
+    requestAnimationFrame(() => {
+      autoResizeTextarea(textareaRef.current);
+      textareaRef.current?.focus();
+    });
+  }, []);
+
+  const composerToolSections = useMemo(() => {
+    const imageHint = canAttachImages
+      ? t("chat.uploadImageHint")
+      : supportsVision
+        ? t("chat.uploadImageNeedAdmin")
+        : t("chat.uploadImageNeedVision");
+    return [
+      {
+        id: "uploads",
+        items: [
+          {
+            id: "image",
+            label: t("chat.attachImage"),
+            hint: imageHint,
+            icon: Paperclip,
+            disabled: composerToolsLocked || !canAttachImages,
+            onSelect: () => fileInputRef.current?.click(),
+          },
+        ],
+      },
+      {
+        id: "write",
+        items: [
+          {
+            id: "summarize",
+            label: t("chat.toolSummarize"),
+            hint: t("chat.toolSummarizeHint"),
+            icon: TextQuote,
+            disabled: composerToolsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolSummarizePrompt")),
+          },
+          {
+            id: "translate",
+            label: t("chat.toolTranslate"),
+            hint: t("chat.toolTranslateHint"),
+            icon: Languages,
+            disabled: composerToolsLocked,
+            onSelect: () => applyComposerTool(t("chat.toolTranslatePrompt")),
+          },
+        ],
+      },
+    ];
+  }, [
+    applyComposerTool,
+    canAttachImages,
+    composerToolsLocked,
+    supportsVision,
+    t,
+  ]);
+
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -248,7 +438,133 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [input]);
+  }, [input, pendingImages.length, pendingAudio]);
+
+  useEffect(() => {
+    if (!canAttachImages && !canImportImages && pendingImages.length) {
+      setPendingImages([]);
+    }
+  }, [canAttachImages, canImportImages, pendingImages.length]);
+
+  const clearPendingAudio = useCallback(() => {
+    setPendingAudio(null);
+  }, []);
+
+  const applyRecordedClip = useCallback(
+    (clip: RecordedWav): PendingAudio => {
+      const next: PendingAudio = {
+        mime: clip.mime,
+        data: clip.data,
+        name: clip.name,
+        durationMs: clip.durationMs,
+        previewUrl: `data:${clip.mime};base64,${clip.data}`,
+      };
+      setPendingAudio(next);
+      if (clip.peak < 0.02) setError(t("chat.micQuiet"));
+      return next;
+    },
+    [t],
+  );
+
+  const stopMicSession = useCallback(async (): Promise<PendingAudio | null> => {
+    const session = recorderRef.current;
+    recorderRef.current = null;
+    if (!session) {
+      setIsRecording(false);
+      return pendingAudio;
+    }
+    setIsRecording(false);
+    setIsProcessingAudio(true);
+    setMicLevel(0);
+    try {
+      const clip = await session.stop();
+      return applyRecordedClip(clip);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("chat.micFailed"),
+      );
+      return null;
+    } finally {
+      setIsProcessingAudio(false);
+      setRecordElapsedMs(0);
+    }
+  }, [applyRecordedClip, pendingAudio, t]);
+
+  const cancelMicSession = useCallback(() => {
+    recorderRef.current?.cancel();
+    recorderRef.current = null;
+    setIsRecording(false);
+    setIsProcessingAudio(false);
+    setRecordElapsedMs(0);
+    setMicLevel(0);
+  }, []);
+
+  const refreshMicDevices = useCallback(async (preferred?: string) => {
+    const list = await listMicDevices();
+    setMicDevices(list);
+    setMicDeviceId((current) => {
+      const want = preferred || current || readStoredMic();
+      if (want && list.some((device) => device.deviceId === want)) {
+        micDeviceIdRef.current = want;
+        return want;
+      }
+      const next = list[0]?.deviceId ?? "";
+      micDeviceIdRef.current = next;
+      return next;
+    });
+    return list;
+  }, []);
+
+  useEffect(() => {
+    if (!canUseMic) {
+      setMicDevices([]);
+      setMicPickerOpen(false);
+      return;
+    }
+    void refreshMicDevices();
+    const media = navigator.mediaDevices;
+    if (!media?.addEventListener) return;
+    const onChange = () => {
+      void refreshMicDevices();
+    };
+    media.addEventListener("devicechange", onChange);
+    return () => media.removeEventListener("devicechange", onChange);
+  }, [canUseMic, refreshMicDevices]);
+
+  useEffect(() => {
+    if (!micPickerOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (micPickerRef.current?.contains(target)) return;
+      setMicPickerOpen(false);
+    };
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setMicPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [micPickerOpen]);
+
+  useEffect(() => {
+    micDeviceIdRef.current = micDeviceId;
+  }, [micDeviceId]);
+
+  useEffect(() => {
+    if (canUseMic) return;
+    cancelMicSession();
+    if (pendingAudio) clearPendingAudio();
+  }, [canUseMic, pendingAudio, cancelMicSession, clearPendingAudio]);
+
+  useEffect(
+    () => () => {
+      recorderRef.current?.cancel();
+    },
+    [],
+  );
 
   const loadConversations = useCallback(
     async (query?: string, projectId?: string | null) => {
@@ -283,10 +599,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const loadModels = useCallback(async () => {
     const res = await fetch("/api/models");
     const data = (await res.json()) as {
-      models?: Array<{ name: string; display_name?: string; backend?: string }>;
+      models?: ModelOption[];
       defaultModel?: string;
-      fastModel?: string;
-      smartModel?: string;
       error?: string;
     };
 
@@ -299,60 +613,159 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     const list = data.models ?? [];
     const names = new Set(list.map((m) => m.name));
     const fallback = data.defaultModel || list[0]?.name || "";
-    const nextFast =
-      (data.fastModel && names.has(data.fastModel) ? data.fastModel : "") ||
-      fallback;
-    const nextSmart =
-      (data.smartModel && names.has(data.smartModel)
-        ? data.smartModel
-        : "") || fallback;
     setModels(list);
-    setFastModel(nextFast);
-    setSmartModel(nextSmart);
     setModelsError("");
 
     setModel((current) => {
       if (current && names.has(current)) return current;
-      const storedMode = readStoredModelMode();
       const storedModel = readStoredModel();
-      if (storedMode === "fast" && nextFast) {
-        setModelMode("fast");
-        return nextFast;
-      }
-      if (storedMode === "smart" && nextSmart) {
-        setModelMode("smart");
-        return nextSmart;
-      }
-      if (storedModel && names.has(storedModel)) {
-        setModelMode(
-          storedModel === nextFast
-            ? "fast"
-            : storedModel === nextSmart
-              ? "smart"
-              : "custom",
-        );
-        return storedModel;
-      }
-      setModelMode("smart");
-      return nextSmart || fallback;
+      if (storedModel && names.has(storedModel)) return storedModel;
+      return fallback;
     });
   }, [t]);
 
-  const applyModelMode = (mode: ModelMode) => {
-    const next =
-      mode === "fast" ? fastModel : mode === "smart" ? smartModel : model;
-    if (!next) return;
-    setModelMode(mode);
-    setModel(next);
-    persistModelChoice(mode, next);
-  };
-
   const handleModelSelect = (name: string) => {
     setModel(name);
-    const mode: ModelMode =
-      name === fastModel ? "fast" : name === smartModel ? "smart" : "custom";
-    setModelMode(mode);
-    persistModelChoice(mode, name);
+    persistModelChoice(name);
+  };
+
+  const imageErrorMessage = (code: "type" | "size" | "failed") => {
+    if (code === "type") return t("chat.imageType");
+    if (code === "size") return t("chat.imageTooLarge");
+    return t("chat.imageFailed");
+  };
+
+  const addImageFiles = async (files: File[]) => {
+    if ((!canAttachImages && !canImportImages) || !files.length) return;
+    const remaining = MAX_CHAT_IMAGES - pendingImages.length;
+    if (remaining <= 0) {
+      setError(t("chat.imageLimit", { n: MAX_CHAT_IMAGES }));
+      return;
+    }
+    const slice = files.slice(0, remaining);
+    const next: PendingImage[] = [];
+    for (const file of slice) {
+      const result = await fileToChatImage(file);
+      if (!result.ok) {
+        setError(imageErrorMessage(result.code));
+        continue;
+      }
+      next.push({ ...result.image, id: `img-${Date.now()}-${Math.random()}` });
+    }
+    if (next.length) {
+      setPendingImages((prev) => [...prev, ...next].slice(0, MAX_CHAT_IMAGES));
+      setError("");
+    }
+  };
+
+  const addDroppedFiles = async (files: File[]) => {
+    if (!files.length || isSending || !canDropFiles) return;
+    const images = files.filter(isDroppedImageFile);
+    if (!images.length) {
+      setError(t("chat.dropUnsupported"));
+      return;
+    }
+    await addImageFiles(images);
+    if (images.length < files.length) setError(t("chat.dropUnsupported"));
+  };
+
+  const handleComposerDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    if (canDropFiles) setIsDraggingOver(true);
+  };
+
+  const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = canDropFiles ? "copy" : "none";
+  };
+
+  const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!dropHasFiles(event.dataTransfer.types)) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDraggingOver(false);
+  };
+
+  const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDraggingOver(false);
+    const files = Array.from(event.dataTransfer.files);
+    void addDroppedFiles(files);
+  };
+
+  const micErrorMessage = (err: unknown) => {
+    const name = err instanceof DOMException ? err.name : "";
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return t("chat.micDenied");
+    }
+    if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+      return t("chat.micSwitchFailed");
+    }
+    if (err instanceof Error && err.message) return err.message;
+    return t("chat.micFailed");
+  };
+
+  const handleToggleMic = async () => {
+    if (!canUseMic || isSending) return;
+    if (isProcessingAudio) return;
+    if (isRecording) {
+      await stopMicSession();
+      return;
+    }
+    try {
+      setError("");
+      setRecordElapsedMs(0);
+      setMicLevel(0);
+      setMicPickerOpen(false);
+      const chosenId = micDeviceIdRef.current || micDeviceId || undefined;
+      const session = await startMicRecording({
+        deviceId: chosenId,
+        onTick: (elapsedMs, level) => {
+          setRecordElapsedMs(elapsedMs);
+          setMicLevel(level);
+        },
+        onAutoStop: (clip) => {
+          recorderRef.current = null;
+          setIsRecording(false);
+          setMicLevel(0);
+          applyRecordedClip(clip);
+          setRecordElapsedMs(0);
+        },
+      });
+      recorderRef.current = session;
+      setIsRecording(true);
+      void refreshMicDevices(chosenId);
+    } catch (err) {
+      setError(micErrorMessage(err));
+    }
+  };
+
+  const handleOpenMicPicker = async () => {
+    if (!canUseMic || isRecording || isSending || isProcessingAudio) return;
+    if (micPickerOpen) {
+      setMicPickerOpen(false);
+      return;
+    }
+    try {
+      setError("");
+      await ensureMicPermission(micDeviceIdRef.current || micDeviceId);
+      await refreshMicDevices(micDeviceId);
+      setMicPickerOpen(true);
+    } catch (err) {
+      setError(micErrorMessage(err));
+    }
+  };
+
+  const handleSelectMic = (deviceId: string) => {
+    micDeviceIdRef.current = deviceId;
+    setMicDeviceId(deviceId);
+    persistMicChoice(deviceId);
+    setMicPickerOpen(false);
   };
 
   useEffect(() => {
@@ -367,7 +780,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       }
     };
     void boot();
-  }, [loadConversations, loadModels, loadProjects]);
+  }, [loadConversations, loadModels, loadProjects, t]);
 
   useEffect(() => {
     if (searchTimerRef.current) {
@@ -405,13 +818,6 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     setMessages(data.messages);
     const chatModel = data.conversation.model;
     setModel(chatModel);
-    setModelMode(
-      chatModel === fastModel
-        ? "fast"
-        : chatModel === smartModel
-          ? "smart"
-          : "custom",
-    );
     setShareToken(data.conversation.share_token ?? null);
   };
 
@@ -426,23 +832,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
     setShareOpen(false);
     setShareToken(null);
     setShareCopied(false);
-    const mode = readStoredModelMode();
     const stored = readStoredModel();
-    if (mode === "fast" && fastModel) {
-      setModelMode("fast");
-      setModel(fastModel);
-    } else if (mode === "smart" && smartModel) {
-      setModelMode("smart");
-      setModel(smartModel);
-    } else if (stored) {
+    if (stored && models.some((m) => m.name === stored)) {
       setModel(stored);
-      setModelMode(
-        stored === fastModel
-          ? "fast"
-          : stored === smartModel
-            ? "smart"
-            : "custom",
-      );
     }
     textareaRef.current?.focus();
   };
@@ -454,7 +846,11 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   const handleCreateShare = async (rotate = false) => {
     if (!activeId) return;
     if (rotate && shareToken) {
-      const ok = window.confirm(t("chat.shareConfirmNew"));
+      const ok = await confirm({
+        title: t("chat.newLink"),
+        description: t("chat.shareConfirmNew"),
+        confirmLabel: t("common.confirm"),
+      });
       if (!ok) return;
     }
     setShareBusy(true);
@@ -513,6 +909,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: t("chat.deleteChat"),
+      description: t("chat.deleteChatConfirm"),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setError(t("chat.couldNotDeleteChat"));
@@ -625,13 +1028,13 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const handleDeleteProject = async (project: Project) => {
-    if (
-      !window.confirm(
-        t("chat.deleteProjectConfirm", { name: project.name }),
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("chat.deleteProjectTitle"),
+      description: t("chat.deleteProjectConfirm", { name: project.name }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/projects/${project.id}`, {
       method: "DELETE",
     });
@@ -695,6 +1098,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
       tempAssistantId: string;
     };
     restoreOnError?: string;
+    restoreImagesOnError?: PendingImage[];
+    restoreAudioOnError?: PendingAudio | null;
     /** After rewrite/regenerate/edit failures, reload from DB (server may have deleted the old answer). */
     reloadConversationOnError?: boolean;
   }) => {
@@ -718,7 +1123,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify(opts.body),
+        body: JSON.stringify({ ...opts.body, locale }),
       });
 
       if (!res.ok || !res.body) {
@@ -841,6 +1246,12 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         if (opts.restoreOnError != null) {
           setInput(opts.restoreOnError);
         }
+        if (opts.restoreImagesOnError?.length) {
+          setPendingImages(opts.restoreImagesOnError);
+        }
+        if (opts.restoreAudioOnError) {
+          setPendingAudio(opts.restoreAudioOnError);
+        }
       }
     } finally {
       setIsSending(false);
@@ -852,20 +1263,46 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const handleSend = async (preset?: string) => {
+    if (sendLockRef.current || isSending) return;
+    sendLockRef.current = true;
+    try {
+    let audioToSend = preset ? null : pendingAudio;
+    if (!preset && isRecording) {
+      audioToSend = await stopMicSession();
+    }
     const text = (preset ?? input).trim();
-    if (!text || isSending) return;
+    const imagesToSend = preset ? [] : pendingImages;
+    const messageText =
+      text || (audioToSend ? t("chat.audioDefaultPrompt") : "");
+    if ((!messageText && imagesToSend.length === 0) || !model) return;
 
     setInput("");
+    if (imagesToSend.length) setPendingImages([]);
+    if (audioToSend) setPendingAudio(null);
 
     await runChatRequest({
       body: {
         conversationId: activeId ?? undefined,
-        message: text,
+        message: messageText,
+        images: imagesToSend.map(({ mime, data, name }) => ({
+          mime,
+          data,
+          name,
+        })),
+        audio: audioToSend
+          ? {
+              mime: audioToSend.mime,
+              data: audioToSend.data,
+              name: audioToSend.name,
+            }
+          : undefined,
         model,
         projectId: activeId ? undefined : activeProjectId,
         mode: "send",
       },
       restoreOnError: text,
+      restoreImagesOnError: imagesToSend,
+      restoreAudioOnError: audioToSend,
       prepareMessages: () => {
         const tempUserId = `temp-user-${Date.now()}`;
         const tempAssistantId = `temp-assistant-${Date.now()}`;
@@ -873,8 +1310,10 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           id: tempUserId,
           conversation_id: activeId ?? "pending",
           role: "user",
-          content: text,
+          content: messageText,
           created_at: new Date().toISOString(),
+          localImages: imagesToSend.length ? imagesToSend : undefined,
+          localAudio: audioToSend ?? undefined,
         };
         const tempAssistant: UiMessage = {
           id: tempAssistantId,
@@ -888,6 +1327,9 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         return { tempUserId, tempAssistantId };
       },
     });
+    } finally {
+      sendLockRef.current = false;
+    }
   };
 
   const handleRegenerate = async () => {
@@ -1014,7 +1456,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
   };
 
   const Sidebar = (
-    <aside className="flex h-full w-80 shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
+    <aside className="flex h-full max-h-dvh w-[min(20rem,86vw)] shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-4 py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Image
@@ -1192,7 +1634,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   className={`rounded-md p-1 ${
                     isActive
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--sidebar-fg)]"
-                      : "opacity-0 group-hover:opacity-100"
+                      : "opacity-0 group-hover:opacity-100 touch-reveal"
                   } hover:bg-[var(--sidebar-hover)]`}
                   aria-label={t("chat.renameProjectAria", { name: project.name })}
                   title={t("common.rename")}
@@ -1205,7 +1647,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   className={`mr-0.5 rounded-md p-1 ${
                     isActive
                       ? "text-[var(--sidebar-muted)] hover:text-[var(--danger)]"
-                      : "opacity-0 group-hover:opacity-100"
+                      : "opacity-0 group-hover:opacity-100 touch-reveal"
                   } hover:bg-[var(--sidebar-hover)] hover:text-[var(--danger)]`}
                   aria-label={t("chat.deleteProjectAria", { name: project.name })}
                   title={t("common.delete")}
@@ -1277,7 +1719,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       </span>
                     </span>
                   </button>
-                  <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                  <div className="touch-reveal absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => void handleTogglePin(chat)}
@@ -1303,18 +1745,20 @@ export const ChatApp = ({ user }: ChatAppProps) => {
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-[var(--sidebar-border)] p-3">
-        <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
-          {user.username}
-        </p>
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
-        >
-          <LogOut size={14} />
-          {t("chat.signOut")}
-        </button>
+      <div className="safe-bottom border-t border-[var(--sidebar-border)] p-3">
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm text-[var(--sidebar-fg)]">
+            {user.username}
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
+          >
+            <LogOut size={14} />
+            {t("chat.signOut")}
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -1331,16 +1775,16 @@ export const ChatApp = ({ user }: ChatAppProps) => {
             aria-label={t("chat.closeMenu")}
             onClick={() => setMobileSidebar(false)}
           />
-          <div className="relative z-10 h-full shadow-2xl">{Sidebar}</div>
+          <div className="relative z-10 h-full max-h-dvh shadow-2xl">{Sidebar}</div>
         </div>
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
-          <div className="flex items-center gap-3">
+        <header className="page-chrome relative z-40 flex shrink-0 flex-col gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-2.5 backdrop-blur sm:py-3 md:px-5">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
+              className="touch-target rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--hover)] md:hidden"
               onClick={() => setMobileSidebar(true)}
               aria-label={t("chat.openSidebar")}
             >
@@ -1367,8 +1811,8 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   </span>
                 ) : null}
               </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="chip chip-ok">
+              <div className="mt-1 hidden flex-wrap items-center gap-1.5 min-[400px]:flex">
+                <span className="chip chip-ok hidden min-[480px]:inline-flex">
                   <InfinityIcon size={11} /> {t("chat.unlimited")}
                 </span>
                 <span className="chip chip-info hidden sm:inline-flex">
@@ -1383,7 +1827,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                         void handleMoveChat(e.target.value || null)
                       }
                       disabled={isSending}
-                      className="max-w-[8rem] bg-transparent text-[11px] outline-none"
+                      className="max-w-[min(8rem,42vw)] bg-transparent text-[11px] outline-none sm:max-w-[8rem]"
                       aria-label={t("chat.moveChatAria")}
                       title={t("chat.moveToProject")}
                     >
@@ -1399,6 +1843,15 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               </div>
             </div>
 
+            <Link
+              href="/models"
+              title={t("chat.modelsGuideHint")}
+              aria-label={t("chat.modelsGuide")}
+              className="touch-target inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-info-border)] bg-[var(--chip-info-bg)] px-2 py-1.5 text-xs font-medium text-[var(--chip-info-text)] transition hover:border-[var(--accent)]/50 hover:opacity-90 sm:px-2.5"
+            >
+              <Boxes size={14} />
+              <span>{t("chat.modelsGuide")}</span>
+            </Link>
             {activeId ? (
               <button
                 ref={shareBtnRef}
@@ -1411,7 +1864,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                   }
                 }}
                 disabled={shareBusy}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition ${
+                className={`touch-target inline-flex items-center gap-1.5 rounded-full border px-2 py-1.5 text-xs transition sm:px-2.5 ${
                   shareToken
                     ? "border-[var(--accent)]/40 bg-[var(--chip-info-bg)] text-[var(--chip-info-text)]"
                     : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
@@ -1424,81 +1877,25 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 aria-haspopup="dialog"
               >
                 <Link2 size={14} />
-                <span className="hidden sm:inline">
+                <span className="hidden min-[420px]:inline">
                   {shareToken ? t("chat.shared") : t("chat.share")}
                 </span>
               </button>
             ) : null}
-            {user.role === "admin" ? (
-              <>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  title={t("chat.adminPanel")}
-                >
-                  <Shield size={14} />
-                  <span className="hidden sm:inline">{t("chat.adminPanel")}</span>
-                </Link>
-                <Link
-                  href="/lab"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                  title={t("chat.modelLab")}
-                >
-                  <FlaskConical size={14} />
-                  <span className="hidden sm:inline">{t("chat.modelLab")}</span>
-                </Link>
-              </>
-            ) : null}
+            {extraNav.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="hidden items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] lg:inline-flex"
+                title={label}
+              >
+                <Icon size={14} />
+                <span className="hidden xl:inline">{label}</span>
+              </Link>
+            ))}
+            <OverflowNav items={extraNav} className="lg:hidden" />
             <LanguageToggle size="sm" />
             <ThemeToggle size="sm" />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-0">
-            <div
-              className="inline-flex rounded-full border border-[var(--border)] bg-[var(--select-bg)] p-0.5 text-[11px]"
-              role="group"
-              aria-label={t("chat.replySpeed")}
-            >
-              <button
-                type="button"
-                disabled={ready && (!fastModel || isSending)}
-                onClick={() => applyModelMode("fast")}
-                className={`rounded-full px-2.5 py-1 transition ${
-                  modelMode === "fast"
-                    ? "bg-[var(--accent)] text-white"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                }`}
-                title={fastModel ? `${t("chat.fast")} · ${fastModel}` : t("chat.fast")}
-              >
-                {t("chat.fast")}
-              </button>
-              <button
-                type="button"
-                disabled={ready && (!smartModel || isSending)}
-                onClick={() => applyModelMode("smart")}
-                className={`rounded-full px-2.5 py-1 transition ${
-                  modelMode === "smart"
-                    ? "bg-[var(--accent)] text-white"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                }`}
-                title={smartModel ? `${t("chat.smart")} · ${smartModel}` : t("chat.smart")}
-              >
-                {t("chat.smart")}
-              </button>
-            </div>
-
-            <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--text-muted)] sm:flex-none">
-              <span className="hidden sm:inline">{t("chat.model")}</span>
-              <ModelPicker
-                models={models}
-                value={model}
-                onChange={handleModelSelect}
-                disabled={ready && isSending}
-                emptyLabel={t("chat.noModels")}
-                ariaLabel={t("chat.model")}
-                className="w-full max-w-full sm:max-w-[16rem]"
-              />
-            </div>
           </div>
 
           {activeId ? (
@@ -1511,10 +1908,19 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       aria-modal="true"
                       aria-label={t("chat.shareChat")}
                       className="fixed z-[200] w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-xl"
-                      style={{
-                        top: shareMenuPos.top,
-                        right: shareMenuPos.right,
-                      }}
+                      style={
+                        shareMenuPos.fullWidth
+                          ? {
+                              top: shareMenuPos.top,
+                              left: 12,
+                              right: 12,
+                              width: "auto",
+                            }
+                          : {
+                              top: shareMenuPos.top,
+                              right: shareMenuPos.right,
+                            }
+                      }
                     >
                       <p className="text-xs font-medium text-[var(--text)]">
                         {t("chat.shareColleagueTitle")}
@@ -1590,7 +1996,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
 
         <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 text-center">
+            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 py-6 text-center sm:px-6">
               <Image
                 src={sinamLogo}
                 alt={t("common.brand")}
@@ -1600,7 +2006,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                 style={{ width: "auto", height: "auto" }}
                 priority
               />
-              <p className="mt-5 text-4xl font-semibold tracking-tight text-[var(--text)]">
+              <p className="mt-5 text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
                 {t("chat.helloUser", { name: user.username })}
               </p>
               <p className="mt-3 max-w-md text-[var(--text-muted)]">
@@ -1627,7 +2033,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
               </div>
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-6">
+            <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-4 sm:px-4 sm:py-6 md:px-6">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 const isLastUser = lastUserMessage?.id === message.id;
@@ -1701,9 +2107,44 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                             </div>
                           </div>
                         ) : isUser ? (
-                          <p className="whitespace-pre-wrap">
-                            {message.content}
-                          </p>
+                          <div className="space-y-2">
+                            <MessageImages
+                              items={
+                                message.localImages?.map((img) => ({
+                                  src: imagePreviewUrl(img),
+                                  name: img.name,
+                                })) ??
+                                message.attachments
+                                  ?.filter((item) => item.type === "image")
+                                  .map((item) => ({
+                                    src: attachmentUrl(message.id, item.index),
+                                    name: item.name,
+                                  })) ??
+                                []
+                              }
+                            />
+                            {message.localAudio ? (
+                              <MessageAudio
+                                src={message.localAudio.previewUrl}
+                                name={message.localAudio.name}
+                              />
+                            ) : (
+                              message.attachments
+                                ?.filter((item) => item.type === "audio")
+                                .map((item) => (
+                                  <MessageAudio
+                                    key={item.index}
+                                    src={attachmentUrl(message.id, item.index)}
+                                    name={item.name}
+                                  />
+                                ))
+                            )}
+                            {message.content ? (
+                              <p className="whitespace-pre-wrap">
+                                {message.content}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : message.content ? (
                           <MarkdownMessage content={message.content} />
                         ) : (
@@ -1719,7 +2160,7 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                       ) : null}
                       {!isSending && !isEditing ? (
                         <div
-                          className={`mt-1 flex items-center gap-1 ${
+                          className={`mt-1 flex max-w-full items-center gap-1 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:overflow-visible ${
                             isUser ? "justify-end" : ""
                           }`}
                         >
@@ -1744,28 +2185,28 @@ export const ChatApp = ({ user }: ChatAppProps) => {
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("shorter")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.shorter")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("formal")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.moreFormal")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRewrite("continue")}
-                                className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="shrink-0 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 {t("chat.continue")}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void handleRegenerate()}
-                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)] sm:py-1"
                               >
                                 <RefreshCw size={12} />
                                 {t("chat.regenerate")}
@@ -1783,43 +2224,254 @@ export const ChatApp = ({ user }: ChatAppProps) => {
           )}
         </div>
 
-        <div className="border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+        <div className="safe-bottom relative z-20 overflow-visible border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
           <div
-            className="composer-shell mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] border border-[var(--border)] bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)]"
+            className={`composer-shell relative mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
+              isDraggingOver
+                ? "border-sky-400 ring-4 ring-[var(--ring)]"
+                : "border-[var(--border)]"
+            }`}
             style={{ boxShadow: "var(--composer-shadow)" }}
+            onDragEnter={handleComposerDragEnter}
+            onDragOverCapture={handleComposerDragOver}
+            onDragLeave={handleComposerDragLeave}
+            onDropCapture={handleComposerDrop}
           >
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              placeholder={t("chat.messagePlaceholder")}
-              className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
-            />
-            {isSending ? (
-              <button
-                type="button"
-                onClick={handleStop}
-                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90"
-                aria-label={t("chat.stopGenerating")}
-              >
-                <Square size={14} fill="currentColor" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void handleSend()}
-                disabled={ready && (!input.trim() || !model)}
-                className="mb-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={t("chat.sendMessage")}
-              >
-                <SendHorizonal size={16} />
-              </button>
-            )}
+            {isDraggingOver ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-sky-500/15 text-sm font-medium text-sky-800 dark:text-sky-100">
+                {t("chat.dropImages")}
+              </div>
+            ) : null}
+            {pendingImages.length ? (
+              <div className="px-2 pt-1">
+                <MessageImages
+                  tone="composer"
+                  items={pendingImages.map((img) => ({
+                    src: imagePreviewUrl(img),
+                    name: img.name,
+                  }))}
+                  onRemove={(index) =>
+                    setPendingImages((prev) =>
+                      prev.filter((_, i) => i !== index),
+                    )
+                  }
+                  removeLabel={t("chat.removeImage")}
+                />
+              </div>
+            ) : null}
+            {pendingAudio ? (
+              <div className="px-2 pt-1">
+                <MessageAudio
+                  tone="composer"
+                  src={pendingAudio.previewUrl}
+                  name={pendingAudio.name}
+                  onRemove={clearPendingAudio}
+                  removeLabel={t("chat.removeAudio")}
+                />
+              </div>
+            ) : null}
+            {isRecording ? (
+              <div className="flex items-center gap-2 px-3 pt-1 text-xs text-red-600">
+                <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                <span>
+                  {t("chat.recording", {
+                    n: Math.min(
+                      MAX_AUDIO_SECONDS,
+                      Math.ceil(recordElapsedMs / 1000),
+                    ),
+                  })}
+                </span>
+                <span
+                  className="h-1.5 w-16 overflow-hidden rounded-full bg-red-900/20"
+                  title={t("chat.micLevel")}
+                >
+                  <span
+                    className="block h-full bg-red-500 transition-[width] duration-100"
+                    style={{
+                      width: `${Math.min(100, Math.round(micLevel * 160))}%`,
+                    }}
+                  />
+                </span>
+                {currentMicLabel ? (
+                  <span className="min-w-0 truncate text-[var(--text-muted)]">
+                    {currentMicLabel}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex items-end gap-1.5 sm:gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  void addImageFiles(files);
+                }}
+              />
+              <ComposerToolsMenu
+                sections={composerToolSections}
+                disabled={ready && (isSending || !model)}
+                ariaLabel={t("chat.toolsMenu")}
+                closeLabel={t("chat.closeTools")}
+              />
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={(event: ClipboardEvent<HTMLTextAreaElement>) => {
+                  const files = Array.from(event.clipboardData.files);
+                  if (!files.length || !canDropFiles) return;
+                  event.preventDefault();
+                  void addDroppedFiles(files);
+                }}
+                rows={1}
+                placeholder={
+                  pendingAudio
+                    ? t("chat.audioPlaceholder")
+                    : pendingImages.length
+                      ? t("chat.imagePlaceholder")
+                      : t("chat.messagePlaceholder")
+                }
+                className="max-h-40 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:px-3 sm:text-[15px]"
+              />
+              <ModelPicker
+                models={models}
+                value={model}
+                onChange={handleModelSelect}
+                disabled={ready && isSending}
+                size="sm"
+                variant="composer"
+                emptyLabel={t("chat.noModels")}
+                ariaLabel={t("chat.model")}
+                hintFor={(option) => {
+                  const key = fleetHintKey(option.name);
+                  return key ? t(key) : undefined;
+                }}
+                className="shrink-0"
+              />
+              {canUseMic ? (
+                <div className="relative mb-0.5 flex h-11 shrink-0 items-center sm:h-10" ref={micPickerRef}>
+                  <button
+                    type="button"
+                    disabled={ready && (isSending || isProcessingAudio || !model)}
+                    onClick={() => void handleToggleMic()}
+                    className={`touch-target inline-flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 sm:h-10 sm:w-10 ${
+                      isRecording
+                        ? "bg-red-600 text-white hover:bg-red-500"
+                        : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                    }`}
+                    aria-label={
+                      isRecording
+                        ? t("chat.stopRecording")
+                        : t("chat.recordAudio")
+                    }
+                    title={
+                      isRecording
+                        ? t("chat.stopRecording")
+                        : currentMicLabel || t("chat.recordAudio")
+                    }
+                  >
+                    {isRecording ? (
+                      <Square size={14} fill="currentColor" />
+                    ) : (
+                      <Mic size={16} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      ready &&
+                      (isSending || isRecording || isProcessingAudio || !model)
+                    }
+                    onClick={() => void handleOpenMicPicker()}
+                    className="touch-target inline-flex h-11 w-7 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--text)] disabled:opacity-40 sm:h-10"
+                    aria-label={t("chat.chooseMic")}
+                    title={t("chat.chooseMic")}
+                    aria-expanded={micPickerOpen}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                  {micPickerOpen ? (
+                    <div className="absolute bottom-full right-0 z-30 mb-2 min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-1 shadow-lg">
+                      <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                        {t("chat.chooseMic")}
+                      </p>
+                      {micDevices.length ? (
+                        micDevices.map((device) => {
+                          const selected = device.deviceId === micDeviceId;
+                          return (
+                            <button
+                              key={device.deviceId}
+                              type="button"
+                              onClick={() => handleSelectMic(device.deviceId)}
+                              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--text)] hover:bg-[var(--hover)] ${
+                                selected ? "font-medium" : ""
+                              }`}
+                            >
+                              <Check
+                                size={12}
+                                className={
+                                  selected ? "opacity-100" : "opacity-0"
+                                }
+                              />
+                              <span className="min-w-0 truncate">
+                                {device.label}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="px-3 py-2 text-xs text-[var(--text-muted)]">
+                          {t("chat.micNotFound")}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {isSending ? (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
+                  aria-label={t("chat.stopGenerating")}
+                >
+                  <Square size={14} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleSend()}
+                  disabled={
+                    ready &&
+                    (isProcessingAudio ||
+                      (!input.trim() &&
+                        pendingImages.length === 0 &&
+                        !pendingAudio &&
+                        !isRecording) ||
+                      !model)
+                  }
+                  className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
+                  aria-label={t("chat.sendMessage")}
+                >
+                  <SendHorizonal size={16} />
+                </button>
+              )}
+            </div>
           </div>
-          <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-[var(--text-muted)]">
-            {t("chat.footerHint")}
+          <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] leading-snug text-[var(--text-muted)] sm:text-[11px]">
+            {canUseMic && (canAttachImages || canImportImages)
+              ? t("chat.audioVisionFooterHint")
+              : canUseMic
+                ? t("chat.audioFooterHint")
+                : canAttachImages || canImportImages
+                  ? t("chat.visionFooterHint")
+                  : t("chat.footerHint")}
           </p>
         </div>
       </main>

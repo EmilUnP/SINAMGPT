@@ -18,7 +18,7 @@ SINAMGPT uses **semantic versioning**: `MAJOR.MINOR.PATCH`.
 
 Keep `package.json`, `package-lock.json` (root `version`), README **Current version**, and the latest changelog section in sync.
 
-**Current release:** `1.8.0` (see [CHANGELOG.md](../CHANGELOG.md)).
+**Current release:** `1.15.0` (see [CHANGELOG.md](../CHANGELOG.md)).
 
 ## Docs to keep in sync
 
@@ -27,6 +27,7 @@ Keep `package.json`, `package-lock.json` (root `version`), README **Current vers
 | `CHANGELOG.md` | New `## [X.Y.Z]` section; Unreleased cleared except Planned → roadmap |
 | `package.json` / lockfile | `"version": "X.Y.Z"` |
 | `README.md` | **Current version** link + feature bullets if behavior changed |
+| `docs/HOW-IT-WORKS.md` | Refresh if chat, knowledge, guardrails, or data location changed — this is the manager/user guide |
 | `docs/ROADMAP.md` | **Product today**, **Shipped history** row, clear **Next active track** items that shipped |
 | `docs/VERSIONING.md` | **Current release** string below |
 
@@ -34,7 +35,7 @@ Keep `package.json`, `package-lock.json` (root `version`), README **Current vers
 
 1. Move items from **Unreleased** into a new `## [X.Y.Z] — YYYY-MM-DD` section in `CHANGELOG.md`.
 2. Set `"version": "X.Y.Z"` in `package.json` (and root entry in `package-lock.json`).
-3. Update README **Current version** and refresh [ROADMAP.md](./ROADMAP.md) (**Product today** + shipped history).
+3. Update README **Current version**, refresh [ROADMAP.md](./ROADMAP.md) (**Product today** + shipped history), and update [HOW-IT-WORKS.md](./HOW-IT-WORKS.md) if user-visible behavior changed.
 4. Commit: `chore(release): vX.Y.Z`
 5. Tag: `git tag -a vX.Y.Z -m "SINAMGPT vX.Y.Z"`
 6. Push: `git push origin main --tags`

@@ -10,6 +10,127 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.15.0] — 2026-08-18
+
+Composer tools in the chat box, model picker next to the prompt, microphone-only voice, and company RTX 5090 tags.
+
+### Added
+- **Composer tools** — a **+** menu in the chat box (signed-in and guest): attach image, summarize, and translate. Unavailable image upload stays visible but grayed, with the reason. Guest menu includes a sign-in row. Voice is microphone-only.
+
+### Changed
+- **Model picker** — lives in the chat box as a compact pill (name + short hint in the menu), not in the header. Microphone stays on the right of the box when enabled.
+- **Model lab** — suites match the current product: Russian cases, cross-language company knowledge, fewer duplicate EN/AZ twins. Quick 18 / Assist 20 / Guardrails 17. AZ/RU replies are scored on the expected language.
+- **RTX 5090 fleet** — docs, setup, Models guide, and display names match the company Ollama tags: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`. Qwen 3.5 is treated as vision (not microphone). Qwen 3 32B stays text-only.
+- **Reply language** — Azerbaijani prompts (including ASCII without ə) pin the model to AZ so small local models do not switch to English to “clarify”. The UI language is a hint when the prompt is short. Rewrite stays in the same language.
+
+### Fixed
+- **Knowledge citations** — a general question (for example “explain what AI is”) no longer injects About SINAM / YURDUM / Farabi and then shows them as “From: …”. Company notes attach only when the user’s words are about the company, or a document title/tag actually matches those words. Search-keyword expansion cannot invent product names the user did not mention.
+
+### Removed
+- **Audio file import** — dropped, pasted, or plus-menu audio files are gone. Voice is only the microphone (Admin → Microphone + an audio model). File import is images only.
+
+## [1.14.1] — 2026-08-17
+
+Security and performance hardening so the app stays snappy on a company PC.
+
+### Security
+- **Shared files** — a share link is required to open someone else’s images or voice clips. Having any share token on the chat is no longer enough.
+- **Admin seed** — the first admin is created only when `ADMIN_PASSWORD` is set (min 10 characters, not the old example value).
+- **Chat rate limit** — signed-in `/api/chat` is capped per user and IP (same idea as guest and the developer API).
+- **Guest daily cap** — clearing cookies no longer resets the guest quota; the limit is also counted by IP for the UTC day.
+- **Logout** — GET `/api/auth/logout` only clears a leftover/stale cookie. A valid session logs out via POST.
+- **Headers** — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` on every response. Markdown no longer loads remote images from model replies.
+
+### Changed
+- **Long chats** — the model and the UI load a recent window (history setting, hard cap 500) instead of every old message and image.
+- **Sidebar** — conversation list and search return at most 100 chats.
+- **Admin Overview / Live usage** — Overview skips the heavy usage table; LLM health is cached ~20s; Live usage pauses polling when the tab is hidden.
+
+## [1.14.0] — 2026-08-17
+
+Russian UI, admin gates for chat files/mic, and live usage that shows the exact prompt.
+
+### Added
+- **Russian UI** — the language picker is English / Azərbaycan / Русский. Chat, guest, auth, Admin, Models, Developer, and Dev lab have Russian copy. Dates follow `ru-RU`.
+- **Chat input feature flags** — Admin → Settings → Features now also controls **File upload** (paperclip), **File import** (drag/drop and paste), and **Microphone**. All three start **off**. The composer hides those controls and the APIs reject the payloads until an admin turns them on. The model still has to support vision or audio.
+- **Usage request detail** — Admin → Live usage: click a live or past row to see the exact payload sent to the model and the reply so far (attachments noted, not stored as raw bytes). Copy either pane. Live rows keep refreshing.
+
+### Fixed
+- **Microphone replies** — the clip was reaching Gemma 4, but the default “listen to this recording” prompt made E2B claim nothing was attached. Audio stays on native `/api/chat` (`images` + WAV, thinking off, `num_ctx` 8192) with an explicit “you can hear this” system line. The in-chat player no longer clips to 0:00.
+
+## [1.13.0] — 2026-08-17
+
+Voice and files in the composer: microphone (with a real device picker) and drag-and-drop.
+
+### Added
+- **Microphone audio** — on audio-capable models (Gemma 4 E2B/E4B and others Ollama flags), signed-in chat can record up to 30 seconds and send it as 16 kHz mono WAV. Playback stays on the message; shared chats can play it too.
+- **Microphone picker** — the arrow next to the mic lists real hardware inputs (not Windows Default / Communications). Recording uses the mic you pick; a live level bar shows whether it is hearing you.
+- **Drag and drop** — drop images (and audio files on audio models) onto the chat composer. Guest try-chat accepts dropped images the same way.
+
+### Changed
+- **Models guide** — each card has how-to-pick steps, use cases, and short pros / cons. Audio is something you can send when the model supports it; Video still is not.
+- **Capability badges** — Text, Image, and Audio (microphone) are what you can send. Hover on Audio explains the 30-second mic limit.
+
+### Removed
+- **Model card specs** — `/models` no longer lists parameters, context, layers, sliding window, vocabulary, or encoder sizes.
+
+## [1.12.0] — 2026-08-17
+
+Clearer model picking: a Models guide, readable input badges, and no Fast / Smart toggle.
+
+### Added
+- **Models guide** — signed-in users can open `/models` for a short card per activated model (size, inputs, Default, when to use it). Open it from the chat header or sidebar.
+- **How it works** — [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md): plain-language flow for managers and everyday users (chat path, knowledge, guardrails, data).
+
+### Changed
+- **Capability badges** — hover for a short explanation. Models show **inputs** (Text, Image, Audio, Video) plus **Functions** (can call extra functions; not used in chat yet). Light mode uses solid chips with a border so labels stay readable.
+- **Cross-language search** — before knowledge lookup (and hard-block matching), a short local-model pass adds EN / AZ / RU keywords. A Russian question can still find an English or Azerbaijani note; greetings skip this step.
+- **Smarter keyword RAG** — still no embeddings. Rare tokens (e.g. SESDA) rank above generic ones (SINAM); strong title/tag hits; phrase match in the body; skip always-include About/Contact when a specific doc already matches.
+
+### Removed
+- **Fast / Smart presets** — gone from chat, Admin settings, and the Models guide. Pick a model from the header picker; new chats use the admin default (or the last model you chose).
+
+## [1.11.0] — 2026-08-17
+
+Admin controls which product surfaces and which Ollama models employees can use. Runtime is Ollama-only for now.
+
+### Added
+- **Activate models** — a newly pulled Ollama model shows on Admin → Models as inactive. Users only see it after an admin clicks Activate.
+- **On / Off toggles** — Admin settings switches use On/Off buttons instead of checkboxes (Features, guest chat, and the same control elsewhere).
+
+### Changed
+- **Ollama only** — chat, model sync, and health checks use Ollama. vLLM stays in the codebase but is not selectable until we turn it back on.
+
+## [1.10.1] — 2026-08-17
+
+Admin can turn product surfaces on or off from Settings. Developer API and Dev lab stay hidden until enabled.
+
+### Added
+- **Feature toggles** — Admin → Settings → Features. Developer API (`/developer`, `/api/v1`) and Dev lab (`/devlab`) start **off**: hidden in nav and blocked until an admin enables them. Same pattern can cover later surfaces.
+
+## [1.10.0] — 2026-08-14
+
+Vision models can take images, not only text. Mobile chrome and EN/AZ copy cover every page.
+
+### Added
+- **Vision / image chat** — multimodal models (Gemma 4, Gemma 3 4B+, LLaVA, Qwen-VL, and others flagged by Ollama `capabilities`) accept attached or pasted images in signed-in chat and guest try-chat. Caption is optional.
+- **Capability badges** — model picker and Admin → Models show **Vision** and **Tools** (tools is display-only; no function-calling runtime yet)
+- **Image attachments** — JPEG/PNG/WebP/GIF, up to 4 per signed-in message (2 for guests), 8 MB each; files live under `data/attachments/` and are served at `GET /api/attachments/[messageId]/[index]` (owner, or any logged-in user if the chat is shared)
+- **API images** — `GET /api/v1/models` returns `vision` / `tools`; `POST /api/v1/generate` accepts optional `images` on messages (rejected on text-only models)
+
+### Changed
+- **Mobile / responsive UI** — wrapping headers, overflow More menu on small screens, safe-area insets, 16px composer (no iOS zoom), touch-visible pin/delete/rename
+- **EN / AZ copy** — attach-image strings, auth error mapping, locale-aware dates and API status labels; leftover “Developer” in AZ is “Tərtibatçı”
+- **Shared page chrome** — Admin, Model lab, Dev lab, and Developer use the same header; chat extra links collapse into More below `lg`
+
+## [1.9.0] — 2026-08-14
+
+Corporate API keys so other SINAM apps can call local models through SINAMGPT.
+
+### Added
+- **Corporate API keys** — signed-in users generate keys on `/developer`; other company apps call `GET /api/v1/models` and `POST /api/v1/generate` (custom JSON/SSE, Bearer `sinam_…`). Raw model proxy only (no knowledge, no guardrails). Secret shown once; hashed at rest.
+- **Dev lab (`/devlab`)** — admin-only page for all keys, API request history, live streams, and gateway settings (enable, max keys, RPM, max chars, CORS origins)
+
 ## [1.8.0] — 2026-08-13
 
 Model lab is a real test console: live chat of the run, scored results, and charts. Suites and RAG matching are sharper against the SINAM pack.
@@ -178,7 +299,16 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...v1.15.0
+[1.14.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...v1.14.1
+[1.14.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.13.0...v1.14.0
+[1.13.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.12.0...v1.13.0
+[1.12.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.1...v1.11.0
+[1.10.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.5.0...v1.6.0

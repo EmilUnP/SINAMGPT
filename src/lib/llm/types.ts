@@ -3,6 +3,11 @@ export type LlmBackend = "ollama" | "vllm";
 export type ChatMessage = {
   role: "user" | "assistant" | "system";
   content: string;
+  /**
+   * Raw base64 (no data-URL prefix). Vision still uses this array; WAV
+   * recordings go here too (Ollama detects RIFF/WAVE in `images`).
+   */
+  images?: string[];
 };
 
 export type LlmModel = {
@@ -10,6 +15,10 @@ export type LlmModel = {
   size: number;
   modified_at: string;
   backend: LlmBackend;
+  vision?: boolean;
+  tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 /** @deprecated Use LlmModel — kept for older imports */
@@ -19,6 +28,8 @@ export type ChatOptions = {
   temperature?: number;
   numPredict?: number;
   topP?: number;
+  /** Ollama thinking. Audio turns must send false or Gemma 4 may swallow the reply. */
+  think?: boolean;
 };
 
 export type BackendHealth = {

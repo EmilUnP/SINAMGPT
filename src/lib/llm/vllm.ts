@@ -1,3 +1,6 @@
+import {
+  inferCapabilities,
+} from "./capabilities";
 import type { BackendHealth, ChatMessage, ChatOptions, LlmModel } from "./types";
 
 const getBaseUrl = (): string =>
@@ -13,14 +16,8 @@ const authHeaders = (): HeadersInit => {
   return key ? { Authorization: `Bearer ${key}` } : {};
 };
 
-export const isVllmEnabled = (): boolean => {
-  const backends = (process.env.LLM_BACKENDS || "ollama")
-    .toLowerCase()
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return backends.includes("vllm") || backends.includes("both");
-};
+/** Parked: chat and model lists are Ollama-only until we turn vLLM back on. */
+export const isVllmEnabled = (): boolean => false;
 
 export const listVllmModels = async (): Promise<LlmModel[]> => {
   const res = await fetch(`${getBaseUrl()}/v1/models`, {
@@ -38,15 +35,40 @@ export const listVllmModels = async (): Promise<LlmModel[]> => {
     data?: Array<{ id: string; created?: number }>;
   };
 
-  return (data.data ?? []).map((m) => ({
-    name: m.id,
-    size: 0,
-    modified_at: m.created
-      ? new Date(m.created * 1000).toISOString()
-      : new Date().toISOString(),
-    backend: "vllm" as const,
-  }));
+  return (data.data ?? []).map((m) => {
+    const caps = inferCapabilities(m.id);
+    return {
+      name: m.id,
+      size: 0,
+      modified_at: m.created
+        ? new Date(m.created * 1000).toISOString()
+        : new Date().toISOString(),
+      backend: "vllm" as const,
+      vision: caps.vision,
+      tools: caps.tools,
+      audio: caps.audio,
+      video: caps.video,
+    };
+  });
 };
+
+const toVllmMessages = (messages: ChatMessage[]) =>
+  messages.map((message) => {
+    if (!message.images?.length) {
+      return { role: message.role, content: message.content };
+    }
+    const parts: Array<Record<string, unknown>> = [];
+    if (message.content.trim()) {
+      parts.push({ type: "text", text: message.content });
+    }
+    for (const image of message.images) {
+      const url = image.startsWith("data:")
+        ? image
+        : `data:image/jpeg;base64,${image}`;
+      parts.push({ type: "image_url", image_url: { url } });
+    }
+    return { role: message.role, content: parts };
+  });
 
 /**
  * Stream vLLM (OpenAI-compatible) and adapt chunks to Ollama NDJSON so
@@ -59,7 +81,7 @@ export const streamVllmChat = async (
 ): Promise<Response> => {
   const body: Record<string, unknown> = {
     model,
-    messages,
+    messages: toVllmMessages(messages),
     stream: true,
   };
 
@@ -196,6 +218,52 @@ export const streamVllmChat = async (
       "Content-Type": "application/x-ndjson; charset=utf-8",
     },
   });
+};
+
+export const completeVllmChat = async (
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<string> => {
+  const body: Record<string, unknown> = {
+    model,
+    messages: toVllmMessages(messages),
+    stream: false,
+  };
+  if (options?.temperature != null) body.temperature = options.temperature;
+  if (options?.numPredict != null && options.numPredict >= 0) {
+    body.max_tokens = options.numPredict;
+  }
+  if (options?.topP != null) body.top_p = options.topP;
+
+  const res = await fetch(`${getBaseUrl()}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(options?.timeoutMs ?? 8000),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(formatVllmError(text, res.status, model));
+  }
+
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string } | string;
+  };
+  if (data.error) {
+    throw new Error(
+      typeof data.error === "string"
+        ? data.error
+        : data.error.message || "vLLM complete failed",
+    );
+  }
+  return (data.choices?.[0]?.message?.content ?? "").trim();
 };
 
 export const pingVllm = async (): Promise<BackendHealth> => {

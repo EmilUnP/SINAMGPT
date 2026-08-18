@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import {
   createKnowledgeDoc,
+  getKnowledgeOverview,
   getKnowledgeSettings,
   listKnowledgeDocs,
   reseedSinamKnowledge,
@@ -10,10 +11,18 @@ import {
   type KnowledgeCategory,
 } from "@/lib/knowledge";
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const overview = new URL(request.url).searchParams.get("overview") === "1";
+  if (overview) {
+    return NextResponse.json({
+      overview: getKnowledgeOverview(),
+      settings: getKnowledgeSettings(),
+    });
   }
 
   return NextResponse.json({
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
       applyToUsers: z.boolean().optional(),
       showCitations: z.boolean().optional(),
       maxDocs: z.number().int().min(1).max(10).optional(),
-      maxChars: z.number().int().min(500).max(12000).optional(),
+      maxChars: z.number().int().min(500).max(5000).optional(),
     });
     const parsed = settingsSchema.safeParse(body.settings ?? body);
     if (!parsed.success) {

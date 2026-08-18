@@ -1,16 +1,14 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowLeft,
   BookOpen,
   Bot,
   ChevronLeft,
   ChevronRight,
   FlaskConical,
+  KeyRound,
   Gauge,
   LayoutDashboard,
   Radio,
@@ -27,14 +25,15 @@ import {
   UserX,
   Zap,
 } from "lucide-react";
-import sinamLogo from "@/assets/sinam_logo.png";
 import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
+import { PageHeader } from "@/components/PageHeader";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { LOCALE_BCP47 } from "@/lib/locale";
 import type { AdminUserRow, User } from "@/lib/types";
 
 type Totals = {
@@ -98,6 +97,10 @@ type ManagedModel = {
   is_enabled: boolean;
   display_name: string;
   backend?: "ollama" | "vllm";
+  vision?: boolean;
+  tools?: boolean;
+  audio?: boolean;
+  video?: boolean;
 };
 
 type AppSettings = {
@@ -107,14 +110,17 @@ type AppSettings = {
   guestHistoryLimit: number;
   registrationEnabled: boolean;
   defaultModel: string;
-  fastModel: string;
-  smartModel: string;
   userMaxMessageChars: number;
   userHistoryLimit: number;
   temperature: number;
   numPredict: number;
   topP: number;
   loggedInUnlimited: boolean;
+  developerApiEnabled: boolean;
+  devLabEnabled: boolean;
+  fileUploadEnabled: boolean;
+  fileImportEnabled: boolean;
+  microphoneEnabled: boolean;
 };
 
 type TabId =
@@ -134,12 +140,6 @@ const formatSize = (bytes: number) => {
   if (!bytes) return "—";
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
-};
-
-const fmtMs = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return "—";
-  if (value < 1000) return `${Math.round(value)} ms`;
-  return `${(value / 1000).toFixed(1)} s`;
 };
 
 const fmtNum = (value: number | null | undefined) => {
@@ -165,6 +165,12 @@ const withinDays = (value: string | null, days: number) => {
 
 export const AdminPanel = ({ admin }: AdminPanelProps) => {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
+  const fmtMs = (value: number | null | undefined) => {
+    if (value == null || Number.isNaN(value)) return "—";
+    if (value < 1000) return t("common.ms", { n: Math.round(value) });
+    return t("common.sec", { n: (value / 1000).toFixed(1) });
+  };
   const tabs: Array<{ id: TabId; label: string; icon: typeof LayoutDashboard }> =
     [
       { id: "overview", label: t("admin.tabs.overview"), icon: LayoutDashboard },
@@ -185,7 +191,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
     const date = new Date(normalized);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString(locale === "az" ? "az-AZ" : "en-US");
+    return date.toLocaleString(LOCALE_BCP47[locale]);
   };
 
   const [tab, setTab] = useState<TabId>("overview");
@@ -202,13 +208,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     guestHistoryLimit: "10",
     registrationEnabled: true,
     defaultModel: "",
-    fastModel: "",
-    smartModel: "",
-    userMaxMessageChars: "12000",
+    userMaxMessageChars: "5000",
     userHistoryLimit: "40",
     temperature: "0.7",
     numPredict: "-1",
     topP: "0.9",
+    developerApiEnabled: false,
+    devLabEnabled: false,
+    fileUploadEnabled: false,
+    fileImportEnabled: false,
+    microphoneEnabled: false,
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -237,9 +246,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           fetch("/api/admin/users"),
           fetch("/api/admin/models"),
           fetch("/api/admin/settings"),
-          fetch("/api/admin/usage", { cache: "no-store" }),
-          fetch("/api/admin/knowledge"),
-          fetch("/api/admin/guardrails"),
+          fetch("/api/admin/usage?overview=1", { cache: "no-store" }),
+          fetch("/api/admin/knowledge?overview=1"),
+          fetch("/api/admin/guardrails?events=0"),
         ]);
 
       const usersData = (await usersRes.json()) as {
@@ -269,6 +278,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       };
       const knowledgeData = (await knowledgeRes.json()) as {
         docs?: Array<{ is_enabled: number }>;
+        overview?: { total: number; enabled: number };
         settings?: { enabled: boolean };
         error?: string;
       };
@@ -313,13 +323,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit ?? 10),
           registrationEnabled: s.registrationEnabled ?? true,
           defaultModel: s.defaultModel ?? "",
-          fastModel: s.fastModel ?? "",
-          smartModel: s.smartModel ?? "",
-          userMaxMessageChars: String(s.userMaxMessageChars ?? 12000),
+          userMaxMessageChars: String(s.userMaxMessageChars ?? 5000),
           userHistoryLimit: String(s.userHistoryLimit ?? 40),
           temperature: String(s.temperature ?? 0.7),
           numPredict: String(s.numPredict ?? -1),
           topP: String(s.topP ?? 0.9),
+          developerApiEnabled: s.developerApiEnabled === true,
+          devLabEnabled: s.devLabEnabled === true,
+          fileUploadEnabled: s.fileUploadEnabled === true,
+          fileImportEnabled: s.fileImportEnabled === true,
+          microphoneEnabled: s.microphoneEnabled === true,
         });
       }
 
@@ -345,8 +358,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       if (knowledgeRes.ok || guardRes.ok) {
         const docs = knowledgeData.docs ?? [];
         setMeta({
-          knowledgeDocs: docs.length,
-          knowledgeEnabled: docs.filter((d) => d.is_enabled === 1).length,
+          knowledgeDocs: knowledgeData.overview?.total ?? docs.length,
+          knowledgeEnabled:
+            knowledgeData.overview?.enabled ??
+            docs.filter((d) => d.is_enabled === 1).length,
           knowledgeOn: knowledgeData.settings?.enabled ?? false,
           guardrailsOn: guardData.guardrails?.enabled ?? false,
           keywordRules: countLines(guardData.guardrails?.blockedKeywords ?? ""),
@@ -419,6 +434,14 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     () => models.filter((m) => m.is_enabled).length,
     [models],
   );
+  const sortedModels = useMemo(
+    () =>
+      [...models].sort((a, b) => {
+        if (a.is_enabled !== b.is_enabled) return a.is_enabled ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      }),
+    [models],
+  );
   const disabledUsers = useMemo(
     () => users.filter((u) => u.is_active !== 1).length,
     [users],
@@ -471,13 +494,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   };
 
   const handleDelete = async (user: AdminUserRow) => {
-    if (
-      !window.confirm(
-        t("admin.users.deleteConfirm", { name: user.username }),
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: t("common.delete"),
+      description: t("admin.users.deleteConfirm", { name: user.username }),
+      confirmLabel: t("common.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
 
     setBusyId(user.id);
     setError("");
@@ -666,13 +689,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: Math.floor(guestHistoryLimit),
           registrationEnabled: settingsDraft.registrationEnabled,
           defaultModel: settingsDraft.defaultModel.trim(),
-          fastModel: settingsDraft.fastModel.trim(),
-          smartModel: settingsDraft.smartModel.trim(),
           userMaxMessageChars: Math.floor(userMaxMessageChars),
           userHistoryLimit: Math.floor(userHistoryLimit),
           temperature,
           numPredict: Math.floor(numPredict),
           topP,
+          developerApiEnabled: settingsDraft.developerApiEnabled,
+          devLabEnabled: settingsDraft.devLabEnabled,
+          fileUploadEnabled: settingsDraft.fileUploadEnabled,
+          fileImportEnabled: settingsDraft.fileImportEnabled,
+          microphoneEnabled: settingsDraft.microphoneEnabled,
         }),
       });
       const data = (await res.json()) as {
@@ -693,13 +719,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           guestHistoryLimit: String(s.guestHistoryLimit),
           registrationEnabled: s.registrationEnabled,
           defaultModel: s.defaultModel,
-          fastModel: s.fastModel,
-          smartModel: s.smartModel,
           userMaxMessageChars: String(s.userMaxMessageChars),
           userHistoryLimit: String(s.userHistoryLimit),
           temperature: String(s.temperature),
           numPredict: String(s.numPredict),
           topP: String(s.topP),
+          developerApiEnabled: s.developerApiEnabled === true,
+          devLabEnabled: s.devLabEnabled === true,
+          fileUploadEnabled: s.fileUploadEnabled === true,
+          fileImportEnabled: s.fileImportEnabled === true,
+          microphoneEnabled: s.microphoneEnabled === true,
         });
       }
       setNotice(t("admin.settings.saved"));
@@ -721,63 +750,31 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         }}
       />
 
-      <header className="relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
-            >
-              <ArrowLeft size={16} />
-              {t("admin.chrome.backToChat")}
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <Image
-                src={sinamLogo}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full"
-                style={{ width: "auto", height: "auto" }}
-                priority
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <Shield size={16} className="text-[var(--accent)]" />
-                  <h1 className="text-lg font-semibold tracking-tight">
-                    {t("admin.chrome.title")}
-                  </h1>
-                </div>
-                <p className="text-xs text-[var(--admin-muted)]">
-                  {admin.username} · SINAMGPT
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageToggle size="sm" />
-            <ThemeToggle size="sm" />
-            <Link
-              href="/lab"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-3 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <FlaskConical size={14} />
-              {t("chat.modelLab")}
-            </Link>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-3 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)]"
-            >
-              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-              {t("admin.chrome.refresh")}
-            </button>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        backLabel={t("admin.chrome.backToChat")}
+        icon={Shield}
+        title={t("admin.chrome.title")}
+        subtitle={`${admin.username} · ${t("common.brand")}`}
+        links={[
+          { href: "/lab", label: t("chat.modelLab"), icon: FlaskConical },
+          ...(settings?.devLabEnabled
+            ? [{ href: "/devlab", label: t("chat.devLab"), icon: KeyRound }]
+            : []),
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--admin-border)] bg-[var(--chip-info-bg)] px-2.5 py-2 text-sm font-medium text-[var(--admin-fg)] transition hover:bg-[var(--hover)] sm:px-3"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">{t("admin.chrome.refresh")}</span>
+          </button>
+        }
+      />
 
       <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <nav className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1">
+        <nav className="flex gap-0.5 overflow-x-auto rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-1 [-webkit-overflow-scrolling:touch]">
           {tabs.map(({ id, label, icon: Icon }) => {
             const active = tab === id;
             return (
@@ -785,7 +782,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 key={id}
                 type="button"
                 onClick={() => setTab(id)}
-                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition sm:flex-none ${
+                className={`inline-flex shrink-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition sm:flex-none ${
                   active
                     ? "bg-[var(--accent)] text-white"
                     : "text-[var(--admin-muted)] hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
@@ -873,7 +870,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {meta?.guardrailsOn
                   ? t("admin.overview.guardrailsOn")
                   : t("admin.overview.guardrailsOff")}
-                {meta ? ` · ${meta.keywordRules} hard rules` : ""}
+                {meta
+                  ? t("admin.overview.hardRules", { n: meta.keywordRules })
+                  : ""}
               </span>
               <span
                 className={`status-pill ${
@@ -885,7 +884,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   ? t("admin.overview.knowledgeOn")
                   : t("admin.overview.knowledgeOff")}
                 {meta
-                  ? ` · ${meta.knowledgeEnabled}/${meta.knowledgeDocs} docs`
+                  ? t("admin.overview.docsRatio", {
+                      enabled: meta.knowledgeEnabled,
+                      total: meta.knowledgeDocs,
+                    })
                   : ""}
               </span>
             </div>
@@ -916,13 +918,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                           n: pulse.summary.avg_tokens_per_sec,
                         })
                       : "—",
-                  hint: `${fmtNum(pulse?.summary.requests_7d)} requests / 7d`,
+                  hint: t("admin.overview.requests7d", {
+                    n: fmtNum(pulse?.summary.requests_7d),
+                  }),
                   icon: Gauge,
                 },
                 {
                   label: t("admin.overview.errorRate"),
                   value: errorRate != null ? `${errorRate}%` : "—",
-                  hint: `${fmtNum(pulse?.summary.error_requests)} errors all-time`,
+                  hint: t("admin.overview.errorsAllTime", {
+                    n: fmtNum(pulse?.summary.error_requests),
+                  }),
                   icon: Timer,
                 },
               ].map((card) => (
@@ -951,12 +957,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {
                   label: t("admin.overview.users"),
                   value: totals?.total_users ?? "—",
-                  hint: `${activeLast7d} active in 7d`,
+                  hint: t("admin.overview.activeIn7d", { n: activeLast7d }),
                 },
                 {
                   label: t("admin.overview.accountsOn"),
                   value: totals?.active_users ?? "—",
-                  hint: `${disabledUsers} disabled · ${adminUsers} admin`,
+                  hint: t("admin.overview.accountsHint", {
+                    disabled: disabledUsers,
+                    admin: adminUsers,
+                  }),
                 },
                 {
                   label: t("admin.overview.chats"),
@@ -966,7 +975,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 {
                   label: t("admin.overview.messages"),
                   value: totals?.total_messages ?? "—",
-                  hint: `${totals?.total_user_messages ?? "—"} user prompts`,
+                  hint: t("admin.overview.userPrompts", {
+                    n: totals?.total_user_messages ?? "—",
+                  }),
                 },
                 {
                   label: t("admin.overview.guestUserAi"),
@@ -1021,7 +1032,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       <div
                         key={bucket.hour}
                         className="group relative flex min-w-0 flex-1 flex-col items-center justify-end"
-                        title={`${bucket.hour}: ${bucket.requests} requests`}
+                        title={t("admin.overview.hourRequests", {
+                          hour: bucket.hour,
+                          n: bucket.requests,
+                        })}
                       >
                         <div
                           className="w-full rounded-t-sm bg-gradient-to-t from-blue-600/80 to-sky-400/80 transition group-hover:from-blue-500 group-hover:to-sky-300"
@@ -1417,6 +1431,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
               <p className="text-xs text-[var(--admin-muted)]">
                 {t("admin.models.subtitle")}
               </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--admin-muted)]">
+                {t("admin.models.capsLegend")}
+              </p>
             </div>
 
             {isLoading ? (
@@ -1433,7 +1450,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   <thead>
                     <tr>
                       <th>{t("admin.models.colId")}</th>
-                      <th>{t("admin.models.colBackend")}</th>
+                      <th>{t("admin.models.colCaps")}</th>
                       <th>{t("admin.models.colSize")}</th>
                       <th className="min-w-[220px]">{t("admin.models.colDisplay")}</th>
                       <th>{t("admin.models.colStatus")}</th>
@@ -1441,7 +1458,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {models.map((model) => {
+                    {sortedModels.map((model) => {
                       const busy = busyModel === model.name;
                       const draft =
                         displayDrafts[model.name] ?? model.display_name;
@@ -1451,7 +1468,9 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                       return (
                         <tr
                           key={model.name}
-                          className="border-t border-[var(--admin-border)]"
+                          className={`border-t border-[var(--admin-border)] ${
+                            model.is_enabled ? "" : "bg-[var(--accent)]/[0.04]"
+                          }`}
                         >
                           <td className="px-4 py-2.5">
                             <p className="max-w-[180px] truncate font-mono text-xs text-[var(--admin-fg)]">
@@ -1464,15 +1483,15 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                             ) : null}
                           </td>
                           <td className="px-4 py-2.5">
-                            <span
-                              className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                                model.backend === "vllm"
-                                  ? "bg-violet-500/15 text-violet-200"
-                                  : "bg-[var(--chip-info-bg)] text-[var(--admin-muted)]"
-                              }`}
-                            >
-                              {model.backend === "vllm" ? "vLLM" : "Ollama"}
-                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              <ModelCapabilityBadges
+                                showText
+                                vision={model.vision}
+                                audio={model.audio}
+                                video={model.video}
+                                tools={model.tools}
+                              />
+                            </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-2.5 text-xs text-[var(--admin-muted)]">
                             {formatSize(model.size)}
@@ -1528,8 +1547,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               {busy && !dirty
                                 ? "…"
                                 : model.is_enabled
-                                  ? t("admin.chrome.disable")
-                                  : t("admin.chrome.enable")}
+                                  ? t("admin.models.deactivate")
+                                  : t("admin.models.activate")}
                             </button>
                           </td>
                         </tr>

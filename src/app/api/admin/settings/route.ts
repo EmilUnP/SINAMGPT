@@ -4,18 +4,17 @@ import { requireAdmin } from "@/lib/auth";
 import {
   getAppSettings,
   setDefaultModelSetting,
-  setFastModelSetting,
   setGuestDailyLimitSetting,
   setGuestEnabledSetting,
   setGuestHistoryLimitSetting,
   setGuestMaxCharsSetting,
   setNumPredictSetting,
   setRegistrationEnabledSetting,
-  setSmartModelSetting,
   setTemperatureSetting,
   setTopPSetting,
   setUserHistoryLimitSetting,
   setUserMaxCharsSetting,
+  setAppFeatureFlags,
 } from "@/lib/settings";
 
 export async function GET() {
@@ -34,13 +33,16 @@ const patchSchema = z.object({
   guestHistoryLimit: z.number().int().min(0).max(40).optional(),
   registrationEnabled: z.boolean().optional(),
   defaultModel: z.string().trim().max(120).optional(),
-  fastModel: z.string().trim().max(120).optional(),
-  smartModel: z.string().trim().max(120).optional(),
   userMaxMessageChars: z.number().int().min(500).max(32000).optional(),
   userHistoryLimit: z.number().int().min(0).max(200).optional(),
   temperature: z.number().min(0).max(2).optional(),
   numPredict: z.number().int().min(-1).max(8192).optional(),
   topP: z.number().min(0.05).max(1).optional(),
+  developerApiEnabled: z.boolean().optional(),
+  devLabEnabled: z.boolean().optional(),
+  fileUploadEnabled: z.boolean().optional(),
+  fileImportEnabled: z.boolean().optional(),
+  microphoneEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -73,8 +75,6 @@ export async function PATCH(request: Request) {
     setRegistrationEnabledSetting(d.registrationEnabled);
   }
   if (d.defaultModel !== undefined) setDefaultModelSetting(d.defaultModel);
-  if (d.fastModel !== undefined) setFastModelSetting(d.fastModel);
-  if (d.smartModel !== undefined) setSmartModelSetting(d.smartModel);
   if (d.userMaxMessageChars !== undefined) {
     setUserMaxCharsSetting(d.userMaxMessageChars);
   }
@@ -84,6 +84,29 @@ export async function PATCH(request: Request) {
   if (d.temperature !== undefined) setTemperatureSetting(d.temperature);
   if (d.numPredict !== undefined) setNumPredictSetting(d.numPredict);
   if (d.topP !== undefined) setTopPSetting(d.topP);
+  if (
+    d.developerApiEnabled !== undefined ||
+    d.devLabEnabled !== undefined ||
+    d.fileUploadEnabled !== undefined ||
+    d.fileImportEnabled !== undefined ||
+    d.microphoneEnabled !== undefined
+  ) {
+    setAppFeatureFlags({
+      ...(d.developerApiEnabled !== undefined
+        ? { developerApi: d.developerApiEnabled }
+        : {}),
+      ...(d.devLabEnabled !== undefined ? { devLab: d.devLabEnabled } : {}),
+      ...(d.fileUploadEnabled !== undefined
+        ? { fileUpload: d.fileUploadEnabled }
+        : {}),
+      ...(d.fileImportEnabled !== undefined
+        ? { fileImport: d.fileImportEnabled }
+        : {}),
+      ...(d.microphoneEnabled !== undefined
+        ? { microphone: d.microphoneEnabled }
+        : {}),
+    });
+  }
 
   return NextResponse.json({ settings: getAppSettings() });
 }

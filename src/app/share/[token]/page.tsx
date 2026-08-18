@@ -25,6 +25,7 @@ export default async function SharePage({ params }: Props) {
       ownerUsername={conversation.owner_username}
       model={conversation.model}
       messages={messages}
+      shareToken={token}
     />
   );
 }
