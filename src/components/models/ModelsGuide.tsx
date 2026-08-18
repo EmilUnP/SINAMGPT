@@ -10,7 +10,6 @@ import {
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
 import { useTranslations } from "@/components/LocaleProvider";
-import { formatModelSize } from "@/lib/ui";
 import { matchFleetModel, type FleetId } from "@/lib/model-fleet";
 import type { User } from "@/lib/types";
 import type { MessageKey } from "@/messages";
@@ -20,9 +19,7 @@ type GuideModel = {
   display_name: string;
   size: number;
   vision: boolean;
-  tools: boolean;
   audio: boolean;
-  video: boolean;
 };
 
 type Props = {
@@ -101,12 +98,6 @@ export const ModelsGuide = ({
                 <li>{t("models.pick4")}</li>
               </ol>
             </div>
-            <p className="text-xs leading-relaxed text-[var(--admin-muted)]">
-              {t("models.fleetNote")}
-            </p>
-            <p className="text-xs leading-relaxed text-[var(--admin-muted)]">
-              {t("models.noteLimits")}
-            </p>
             {sorted.length ? (
               <p className="text-xs font-medium text-[var(--admin-muted)]">
                 {t("models.count", { n: sorted.length })}
@@ -154,12 +145,6 @@ export const ModelsGuide = ({
                   </p>
 
                   <dl className="mt-3 space-y-2 text-xs text-[var(--admin-muted)]">
-                    <div className="flex items-center justify-between gap-2">
-                      <dt>{t("models.size")}</dt>
-                      <dd className="font-medium text-[var(--admin-fg)]">
-                        {formatModelSize(model.size)}
-                      </dd>
-                    </div>
                     <div>
                       <dt className="mb-1.5">{t("models.chatCanSend")}</dt>
                       <dd className="flex flex-wrap gap-1">
@@ -170,17 +155,6 @@ export const ModelsGuide = ({
                         />
                       </dd>
                     </div>
-                    {model.video || model.tools ? (
-                      <div>
-                        <dt className="mb-1.5">{t("models.ollamaLists")}</dt>
-                        <dd className="flex flex-wrap gap-1">
-                          <ModelCapabilityBadges
-                            video={model.video}
-                            tools={model.tools}
-                          />
-                        </dd>
-                      </div>
-                    ) : null}
                   </dl>
 
                   <div className="mt-4">

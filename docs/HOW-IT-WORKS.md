@@ -71,7 +71,7 @@ You type a question (any language)  + optional image or short voice clip
 
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains size and inputs.
+**Voice:** only if the model lists **Audio** (on this box: Gemma 4 E4B; not Gemma 4 31B, Gemma 3, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains inputs and when to use each one.
 
 ---
 

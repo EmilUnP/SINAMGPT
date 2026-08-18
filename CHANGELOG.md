@@ -7,6 +7,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Removed
+- **Models guide extras** — `/models` no longer shows download size, the RTX 5090 fleet note, the text/image/mic limits paragraph, or “Ollama also lists Functions”. Cards keep what you can send and when to use each model.
+
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
