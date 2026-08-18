@@ -74,6 +74,7 @@ Closed tracks — keep for context; do not re-open unless regressing.
 |---------|--------|-------|
 | Public Models guide | `done` | `/models` open without sign-in; home Models link; Fast / Balanced / Strong / Voice cards |
 | Gemma 4 26B | `done` | Fleet tag `gemma4:26b`; Pull and Activate like the other Gemma 4 sizes |
+| Llama 4 Scout | `done` | Fleet tag `llama4:scout` (alias `llama4:16x17b`); text + images; no microphone; lighter than Maverick |
 | Llama 4 Maverick | `done` | Fleet tag `llama4:maverick` (alias `llama4:128x17b`); text + images; no microphone |
 | Gemma 4 audio | `done` | Every Gemma 4 (E4B / 26B / 31B) is Text + Image + Audio; 31B is no longer “no microphone” |
 | Models guide extras | `removed` | No download size, RTX 5090 note, limits paragraph, Functions lecture, or how-to-pick steps |
