@@ -21,7 +21,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
-- **Models guide** (`/models`) — signed-in users see activated models with size, inputs, use cases, and short pros / cons. Open it from the chat header or sidebar.
+- **Models guide** (`/models`) — signed-in users see activated models with inputs, use cases, and short pros / cons. Open it from the chat header or sidebar.
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”

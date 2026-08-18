@@ -172,7 +172,7 @@ export const ru: Messages = {
     unlimitedMessages: "Безлимитные сообщения",
     adminPanel: "Панель администратора",
     modelsGuide: "Модели",
-    modelsGuideHint: "Сравните размер, входы и когда какую модель использовать.",
+    modelsGuideHint: "Сравните входы и когда какую модель использовать.",
     modelLab: "Лаборатория моделей",
     developer: "Разработчик",
     devLab: "Dev lab",

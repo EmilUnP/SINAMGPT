@@ -165,7 +165,7 @@ export const en = {
     unlimitedMessages: "Unlimited messages",
     adminPanel: "Admin panel",
     modelsGuide: "Models",
-    modelsGuideHint: "Compare size, inputs, and when to use each model.",
+    modelsGuideHint: "Compare inputs and when to use each model.",
     modelLab: "Model lab",
     developer: "Developer",
     devLab: "Dev lab",

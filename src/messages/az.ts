@@ -172,7 +172,7 @@ export const az: Messages = {
     unlimitedMessages: "Limitsiz mesajlar",
     adminPanel: "Admin paneli",
     modelsGuide: "Modellər",
-    modelsGuideHint: "Ölçü, girişlər və hər modelin nə vaxt istifadə olunacağını müqayisə edin.",
+    modelsGuideHint: "Girişlər və hər modelin nə vaxt istifadə olunacağını müqayisə edin.",
     modelLab: "Model laboratoriyası",
     developer: "Tərtibatçı",
     devLab: "Dev lab",
