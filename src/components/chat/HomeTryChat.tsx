@@ -526,6 +526,12 @@ export const HomeTryChat = ({
           <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />
           <Link
+            href="/models"
+            className="rounded-full px-2.5 py-1.5 text-xs text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4 sm:py-2 sm:text-sm"
+          >
+            {t("chat.modelsGuide")}
+          </Link>
+          <Link
             href="/login"
             className="rounded-full px-2.5 py-1.5 text-xs text-[var(--home-muted)] transition hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)] sm:px-4 sm:py-2 sm:text-sm"
           >

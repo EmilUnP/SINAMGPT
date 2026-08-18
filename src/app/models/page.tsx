@@ -1,16 +1,22 @@
-import { redirect } from "next/navigation";
 import { ModelsGuide } from "@/components/models";
 import { getPageUser } from "@/lib/auth";
 import { getEnabledModels } from "@/lib/settings";
 
 export default async function ModelsPage() {
   const user = await getPageUser();
-  if (!user) redirect("/login?next=/models");
-  const { models, defaultModel } =
-    await getEnabledModels();
+  let models: Awaited<ReturnType<typeof getEnabledModels>>["models"] = [];
+  let defaultModel = "";
+  try {
+    const enabled = await getEnabledModels();
+    models = enabled.models;
+    defaultModel = enabled.defaultModel;
+  } catch {
+    // Public catalog still renders if Ollama is briefly unreachable.
+  }
+
   return (
     <ModelsGuide
-      user={user}
+      signedIn={Boolean(user)}
       models={models}
       defaultModel={defaultModel}
     />

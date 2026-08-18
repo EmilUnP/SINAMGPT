@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.15.0](./CHANGELOG.md#1150--2026-08-18)
+**Current version:** [1.16.0](./CHANGELOG.md#1160--2026-08-18)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -15,13 +15,13 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
-- **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:31b`, `qwen3.5:9b`, `qwen3:32b`
-- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, Gemma 4 E4B / 31B, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
-- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: Gemma 4 E4B yes, Gemma 4 31B / Gemma 3 / Qwen no
+- **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`
+- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
+- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Qwen no
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
-- **Models guide** (`/models`) — signed-in users see activated models with inputs, use cases, and short pros / cons. Open it from the chat header or sidebar.
+- **Models guide** (`/models`) — public catalog of activated models (inputs, when to use, one caveat). Open it from home, the chat header, or the sidebar.
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
@@ -72,8 +72,11 @@ These tags are what the company GPU box actually has. After deploy, **Activate**
 |-----|------|
 | `gemma3:4b` | Fast default. Text + images. No microphone. |
 | `gemma3:12b` | Stronger Gemma 3. Text + images. No microphone. |
-| `gemma4:e4b` | Gemma 4 small. Text + images + microphone (30s). |
-| `gemma4:31b` | Largest Gemma. Text + images. **No** microphone. |
+| `gemma4:e4b` | Small Gemma 4. Text + images + microphone (30s). |
+| `gemma4:26b` | Large Gemma 4. Text + images + microphone (30s). |
+| `gemma4:31b` | Largest Gemma 4. Text + images + microphone (30s). |
+| `llama4:scout` | Llama 4 Scout (`16x17b`). Native text + images. No microphone. 109B MoE / 17B active — lighter than Maverick. |
+| `llama4:maverick` | Llama 4 Maverick (`128x17b`). Native text + images. No microphone. 400B MoE / 17B active. |
 | `qwen3.5:9b` | Fast Qwen. Native images. No microphone (Ollama may list video; chat cannot send it). |
 | `qwen3:32b` | Strongest text. No images, no microphone. |
 
@@ -81,7 +84,10 @@ These tags are what the company GPU box actually has. After deploy, **Activate**
 ollama pull gemma3:4b
 ollama pull gemma3:12b
 ollama pull gemma4:e4b
+ollama pull gemma4:26b
 ollama pull gemma4:31b
+ollama pull llama4:scout
+ollama pull llama4:maverick
 ollama pull qwen3.5:9b
 ollama pull qwen3:32b
 ```
