@@ -1,4 +1,5 @@
 import { gemma4HasAudio } from "@/lib/model-specs";
+import { isQwen35Vision } from "@/lib/model-fleet";
 
 export type ModelCapabilities = {
   vision: boolean;
@@ -15,7 +16,7 @@ const VISION_RE =
 const AUDIO_RE =
   /\b(whisper|audio|omni|qwen2-audio|qwen2\.5-omni|qwen3-omni)\b/i;
 
-const VIDEO_RE = /\b(video|omni|qwen2\.5-omni|qwen3-omni)\b/i;
+const VIDEO_RE = /\b(video|omni|qwen2\.5-omni|qwen3-omni|qwen3\.5)\b/i;
 
 /** Gemma 3 4B+ is multimodal; the 1B variant is text-only. */
 const isGemma3Vision = (name: string): boolean => {
@@ -30,6 +31,7 @@ export const inferCapabilities = (name: string): ModelCapabilities => {
   const vision =
     VISION_RE.test(id) ||
     isGemma3Vision(id) ||
+    isQwen35Vision(id) ||
     /vision/i.test(id) ||
     /[-_/]vl\b/i.test(id) ||
     /\bvl[-_]/i.test(id);

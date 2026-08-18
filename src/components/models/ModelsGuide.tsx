@@ -11,6 +11,7 @@ import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
 import { useTranslations } from "@/components/LocaleProvider";
 import { formatModelSize } from "@/lib/ui";
+import { matchFleetModel, type FleetId } from "@/lib/model-fleet";
 import type { User } from "@/lib/types";
 import type { MessageKey } from "@/messages";
 
@@ -40,7 +41,7 @@ const profileFor = (model: GuideModel): ProfileKind => {
   return "general";
 };
 
-const profileKeys = (kind: ProfileKind) =>
+const profileKeys = (kind: ProfileKind | FleetId) =>
   ({
     summary: `models.${kind}.summary`,
     use1: `models.${kind}.use1`,
@@ -101,6 +102,9 @@ export const ModelsGuide = ({
               </ol>
             </div>
             <p className="text-xs leading-relaxed text-[var(--admin-muted)]">
+              {t("models.fleetNote")}
+            </p>
+            <p className="text-xs leading-relaxed text-[var(--admin-muted)]">
               {t("models.noteLimits")}
             </p>
             {sorted.length ? (
@@ -118,7 +122,9 @@ export const ModelsGuide = ({
             {sorted.map((model) => {
               const isDefault = model.name === defaultModel;
               const title = model.display_name || model.name;
-              const keys = profileKeys(profileFor(model));
+              const keys = profileKeys(
+                matchFleetModel(model.name) ?? profileFor(model),
+              );
 
               return (
                 <article

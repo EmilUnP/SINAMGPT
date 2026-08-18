@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { inferCapabilities } from "@/lib/llm/capabilities";
+import { fleetDisplayName } from "@/lib/model-fleet";
 import {
   getDefaultModel,
   listModels,
@@ -270,14 +271,6 @@ export const getChatRuntimeOptions = () => ({
   topP: getTopPSetting(),
 });
 
-const normalizeDisplayName = (
-  value: string | null | undefined,
-  fallback: string,
-) => {
-  const trimmed = (value ?? "").trim();
-  return trimmed || fallback;
-};
-
 /** Sync live Ollama models into DB. New names stay inactive until an admin activates them. */
 export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
   const liveModels = await listModels();
@@ -357,11 +350,17 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
 
   return liveModels.map((m) => {
     const meta = metaMap.get(m.name);
+    const storedName = meta?.display_name?.trim() ?? "";
+    const friendly = fleetDisplayName(m.name);
+    const display_name =
+      storedName && storedName !== m.name
+        ? storedName
+        : friendly || storedName || m.name;
     return {
       ...m,
       backend: meta?.backend ?? m.backend,
       is_enabled: meta?.is_enabled ?? false,
-      display_name: normalizeDisplayName(meta?.display_name, m.name),
+      display_name,
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
       audio: Boolean(m.audio),
