@@ -30,12 +30,9 @@ import {
   type PublicModel,
 } from "@/lib/settings";
 import {
-  CHAT_MAX_DURATION_SEC,
   SSE_HEADERS,
   startSseKeepalive,
 } from "@/lib/sse";
-
-export const API_V1_MAX_DURATION = CHAT_MAX_DURATION_SEC;
 
 export type ApiResponseFormat = "sinam" | "openai";
 

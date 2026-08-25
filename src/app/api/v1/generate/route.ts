@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { MAX_CHAT_IMAGES } from "@/lib/attachments";
 import {
-  API_V1_MAX_DURATION,
   apiV1Options,
   authenticateGateway,
   jsonWithCors,
@@ -49,7 +48,7 @@ const schema = z
     }
   });
 
-export const maxDuration = API_V1_MAX_DURATION;
+export const maxDuration = 300;
 
 export async function OPTIONS(request: Request) {
   return apiV1Options(request);

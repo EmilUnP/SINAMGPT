@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { MAX_CHAT_IMAGES, type IncomingImage } from "@/lib/attachments";
 import {
-  API_V1_MAX_DURATION,
   apiV1Options,
   authenticateGateway,
   jsonWithCors,
@@ -90,7 +89,7 @@ const flattenMessage = (
   return { role: row.role, content: text, ...(images.length ? { images } : {}) };
 };
 
-export const maxDuration = API_V1_MAX_DURATION;
+export const maxDuration = 300;
 
 export async function OPTIONS(request: Request) {
   return apiV1Options(request);

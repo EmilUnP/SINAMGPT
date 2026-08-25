@@ -14,7 +14,6 @@ import {
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import {
-  CHAT_MAX_DURATION_SEC,
   SSE_HEADERS,
   startSseKeepalive,
 } from "@/lib/sse";
@@ -150,7 +149,7 @@ type DbMessage = {
   attachments?: string | null;
 };
 
-export const maxDuration = CHAT_MAX_DURATION_SEC;
+export const maxDuration = 300;
 
 const LLM_HISTORY_HARD_CAP = 500;
 

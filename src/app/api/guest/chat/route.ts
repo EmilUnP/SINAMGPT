@@ -16,7 +16,6 @@ import {
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import {
-  CHAT_MAX_DURATION_SEC,
   SSE_HEADERS,
   startSseKeepalive,
 } from "@/lib/sse";
@@ -87,7 +86,7 @@ const imagesToBase64 = (
   return { images: out };
 };
 
-export const maxDuration = CHAT_MAX_DURATION_SEC;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
