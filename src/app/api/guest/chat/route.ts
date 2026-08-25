@@ -16,6 +16,11 @@ import {
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import {
+  CHAT_MAX_DURATION_SEC,
+  SSE_HEADERS,
+  startSseKeepalive,
+} from "@/lib/sse";
+import {
   FEATURE_DISABLED_ERROR,
   isChatImagesEnabled,
 } from "@/lib/features";
@@ -81,6 +86,8 @@ const imagesToBase64 = (
   }
   return { images: out };
 };
+
+export const maxDuration = CHAT_MAX_DURATION_SEC;
 
 export async function POST(request: Request) {
   try {
@@ -245,31 +252,18 @@ export async function POST(request: Request) {
     attachUsageRequest(usageId, messages);
 
     const runtime = getChatRuntimeOptions();
-    let ollamaRes: Response;
-    try {
-      ollamaRes = await streamChat(model, messages, {
-        temperature: runtime.temperature,
-        numPredict: runtime.numPredict,
-        topP: runtime.topP,
-      });
-    } catch (error) {
-      await refundGuestMessage(ip);
-      finishUsage(usageId, {
-        responseChars: 0,
-        status: "error",
-        errorMessage:
-          error instanceof Error ? error.message : "LLM request failed",
-      });
-      throw error;
-    }
-    const reader = ollamaRes.body!.getReader();
-    const decoder = new TextDecoder();
+    const abort = new AbortController();
+    const onClientAbort = () => abort.abort();
+    if (request.signal.aborted) abort.abort();
+    else request.signal.addEventListener("abort", onClientAbort, { once: true });
+
     const encoder = new TextEncoder();
     let buffer = "";
     let responseChars = 0;
     let tokensEval: number | null = null;
     let tokensPrompt: number | null = null;
     let evalDurationNs: number | null = null;
+    let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -285,9 +279,20 @@ export async function POST(request: Request) {
           sources: knowledgeSources,
         });
 
+        const stopKeepalive = startSseKeepalive(controller, encoder);
+        const decoder = new TextDecoder();
+
         try {
+          const ollamaRes = await streamChat(model, messages, {
+            temperature: runtime.temperature,
+            numPredict: runtime.numPredict,
+            topP: runtime.topP,
+            signal: abort.signal,
+          });
+          ollamaReader = ollamaRes.body!.getReader();
+
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await ollamaReader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
@@ -350,6 +355,8 @@ export async function POST(request: Request) {
           });
           controller.close();
         } catch (error) {
+          if (abort.signal.aborted) return;
+          await refundGuestMessage(ip);
           const errMsg =
             error instanceof Error ? error.message : "Stream failed";
           finishUsage(usageId, {
@@ -362,9 +369,14 @@ export async function POST(request: Request) {
           });
           send("error", { error: errMsg });
           controller.close();
+        } finally {
+          stopKeepalive();
+          request.signal.removeEventListener("abort", onClientAbort);
         }
       },
       cancel() {
+        abort.abort();
+        ollamaReader?.cancel().catch(() => undefined);
         finishUsage(usageId, {
           responseChars,
           status: "aborted",
@@ -372,17 +384,10 @@ export async function POST(request: Request) {
           tokensPrompt,
           evalDurationNs,
         });
-        reader.cancel().catch(() => undefined);
       },
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    });
+    return new Response(stream, { headers: SSE_HEADERS });
   } catch (error) {
     console.error("guest chat error", error);
     const message =

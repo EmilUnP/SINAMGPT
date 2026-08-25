@@ -13,6 +13,11 @@ import {
 } from "@/lib/api-usage";
 import { decodeImageData, MAX_CHAT_IMAGES } from "@/lib/attachments";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
+import {
+  CHAT_MAX_DURATION_SEC,
+  SSE_HEADERS,
+  startSseKeepalive,
+} from "@/lib/sse";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 import {
@@ -179,6 +184,8 @@ const consumeNdjson = async (
   return { content, tokensEval, tokensPrompt, evalDurationNs };
 };
 
+export const maxDuration = CHAT_MAX_DURATION_SEC;
+
 export async function OPTIONS(request: Request) {
   return withApiCors(
     new Response(null, { status: 204 }),
@@ -300,25 +307,27 @@ export async function POST(request: Request) {
   });
 
   const runtime = getChatRuntimeOptions();
-  let ollamaRes: Response;
-  try {
-    ollamaRes = await streamChat(model, messages, {
-      temperature: runtime.temperature,
-      numPredict: runtime.numPredict,
-      topP: runtime.topP,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "LLM request failed";
-    finishApiUsage(usageId, {
-      responseChars: 0,
-      status: "error",
-      errorMessage: message,
-    });
-    return jsonWithCors(request, { error: message }, 502);
-  }
 
   if (!parsedBody.stream) {
+    let ollamaRes: Response;
+    try {
+      ollamaRes = await streamChat(model, messages, {
+        temperature: runtime.temperature,
+        numPredict: runtime.numPredict,
+        topP: runtime.topP,
+        signal: request.signal,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM request failed";
+      finishApiUsage(usageId, {
+        responseChars: 0,
+        status: "error",
+        errorMessage: message,
+      });
+      return jsonWithCors(request, { error: message }, 502);
+    }
+
     try {
       const result = await consumeNdjson(ollamaRes, (piece) => {
         markApiUsageToken(usageId, piece.length);
@@ -357,14 +366,18 @@ export async function POST(request: Request) {
     }
   }
 
-  const reader = ollamaRes.body!.getReader();
-  const decoder = new TextDecoder();
+  const abort = new AbortController();
+  const onClientAbort = () => abort.abort();
+  if (request.signal.aborted) abort.abort();
+  else request.signal.addEventListener("abort", onClientAbort, { once: true });
+
   const encoder = new TextEncoder();
   let buffer = "";
   let responseChars = 0;
   let tokensEval: number | null = null;
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
+  let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -377,10 +390,20 @@ export async function POST(request: Request) {
       };
 
       send("meta", { id: usageId, model });
+      const stopKeepalive = startSseKeepalive(controller, encoder);
+      const decoder = new TextDecoder();
 
       try {
+        const ollamaRes = await streamChat(model, messages, {
+          temperature: runtime.temperature,
+          numPredict: runtime.numPredict,
+          topP: runtime.topP,
+          signal: abort.signal,
+        });
+        ollamaReader = ollamaRes.body!.getReader();
+
         while (true) {
-          const { done, value } = await reader.read();
+          const { done, value } = await ollamaReader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
@@ -434,6 +457,7 @@ export async function POST(request: Request) {
         });
         controller.close();
       } catch (error) {
+        if (abort.signal.aborted) return;
         const message =
           error instanceof Error ? error.message : "Stream failed";
         finishApiUsage(usageId, {
@@ -446,9 +470,14 @@ export async function POST(request: Request) {
         });
         send("error", { error: message });
         controller.close();
+      } finally {
+        stopKeepalive();
+        request.signal.removeEventListener("abort", onClientAbort);
       }
     },
     cancel() {
+      abort.abort();
+      ollamaReader?.cancel().catch(() => undefined);
       finishApiUsage(usageId, {
         responseChars,
         status: "aborted",
@@ -456,18 +485,11 @@ export async function POST(request: Request) {
         tokensPrompt,
         evalDurationNs,
       });
-      reader.cancel().catch(() => undefined);
     },
   });
 
   return withApiCors(
-    new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    }),
+    new Response(stream, { headers: SSE_HEADERS }),
     request,
     settings,
   );

@@ -247,15 +247,17 @@ export const en = {
     inputText: "Text",
     inputImage: "Image",
     inputAudio: "Audio",
+    inputTts: "Speak",
     inputVideo: "Video",
     inputTextHint: "You can type messages in this chat.",
     inputImageHint: "You can attach, paste, or drop images in this chat.",
     inputAudioHint:
       "You can record from the microphone in this chat (up to 30 seconds).",
+    inputTtsHint: "You can listen to this model's replies.",
     inputVideoHint:
       "Ollama lists this model as video-capable. This chat cannot send video yet.",
     imagePlaceholder: "Add a caption, or send the image…",
-    audioPlaceholder: "Add a question, or send the recording…",
+    audioPlaceholder: "Add a note, or send…",
     visionFooterHint:
       "Enter to send · Shift+Enter for new line · Attach, paste, or drop images",
     audioFooterHint:
@@ -265,7 +267,12 @@ export const en = {
     recordAudio: "Record audio",
     stopRecording: "Stop recording",
     removeAudio: "Remove recording",
-    voiceRecording: "Voice recording",
+    voiceRecording: "Voice message",
+    playVoice: "Play voice message",
+    pauseVoice: "Pause voice message",
+    listenReply: "Listen",
+    stopListening: "Stop",
+    listenUnavailable: "This browser cannot speak replies.",
     recording: "Recording… {n}s",
     audioDefaultPrompt:
       "Transcribe this recording, then respond to what was said.",

@@ -8,6 +8,7 @@ import { KnowledgeCitations } from "@/components/chat/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { MessageAudio } from "@/components/chat/MessageAudio";
 import { MessageImages } from "@/components/chat/MessageImages";
+import { isCannedVoicePrompt } from "@/lib/voice-prompt";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -127,7 +128,8 @@ export const SharedChatView = ({
                                 name={item.name}
                               />
                             ))}
-                          {message.content ? (
+                          {message.content &&
+                          !isCannedVoicePrompt(message.content) ? (
                             <p className="whitespace-pre-wrap">
                               {message.content}
                             </p>

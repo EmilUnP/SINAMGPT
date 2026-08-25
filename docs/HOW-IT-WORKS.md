@@ -69,9 +69,11 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
+**Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
+
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** only if the model lists **Audio** (on this box: every Gemma 4 — E4B, 26B, 31B; not Gemma 3, Llama 4, or Qwen) **and** an admin has turned on **Microphone**. Clips are at most **30 seconds**, recorded in the chat box. Video cannot be sent. Pick the model in the chat box; **Models** explains inputs and when to use each one.
+**Voice:** microphone if the selected model lists **Audio** (STT — on this box: every Gemma 4) **and** Admin → Microphone is on (30 seconds). **Listen** on a reply if the selected model has Audio or Speak (TTS). Chat models do not emit WAV; Listen uses the PC’s speech engine. Pull a TTS/omni/Whisper tag, **Activate** it, then pick it in chat to test. Video cannot be sent.
 
 ---
 

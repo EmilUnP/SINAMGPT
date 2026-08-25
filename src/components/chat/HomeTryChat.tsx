@@ -33,6 +33,7 @@ import { KnowledgeCitations } from "./KnowledgeCitations";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageImages } from "./MessageImages";
 import { ModelPicker, type ModelOption } from "./ModelPicker";
+import { SpeakButton } from "./SpeakButton";
 import {
   fileToChatImage,
   imagePreviewUrl,
@@ -173,6 +174,8 @@ export const HomeTryChat = ({
   const supportsVision = Boolean(
     models.find((m) => m.name === model)?.vision,
   );
+  const selectedCaps = models.find((m) => m.name === model);
+  const canListen = Boolean(selectedCaps?.audio || selectedCaps?.tts);
   const canAttachImages = supportsVision && features.fileUpload === true;
   const canImportImages = supportsVision && features.fileImport === true;
 
@@ -738,9 +741,14 @@ export const HomeTryChat = ({
                           sources={message.sources}
                           tone="home"
                         />
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-1">
                           <CopyButton
                             text={message.content}
+                            className="text-[var(--home-faint)] hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)]"
+                          />
+                          <SpeakButton
+                            text={message.content}
+                            enabled={canListen}
                             className="text-[var(--home-faint)] hover:bg-[var(--home-chip-bg)] hover:text-[var(--home-fg)]"
                           />
                         </div>

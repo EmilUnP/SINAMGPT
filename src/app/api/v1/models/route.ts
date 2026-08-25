@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         vision: Boolean(m.vision),
         tools: Boolean(m.tools),
         audio: Boolean(m.audio),
+        tts: Boolean(m.tts),
         video: Boolean(m.video),
       })),
       defaultModel,

@@ -4,7 +4,10 @@ import { isLlama4Vision, isQwen35Vision } from "@/lib/model-fleet";
 export type ModelCapabilities = {
   vision: boolean;
   tools: boolean;
+  /** Speech-to-text / microphone input (Gemma 4, Whisper, omni, …). */
   audio: boolean;
+  /** Text-to-speech. Ollama chat still returns text; Listen uses on-device speech. */
+  tts: boolean;
   video: boolean;
 };
 const TOOLS_RE =
@@ -14,7 +17,10 @@ const VISION_RE =
   /\b(llava|bakllava|moondream|pixtral|internvl|minicpm-v|granite-vision|phi-?3-vision|phi-?4-multimodal|llama3\.2-vision|llama-?3\.2-vision|llama-?4|qwen2(\.5)?-vl|qwen2vl|qwen-vl|qwen3-vl|gemma-?4)\b/i;
 
 const AUDIO_RE =
-  /\b(whisper|audio|omni|qwen2-audio|qwen2\.5-omni|qwen3-omni)\b/i;
+  /\b(whisper|audio|omni|asr|qwen2-audio|qwen2\.5-omni|qwen3-omni)\b/i;
+
+const TTS_RE =
+  /\b(tts|piper|kokoro|orpheus|xtts|bark|chatterbox|speecht5|parler|fish-speech|styletts|f5-tts)\b/i;
 
 const VIDEO_RE = /\b(video|omni|qwen2\.5-omni|qwen3-omni|qwen3\.5)\b/i;
 
@@ -41,6 +47,7 @@ export const inferCapabilities = (name: string): ModelCapabilities => {
     vision,
     tools: TOOLS_RE.test(id) || /gemma[34]/i.test(id),
     audio: gemma4Audio ?? AUDIO_RE.test(id),
+    tts: TTS_RE.test(id) || /omni/i.test(id),
     video: VIDEO_RE.test(id),
   };
 };
@@ -58,6 +65,7 @@ export const parseOllamaCapabilities = (
     vision: caps.includes("vision") || heuristic.vision,
     tools: caps.includes("tools") || heuristic.tools,
     audio: caps.includes("audio") || heuristic.audio,
+    tts: caps.includes("tts") || heuristic.tts,
     // Ollama has no video capability flag yet — name heuristic only.
     video: heuristic.video,
   };

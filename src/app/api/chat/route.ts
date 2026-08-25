@@ -13,6 +13,11 @@ import {
   withSystemPrompt,
 } from "@/lib/guardrails";
 import { streamChat, type ChatMessage } from "@/lib/ollama";
+import {
+  CHAT_MAX_DURATION_SEC,
+  SSE_HEADERS,
+  startSseKeepalive,
+} from "@/lib/sse";
 import { assertAssignableProject } from "@/lib/projects";
 import {
   FEATURE_DISABLED_ERROR,
@@ -145,6 +150,8 @@ type DbMessage = {
   attachments?: string | null;
 };
 
+export const maxDuration = CHAT_MAX_DURATION_SEC;
+
 const LLM_HISTORY_HARD_CAP = 500;
 
 const windowForLlm = (rows: DbMessage[]): DbMessage[] => {
@@ -181,6 +188,7 @@ const streamAssistantReply = async (input: {
   userMessage: Message;
   history: ChatMessage[];
   uiLocale?: "en" | "az" | "ru";
+  signal?: AbortSignal;
 }) => {
   const {
     userId,
@@ -192,6 +200,7 @@ const streamAssistantReply = async (input: {
     userMessage,
     history,
     uiLocale,
+    signal: clientSignal,
   } = input;
 
   const db = getDb();
@@ -217,189 +226,183 @@ const streamAssistantReply = async (input: {
   attachUsageRequest(usageId, promptedHistory);
   const runtime = getChatRuntimeOptions();
 
-  const startStream = async () => {
-    try {
-      return await streamChat(model, promptedHistory, {
-        temperature: runtime.temperature,
-        numPredict: runtime.numPredict,
-        topP: runtime.topP,
-      });
-    } catch (error) {
-      finishUsage(usageId, {
-        responseChars: 0,
-        status: "error",
-        errorMessage:
-          error instanceof Error ? error.message : "LLM request failed",
+  const abort = new AbortController();
+  const onClientAbort = () => abort.abort();
+  if (clientSignal) {
+    if (clientSignal.aborted) abort.abort();
+    else clientSignal.addEventListener("abort", onClientAbort, { once: true });
+  }
+
+  const encoder = new TextEncoder();
+  let assistantText = "";
+  let tokensEval: number | null = null;
+  let tokensPrompt: number | null = null;
+  let evalDurationNs: number | null = null;
+  let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      };
+
+      send("meta", {
         conversationId,
+        conversation,
+        userMessage,
+        sources: knowledgeSources,
       });
-      throw error;
-    }
-  };
 
-  return startStream().then((ollamaRes) => {
-    const reader = ollamaRes.body!.getReader();
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
+      const stopKeepalive = startSseKeepalive(controller, encoder);
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-    let assistantText = "";
-    let buffer = "";
-    let tokensEval: number | null = null;
-    let tokensPrompt: number | null = null;
-    let evalDurationNs: number | null = null;
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        const send = (event: string, data: unknown) => {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-          );
-        };
-
-        send("meta", {
-          conversationId,
-          conversation,
-          userMessage,
-          sources: knowledgeSources,
+      try {
+        const ollamaRes = await streamChat(model, promptedHistory, {
+          temperature: runtime.temperature,
+          numPredict: runtime.numPredict,
+          topP: runtime.topP,
+          signal: abort.signal,
         });
+        ollamaReader = ollamaRes.body!.getReader();
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        while (true) {
+          const { done, value } = await ollamaReader.read();
+          if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
 
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
 
-              let chunk: {
-                message?: { content?: string };
-                done?: boolean;
-                error?: string;
-                eval_count?: number;
-                prompt_eval_count?: number;
-                eval_duration?: number;
-              };
+            let chunk: {
+              message?: { content?: string };
+              done?: boolean;
+              error?: string;
+              eval_count?: number;
+              prompt_eval_count?: number;
+              eval_duration?: number;
+            };
 
-              try {
-                chunk = JSON.parse(trimmed);
-              } catch {
-                continue;
+            try {
+              chunk = JSON.parse(trimmed);
+            } catch {
+              continue;
+            }
+
+            if (chunk.error) {
+              throw new Error(chunk.error);
+            }
+
+            const piece = chunk.message?.content ?? "";
+            if (piece) {
+              assistantText += piece;
+              markUsageToken(usageId, piece);
+              send("token", { content: piece });
+            }
+
+            if (chunk.done) {
+              if (typeof chunk.eval_count === "number") {
+                tokensEval = chunk.eval_count;
               }
-
-              if (chunk.error) {
-                throw new Error(chunk.error);
+              if (typeof chunk.prompt_eval_count === "number") {
+                tokensPrompt = chunk.prompt_eval_count;
               }
-
-              const piece = chunk.message?.content ?? "";
-              if (piece) {
-                assistantText += piece;
-                markUsageToken(usageId, piece);
-                send("token", { content: piece });
-              }
-
-              if (chunk.done) {
-                if (typeof chunk.eval_count === "number") {
-                  tokensEval = chunk.eval_count;
-                }
-                if (typeof chunk.prompt_eval_count === "number") {
-                  tokensPrompt = chunk.prompt_eval_count;
-                }
-                if (typeof chunk.eval_duration === "number") {
-                  evalDurationNs = chunk.eval_duration;
-                }
+              if (typeof chunk.eval_duration === "number") {
+                evalDurationNs = chunk.eval_duration;
               }
             }
           }
-
-          const assistantMessageId = newId();
-          const sourcesJson =
-            knowledgeSources.length > 0
-              ? JSON.stringify(knowledgeSources)
-              : null;
-          db.prepare(
-            `INSERT INTO messages (id, conversation_id, role, content, sources)
-             VALUES (?, ?, 'assistant', ?, ?)`,
-          ).run(
-            assistantMessageId,
-            conversationId,
-            assistantText,
-            sourcesJson,
-          );
-
-          db.prepare(
-            `UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`,
-          ).run(conversationId);
-
-          finishUsage(usageId, {
-            responseChars: assistantText.length,
-            status: "ok",
-            conversationId,
-            tokensEval,
-            tokensPrompt,
-            evalDurationNs,
-          });
-
-          send("done", {
-            assistantMessage: {
-              id: assistantMessageId,
-              conversation_id: conversationId,
-              role: "assistant",
-              content: assistantText,
-              created_at: new Date().toISOString(),
-              sources: knowledgeSources.length ? knowledgeSources : null,
-            } satisfies Message,
-            usage: {
-              tokensEval,
-              tokensPrompt,
-              tokensPerSec:
-                tokensEval != null && evalDurationNs && evalDurationNs > 0
-                  ? Math.round((tokensEval / (evalDurationNs / 1e9)) * 10) / 10
-                  : null,
-            },
-          });
-
-          controller.close();
-        } catch (error) {
-          const errMsg =
-            error instanceof Error ? error.message : "Stream failed";
-          finishUsage(usageId, {
-            responseChars: assistantText.length,
-            status: "error",
-            errorMessage: errMsg,
-            conversationId,
-            tokensEval,
-            tokensPrompt,
-            evalDurationNs,
-          });
-          send("error", { error: errMsg });
-          controller.close();
         }
-      },
-      cancel() {
+
+        const assistantMessageId = newId();
+        const sourcesJson =
+          knowledgeSources.length > 0
+            ? JSON.stringify(knowledgeSources)
+            : null;
+        db.prepare(
+          `INSERT INTO messages (id, conversation_id, role, content, sources)
+           VALUES (?, ?, 'assistant', ?, ?)`,
+        ).run(
+          assistantMessageId,
+          conversationId,
+          assistantText,
+          sourcesJson,
+        );
+
+        db.prepare(
+          `UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`,
+        ).run(conversationId);
+
         finishUsage(usageId, {
           responseChars: assistantText.length,
-          status: "aborted",
+          status: "ok",
           conversationId,
           tokensEval,
           tokensPrompt,
           evalDurationNs,
         });
-        reader.cancel().catch(() => undefined);
-      },
-    });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    });
+        send("done", {
+          assistantMessage: {
+            id: assistantMessageId,
+            conversation_id: conversationId,
+            role: "assistant",
+            content: assistantText,
+            created_at: new Date().toISOString(),
+            sources: knowledgeSources.length ? knowledgeSources : null,
+          } satisfies Message,
+          usage: {
+            tokensEval,
+            tokensPrompt,
+            tokensPerSec:
+              tokensEval != null && evalDurationNs && evalDurationNs > 0
+                ? Math.round((tokensEval / (evalDurationNs / 1e9)) * 10) / 10
+                : null,
+          },
+        });
+
+        controller.close();
+      } catch (error) {
+        if (abort.signal.aborted) return;
+        const errMsg =
+          error instanceof Error ? error.message : "Stream failed";
+        finishUsage(usageId, {
+          responseChars: assistantText.length,
+          status: "error",
+          errorMessage: errMsg,
+          conversationId,
+          tokensEval,
+          tokensPrompt,
+          evalDurationNs,
+        });
+        send("error", { error: errMsg });
+        controller.close();
+      } finally {
+        stopKeepalive();
+        clientSignal?.removeEventListener("abort", onClientAbort);
+      }
+    },
+    cancel() {
+      abort.abort();
+      ollamaReader?.cancel().catch(() => undefined);
+      finishUsage(usageId, {
+        responseChars: assistantText.length,
+        status: "aborted",
+        conversationId,
+        tokensEval,
+        tokensPrompt,
+        evalDurationNs,
+      });
+    },
   });
+
+  return new Response(stream, { headers: SSE_HEADERS });
 };
 
 export async function POST(request: Request) {
@@ -590,6 +593,7 @@ export async function POST(request: Request) {
         userMessage,
         history,
         uiLocale,
+        signal: request.signal,
       });
     }
 
@@ -699,6 +703,7 @@ export async function POST(request: Request) {
         userMessage,
         history,
         uiLocale,
+        signal: request.signal,
       });
     }
 
@@ -844,6 +849,7 @@ export async function POST(request: Request) {
         userMessage,
         history,
         uiLocale,
+        signal: request.signal,
       });
     }
 
@@ -1008,6 +1014,7 @@ export async function POST(request: Request) {
       userMessage,
       history,
       uiLocale,
+      signal: request.signal,
     });
   } catch (error) {
     console.error("chat error", error);

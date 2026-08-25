@@ -100,6 +100,7 @@ type ManagedModel = {
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
+  tts?: boolean;
   video?: boolean;
 };
 
@@ -1488,6 +1489,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 showText
                                 vision={model.vision}
                                 audio={model.audio}
+                                tts={model.tts}
                                 video={model.video}
                                 tools={model.tools}
                               />

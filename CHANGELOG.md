@@ -7,6 +7,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+- **Slow models (Llama 4 Scout)** — chat no longer dies with a client error while a ~100B model is still loading / evaluating the prompt (60–120s to first token). The SSE stream opens immediately and sends keepalives until tokens arrive; usage already showed **ok** because Ollama did finish.
+
+### Changed
+- **Voice notes** — microphone clips in chat look like a voice message (play, waveform, time), not a file player. The canned “transcribe this” line stays hidden in the bubble.
+- **Listen** — if the selected model has Audio (STT) or Speak (TTS / omni), assistant replies get a Listen button. Pulled Whisper / TTS / omni tags are detected automatically after Activate.
+
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 

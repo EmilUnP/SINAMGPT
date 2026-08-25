@@ -57,9 +57,10 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { ComposerToolsMenu } from "./ComposerToolsMenu";
 import { MarkdownMessage } from "./MarkdownMessage";
-import { MessageAudio } from "./MessageAudio";
+import { MessageAudio, VoiceRecordingPreview } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";
 import { ModelPicker, type ModelOption } from "./ModelPicker";
+import { SpeakButton } from "./SpeakButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   fileToChatImage,
@@ -67,6 +68,7 @@ import {
   type ChatImagePayload,
 } from "@/lib/compress-image";
 import { AUDIO_MIME, MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
+import { isCannedVoicePrompt } from "@/lib/voice-prompt";
 import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
 import { attachmentUrl, MAX_CHAT_IMAGES } from "@/lib/image-limits";
 import {
@@ -362,6 +364,8 @@ export const ChatApp = ({
   const supportsAudio = Boolean(
     models.find((m) => m.name === model)?.audio,
   );
+  const supportsTts = Boolean(models.find((m) => m.name === model)?.tts);
+  const canListen = supportsAudio || supportsTts;
   const canAttachImages = supportsVision && features.fileUpload === true;
   const canImportImages = supportsVision && features.fileImport === true;
   const canUseMic = supportsAudio && features.microphone === true;
@@ -2127,6 +2131,7 @@ export const ChatApp = ({
                               <MessageAudio
                                 src={message.localAudio.previewUrl}
                                 name={message.localAudio.name}
+                                durationMs={message.localAudio.durationMs}
                               />
                             ) : (
                               message.attachments
@@ -2139,7 +2144,8 @@ export const ChatApp = ({
                                   />
                                 ))
                             )}
-                            {message.content ? (
+                            {message.content &&
+                            !isCannedVoicePrompt(message.content) ? (
                               <p className="whitespace-pre-wrap">
                                 {message.content}
                               </p>
@@ -2165,10 +2171,17 @@ export const ChatApp = ({
                           }`}
                         >
                           {!isUser && message.content ? (
-                            <CopyButton
-                              text={message.content}
-                              className="text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
-                            />
+                            <>
+                              <CopyButton
+                                text={message.content}
+                                className="text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              />
+                              <SpeakButton
+                                text={message.content}
+                                enabled={canListen && !message.isStreaming}
+                                className="text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                              />
+                            </>
                           ) : null}
                           {isUser && isLastUser ? (
                             <button
@@ -2265,39 +2278,23 @@ export const ChatApp = ({
                   tone="composer"
                   src={pendingAudio.previewUrl}
                   name={pendingAudio.name}
+                  durationMs={pendingAudio.durationMs}
                   onRemove={clearPendingAudio}
                   removeLabel={t("chat.removeAudio")}
                 />
               </div>
             ) : null}
             {isRecording ? (
-              <div className="flex items-center gap-2 px-3 pt-1 text-xs text-red-600">
-                <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                <span>
-                  {t("chat.recording", {
-                    n: Math.min(
-                      MAX_AUDIO_SECONDS,
-                      Math.ceil(recordElapsedMs / 1000),
-                    ),
-                  })}
-                </span>
-                <span
-                  className="h-1.5 w-16 overflow-hidden rounded-full bg-red-900/20"
-                  title={t("chat.micLevel")}
-                >
-                  <span
-                    className="block h-full bg-red-500 transition-[width] duration-100"
-                    style={{
-                      width: `${Math.min(100, Math.round(micLevel * 160))}%`,
-                    }}
-                  />
-                </span>
-                {currentMicLabel ? (
-                  <span className="min-w-0 truncate text-[var(--text-muted)]">
-                    {currentMicLabel}
-                  </span>
-                ) : null}
-              </div>
+              <VoiceRecordingPreview
+                elapsedMs={recordElapsedMs}
+                level={micLevel}
+                label={t("chat.recording", {
+                  n: Math.min(
+                    MAX_AUDIO_SECONDS,
+                    Math.ceil(recordElapsedMs / 1000),
+                  ),
+                })}
+              />
             ) : null}
             <div className="flex items-end gap-1.5 sm:gap-2">
               <input

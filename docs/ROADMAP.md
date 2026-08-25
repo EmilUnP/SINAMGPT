@@ -18,7 +18,7 @@ What operators and users can rely on in the current tree (**v1.16.0**):
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
-| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone only** (Admin → Microphone + an audio model). No Fast/Smart toggle — pick a model in the composer |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) and **Listen** on replies when the selected model has Audio or Speak (TTS). No Fast/Smart toggle — pick a model in the composer |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
