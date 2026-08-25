@@ -35,6 +35,7 @@ export type PublicModel = LlmModel & {
   vision: boolean;
   tools: boolean;
   audio: boolean;
+  tts: boolean;
   video: boolean;
 };
 
@@ -383,6 +384,7 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
       audio: Boolean(m.audio),
+      tts: Boolean(m.tts),
       video: Boolean(m.video),
     };
   });
@@ -484,6 +486,7 @@ export const getEnabledModels = async (): Promise<{
       vision: Boolean(rest.vision),
       tools: Boolean(rest.tools),
       audio: Boolean(rest.audio),
+      tts: Boolean(rest.tts),
       video: Boolean(rest.video),
     })),
     defaultModel,

@@ -90,6 +90,9 @@ html {
   --cap-audio-bg: #fef3c7;
   --cap-audio-fg: #92400e;
   --cap-audio-border: #fcd34d;
+  --cap-tts-bg: #dcfce7;
+  --cap-tts-fg: #166534;
+  --cap-tts-border: #86efac;
   --cap-video-bg: #ffe4e6;
   --cap-video-fg: #9f1239;
   --cap-video-border: #fda4af;
@@ -187,6 +190,9 @@ html[data-theme="dark"] {
   --cap-audio-bg: rgba(245, 158, 11, 0.16);
   --cap-audio-fg: #fcd34d;
   --cap-audio-border: rgba(252, 211, 77, 0.32);
+  --cap-tts-bg: rgba(34, 197, 94, 0.16);
+  --cap-tts-fg: #86efac;
+  --cap-tts-border: rgba(134, 239, 172, 0.32);
   --cap-video-bg: rgba(244, 63, 94, 0.16);
   --cap-video-fg: #fda4af;
   --cap-video-border: rgba(253, 164, 175, 0.32);
@@ -501,6 +507,12 @@ html[data-theme="dark"] ::selection {
   background: var(--cap-audio-bg);
   color: var(--cap-audio-fg);
   border-color: var(--cap-audio-border);
+}
+
+.cap-chip-tts {
+  background: var(--cap-tts-bg);
+  color: var(--cap-tts-fg);
+  border-color: var(--cap-tts-border);
 }
 
 .cap-chip-video {

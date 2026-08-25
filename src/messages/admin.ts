@@ -228,7 +228,7 @@ export const adminEn = {
       "Turn surfaces on or off. Off hides them in navigation and blocks the pages and APIs until you enable them here.",
     developerApi: "Developer API",
     developerApiHint:
-      "Lets signed-in users create keys and call local models from other products via /api/v1.",
+      "Lets signed-in users create one key and call every activated model from other products — OpenAI-compatible /api/v1.",
     devLab: "Dev lab",
     devLabHint:
       "Admin page for all keys, API request log, and the gateway kill switch.",
@@ -248,7 +248,7 @@ export const adminEn = {
   usage: {
     title: "Live usage",
     description:
-      "Auto-refreshes every 3s — speed, load, and request history.",
+      "Auto-refreshes every 3s — chat, guest, and developer API calls.",
     liveCount: "{n} live",
     requestsToday: "Requests today",
     last24h: "{n} last 24h",
@@ -257,7 +257,7 @@ export const adminEn = {
     avgSpeed: "Avg speed",
     allTime: "{n} all-time",
     errors: "Errors",
-    guestUser: "Guest {g} · User {u}",
+    guestUser: "Guest {g} · User {u} · API {a}",
     liveProcess: "Live process",
     streamingNow:
       "Generations streaming right now. Click a row to inspect the exact prompt sent to the model and the reply so far.",
@@ -269,7 +269,8 @@ export const adminEn = {
     colOutChars: "Out chars",
     colStatus: "Status",
     streaming: "streaming",
-    noLive: "No active generations right now. Send a chat to see live process.",
+    noLive:
+      "No active generations right now. Send a chat or an API call to see live process.",
     last24hours: "Last 24 hours",
     requestsPerHour: "Requests per hour",
     noUsage24h: "No usage in the last 24 hours yet.",
@@ -299,8 +300,14 @@ export const adminEn = {
     statusOk: "ok",
     statusError: "error",
     statusAborted: "aborted",
+    statusRejected: "rejected",
     sourceUser: "user",
     sourceGuest: "guest",
+    sourceApi: "API",
+    filterSource: "Show",
+    filterAll: "All",
+    filterApp: "App",
+    filterApi: "API",
     detailTitle: "Request detail",
     detailLive: "Live",
     detailSent: "Sent to model",
@@ -310,7 +317,13 @@ export const adminEn = {
     detailEmptyReply: "No reply text yet.",
     detailChars: "{n} chars",
     failedDetail: "Failed to load request detail",
-    noPastUsage: "No past usage yet. Chat once, then refresh this tab.",
+    noPastUsage:
+      "No past usage yet. Chat or call the developer API, then refresh this tab.",
+    clearLogs: "Clear logs",
+    clearLogsConfirm:
+      "Delete all past usage rows (prompts and replies stored here)? This cannot be undone. Saved chats and live generations stay. Developer API request logs are cleared too.",
+    cleared: "Usage logs cleared.",
+    clearFailed: "Failed to clear usage logs",
   },
   knowledge: {
     title: "Company knowledge",
@@ -759,7 +772,7 @@ export const adminAz: AdminMessages = {
       "Səhifələri və API-ləri yandırın və ya söndürün. Sönük olanda naviqasiyada gizlənir və burada açılana qədər istifadə bloklanır.",
     developerApi: "Developer API",
     developerApiHint:
-      "Daxil olmuş istifadəçilər açar yarada və /api/v1 ilə digər məhsullardan lokal modelləri çağıra bilər.",
+      "Daxil olmuş istifadəçilər bir açar yaradıb aktiv modellərin hamısını digər məhsullardan çağıra bilər — OpenAI uyğun /api/v1.",
     devLab: "Dev lab",
     devLabHint:
       "Admin səhifəsi: bütün açarlar, API sorğu jurnalı və şlüzün kill switch-i.",
@@ -779,7 +792,7 @@ export const adminAz: AdminMessages = {
   usage: {
     title: "Canlı istifadə",
     description:
-      "Hər 3 saniyədə avtomatik yenilənir — sürət, yük və sorğu tarixçəsi.",
+      "Hər 3 saniyədə avtomatik yenilənir — söhbət, qonaq və developer API çağırışları.",
     liveCount: "{n} canlı",
     requestsToday: "Bu gün sorğular",
     last24h: "son 24 saatda {n}",
@@ -788,7 +801,7 @@ export const adminAz: AdminMessages = {
     avgSpeed: "Ort. sürət",
     allTime: "bütün dövr {n}",
     errors: "Xətalar",
-    guestUser: "Qonaq {g} · İstifadəçi {u}",
+    guestUser: "Qonaq {g} · İstifadəçi {u} · API {a}",
     liveProcess: "Canlı proses",
     streamingNow:
       "Hazırda axın edən generasiyalar. Sətirə klikləyib modelə göndərilən tam promptu və indiyə qədərki cavabı görün.",
@@ -800,7 +813,8 @@ export const adminAz: AdminMessages = {
     colOutChars: "Çıxış simvol",
     colStatus: "Status",
     streaming: "axın",
-    noLive: "Hazırda aktiv generasiya yoxdur. Canlı proses üçün söhbət göndərin.",
+    noLive:
+      "Hazırda aktiv generasiya yoxdur. Canlı proses üçün söhbət və ya API çağırışı göndərin.",
     last24hours: "Son 24 saat",
     requestsPerHour: "Saat üzrə sorğular",
     noUsage24h: "Son 24 saatda hələ istifadə yoxdur.",
@@ -830,8 +844,14 @@ export const adminAz: AdminMessages = {
     statusOk: "ok",
     statusError: "xəta",
     statusAborted: "dayandırılıb",
+    statusRejected: "rədd",
     sourceUser: "istifadəçi",
     sourceGuest: "qonaq",
+    sourceApi: "API",
+    filterSource: "Göstər",
+    filterAll: "Hamısı",
+    filterApp: "Tətbiq",
+    filterApi: "API",
     detailTitle: "Sorğu detalları",
     detailLive: "Canlı",
     detailSent: "Modelə göndərilən",
@@ -841,7 +861,13 @@ export const adminAz: AdminMessages = {
     detailEmptyReply: "Hələ cavab mətni yoxdur.",
     detailChars: "{n} simvol",
     failedDetail: "Sorğu detallarını yükləmək alınmadı",
-    noPastUsage: "Hələ keçmiş istifadə yoxdur. Bir dəfə söhbət edin, sonra bu tabı yeniləyin.",
+    noPastUsage:
+      "Hələ keçmiş istifadə yoxdur. Söhbət edin və ya developer API çağırın, sonra bu tabı yeniləyin.",
+    clearLogs: "Jurnalı təmizlə",
+    clearLogsConfirm:
+      "Keçmiş istifadə sətirlərinin hamısını (saxlanmış sorğular və cavablar) silmək istəyirsiniz? Bu əməliyyat geri qaytarılmır. Saxlanmış söhbətlər və canlı generasiyalar qalır. Developer API sorğu jurnalları da təmizlənir.",
+    cleared: "İstifadə jurnalları təmizləndi.",
+    clearFailed: "İstifadə jurnallarını təmizləmək alınmadı",
   },
   knowledge: {
     title: "Şirkət bilikləri",
@@ -1285,7 +1311,7 @@ export const adminRu: AdminMessages = {
       "Включайте или выключайте поверхности. Выключенные скрыты в навигации и блокируют страницы и API, пока вы не включите их здесь.",
     developerApi: "API разработчика",
     developerApiHint:
-      "Позволяет вошедшим пользователям создавать ключи и вызывать локальные модели из других продуктов через /api/v1.",
+      "Позволяет вошедшим пользователям создать один ключ и вызывать все активированные модели из других продуктов — OpenAI-совместимый /api/v1.",
     devLab: "Dev lab",
     devLabHint:
       "Страница админа: все ключи, журнал API-запросов и аварийный выключатель шлюза.",
@@ -1305,7 +1331,7 @@ export const adminRu: AdminMessages = {
   usage: {
     title: "Живое использование",
     description:
-      "Автообновление каждые 3 с — скорость, нагрузка и история запросов.",
+      "Автообновление каждые 3 с — чат, гость и вызовы developer API.",
     liveCount: "{n} живых",
     requestsToday: "Запросы сегодня",
     last24h: "{n} за 24 ч",
@@ -1314,7 +1340,7 @@ export const adminRu: AdminMessages = {
     avgSpeed: "Средняя скорость",
     allTime: "{n} за всё время",
     errors: "Ошибки",
-    guestUser: "Гость {g} · Пользователь {u}",
+    guestUser: "Гость {g} · Пользователь {u} · API {a}",
     liveProcess: "Живой процесс",
     streamingNow:
       "Генерации, которые идут прямо сейчас. Нажмите строку, чтобы увидеть точный промпт модели и ответ на данный момент.",
@@ -1326,7 +1352,8 @@ export const adminRu: AdminMessages = {
     colOutChars: "Симв. ответа",
     colStatus: "Статус",
     streaming: "поток",
-    noLive: "Сейчас нет активных генераций. Отправьте чат, чтобы увидеть живой процесс.",
+    noLive:
+      "Сейчас нет активных генераций. Отправьте чат или API-вызов, чтобы увидеть живой процесс.",
     last24hours: "Последние 24 часа",
     requestsPerHour: "Запросов в час",
     noUsage24h: "За последние 24 часа использования ещё нет.",
@@ -1356,8 +1383,14 @@ export const adminRu: AdminMessages = {
     statusOk: "ок",
     statusError: "ошибка",
     statusAborted: "прервано",
+    statusRejected: "отклонено",
     sourceUser: "пользователь",
     sourceGuest: "гость",
+    sourceApi: "API",
+    filterSource: "Показать",
+    filterAll: "Все",
+    filterApp: "Приложение",
+    filterApi: "API",
     detailTitle: "Детали запроса",
     detailLive: "Живой",
     detailSent: "Отправлено модели",
@@ -1367,7 +1400,13 @@ export const adminRu: AdminMessages = {
     detailEmptyReply: "Текста ответа пока нет.",
     detailChars: "{n} симв.",
     failedDetail: "Не удалось загрузить детали запроса",
-    noPastUsage: "Прошлого использования пока нет. Напишите в чат, затем обновите вкладку.",
+    noPastUsage:
+      "Прошлого использования пока нет. Напишите в чат или вызовите developer API, затем обновите вкладку.",
+    clearLogs: "Очистить журнал",
+    clearLogsConfirm:
+      "Удалить все прошлые строки использования (сохранённые промпты и ответы)? Это нельзя отменить. Сохранённые чаты и текущие генерации остаются. Журнал запросов Developer API тоже очищается.",
+    cleared: "Журнал использования очищен.",
+    clearFailed: "Не удалось очистить журнал использования",
   },
   knowledge: {
     title: "Знания компании",

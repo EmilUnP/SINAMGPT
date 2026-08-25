@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.16.0](./CHANGELOG.md#1160--2026-08-18)
+**Current version:** [1.17.0](./CHANGELOG.md#1170--2026-08-25)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -17,7 +17,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 
 - **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`
 - **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
-- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Qwen no
+- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Llama 4 / Qwen no
 - **Login / register** (accounts stored locally)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
@@ -26,9 +26,9 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
 - **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
-- **Admin** — users, models (Activate before users can pick them), live usage (click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
+- **Admin** — users, models (Activate before users can pick them), live usage (chat + API, All / App / API filter; click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
-- **Developer API** (`/developer`) — off until Admin → Settings → Features; then users can generate keys and call `/api/v1/generate` from other company apps (text and images). Raw model pipe — **no** knowledge, **no** guardrails
+- **Developer API** (`/developer`) — off until Admin → Settings → Features; then one key calls every activated model from other company apps (OpenAI-compatible `/api/v1/chat/completions`, plus `/api/v1/models`). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models when File upload / File import is on)
 
@@ -106,7 +106,7 @@ Sign in with that account → open **Admin panel** (or `/admin`).
 There you can:
 
 - See users, registration / last-active, chat usage
-- **Live usage** — active AI generations, response speed (t/s), TTFT, history. Click a live or past row to inspect the exact prompt sent to the model and the reply
+- **Live usage** — active AI generations, response speed (t/s), TTFT, history. **All / App / API** filter. Click a live or past row to inspect the exact prompt sent to the model and the reply. **Clear logs** wipes stored prompts/replies
 - **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle (general chat does not cite About/product pages)
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; blocked phrases can also match via that same keyword list
 - **Settings** — Features On/Off (Developer API, Dev lab, File upload, File import, Microphone — chat inputs start **off**), default model, generation controls (temperature, max tokens, top-p)
@@ -157,30 +157,48 @@ Admins can also run live model checks in the UI at `/lab` (Quick / Assist / Guar
 
 ## Corporate API keys
 
-Other SINAM apps can call **local models through SINAMGPT** with a personal API key. This is a **raw model proxy** (no knowledge RAG, no guardrails). Chat in the UI is unchanged.
+Other SINAM apps can call **local models through SINAMGPT** with one personal API key — same idea as OpenRouter. This is a **raw model proxy** (no knowledge RAG, no guardrails). Chat in the UI is unchanged.
 
 1. Admin → Settings → Features → enable **Developer API** (and **Dev lab** if you want the admin console)
 2. Sign in → **Developer** (`/developer`) → create a key (shown once)
-3. Call:
+3. List models, then call any of them:
 
 ```bash
-curl -N http://localhost:3055/api/v1/generate \
+curl http://localhost:3055/api/v1/models \
+  -H "Authorization: Bearer sinam_YOUR_KEY"
+```
+
+```bash
+curl http://localhost:3055/api/v1/chat/completions \
   -H "Authorization: Bearer sinam_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"gemma3:4b","stream":true,"messages":[{"role":"user","content":"Hello"}]}'
+  -d '{"model":"gemma3:4b","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+Python (OpenAI SDK):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:3055/api/v1", api_key="sinam_YOUR_KEY")
+print(client.chat.completions.create(
+    model="gemma3:4b",
+    messages=[{"role": "user", "content": "Hello"}],
+).choices[0].message.content)
 ```
 
 Vision example (model must report `vision: true`):
 
 ```bash
-curl -N http://localhost:3055/api/v1/generate \
+curl http://localhost:3055/api/v1/chat/completions \
   -H "Authorization: Bearer sinam_YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"gemma3:12b","stream":true,"messages":[{"role":"user","content":"What is in this image?","images":[{"mime":"image/jpeg","data":"<base64>"}]}]}'
+  -d '{"model":"gemma3:12b","messages":[{"role":"user","content":[{"type":"text","text":"What is in this image?"},{"type":"image_url","image_url":{"url":"data:image/jpeg;base64,<base64>"}}]}]}'
 ```
 
-- `GET /api/v1/models` — enabled models (`name`, `displayName`, `backend`, `vision`, `tools`)
-- `POST /api/v1/generate` — `{ model, messages, stream }` → SSE (`token` / `done` / `error`) or JSON when `"stream": false`. Each message may include optional `images: [{ mime, data }]` (raw or data-URL base64) when the model supports vision.
+- `GET /api/v1/models` — OpenAI-style `{ object, data }` list of activated models (`id`, `displayName`, `backend`, `vision`, `tools`, `audio`, `tts`, `video`). Same key works for every `id`.
+- `POST /api/v1/chat/completions` — OpenAI-compatible `{ model, messages, stream }`. Omit `model` to use the admin default. Streaming uses standard `data: ...` / `data: [DONE]` chunks.
+- `POST /api/v1/generate` — older custom JSON/SSE (`token` / `done` / `error`); still supported.
 - Limits, CORS origins, and a master on/off switch live in admin **Dev lab** (`/devlab`) (feature must be on in Settings first)
 - Default: 5 keys/user, 30 requests/minute/key, 16000 prompt chars; empty CORS list means server-to-server only
 

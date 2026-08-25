@@ -7,7 +7,7 @@
 **Working name:** SINAMGPT  
 
 **How it works today (plain language):** [HOW-IT-WORKS.md](./HOW-IT-WORKS.md) — start here if you want the current product in simple words.  
-Shipped status also lives in [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), and [ROADMAP.md](./ROADMAP.md). **Current release: v1.16.0.**  
+Shipped status also lives in [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md), and [ROADMAP.md](./ROADMAP.md). **Current release: v1.17.0.**  
 
 ---
 

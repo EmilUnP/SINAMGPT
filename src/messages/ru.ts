@@ -256,16 +256,18 @@ export const ru: Messages = {
     inputText: "Текст",
     inputImage: "Изображение",
     inputAudio: "Аудио",
+    inputTts: "Речь",
     inputVideo: "Видео",
     inputTextHint: "В этом чате можно писать сообщения.",
     inputImageHint:
       "В этом чате можно прикреплять, вставлять или перетаскивать изображения.",
     inputAudioHint:
       "В этом чате можно записать аудио с микрофона (до 30 секунд).",
+    inputTtsHint: "Можно прослушать ответы этой модели.",
     inputVideoHint:
       "Ollama указывает, что модель умеет видео. Этот чат пока не отправляет видео.",
     imagePlaceholder: "Добавьте подпись или отправьте изображение…",
-    audioPlaceholder: "Добавьте вопрос или отправьте запись…",
+    audioPlaceholder: "Добавьте заметку или отправьте…",
     visionFooterHint:
       "Enter — отправить · Shift+Enter — новая строка · Прикрепите, вставьте или перетащите изображения",
     audioFooterHint:
@@ -275,7 +277,12 @@ export const ru: Messages = {
     recordAudio: "Записать аудио",
     stopRecording: "Остановить запись",
     removeAudio: "Удалить запись",
-    voiceRecording: "Голосовая запись",
+    voiceRecording: "Голосовое сообщение",
+    playVoice: "Воспроизвести голосовое сообщение",
+    pauseVoice: "Пауза голосового сообщения",
+    listenReply: "Слушать",
+    stopListening: "Стоп",
+    listenUnavailable: "Этот браузер не может озвучить ответы.",
     recording: "Запись… {n} с",
     audioDefaultPrompt:
       "Расшифруй эту запись, затем ответь на сказанное.",

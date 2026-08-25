@@ -1,12 +1,13 @@
 "use client";
 
-import { Image, Mic, Puzzle, Type, Video } from "lucide-react";
+import { Image, Mic, Puzzle, Type, Video, Volume2 } from "lucide-react";
 import { useTranslations } from "@/components/LocaleProvider";
 
 export type ModelCapabilityFlags = {
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
+  tts?: boolean;
   video?: boolean;
 };
 
@@ -30,13 +31,14 @@ export const ModelCapabilityBadges = ({
   vision,
   tools,
   audio,
+  tts,
   video,
   showText = false,
   size = "md",
   presentation = "chips",
 }: Props) => {
   const t = useTranslations();
-  if (!showText && !vision && !tools && !audio && !video) return null;
+  if (!showText && !vision && !tools && !audio && !tts && !video) return null;
 
   const items = [
     showText
@@ -64,6 +66,15 @@ export const ModelCapabilityBadges = ({
           title: t("chat.inputAudioHint"),
           label: t("chat.inputAudio"),
           Icon: Mic,
+        }
+      : null,
+    tts
+      ? {
+          key: "tts",
+          tone: "cap-chip-tts",
+          title: t("chat.inputTtsHint"),
+          label: t("chat.inputTts"),
+          Icon: Volume2,
         }
       : null,
     video

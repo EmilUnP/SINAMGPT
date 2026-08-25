@@ -47,6 +47,7 @@ export const listVllmModels = async (): Promise<LlmModel[]> => {
       vision: caps.vision,
       tools: caps.tools,
       audio: caps.audio,
+      tts: caps.tts,
       video: caps.video,
     };
   });
@@ -98,6 +99,7 @@ export const streamVllmChat = async (
       ...authHeaders(),
     },
     body: JSON.stringify(body),
+    ...(options?.signal ? { signal: options.signal } : {}),
   });
 
   if (!res.ok || !res.body) {

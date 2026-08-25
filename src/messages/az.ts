@@ -256,16 +256,18 @@ export const az: Messages = {
     inputText: "Mətn",
     inputImage: "Şəkil",
     inputAudio: "Audio",
+    inputTts: "Danış",
     inputVideo: "Video",
     inputTextHint: "Bu söhbətdə mesaj yaza bilərsiniz.",
     inputImageHint:
       "Bu söhbətdə şəkil əlavə edə, yapışdıra və ya buraxa bilərsiniz.",
     inputAudioHint:
       "Bu söhbətdə mikrofonla audio göndərə bilərsiniz (ən çox 30 saniyə).",
+    inputTtsHint: "Bu modelin cavablarını dinləyə bilərsiniz.",
     inputVideoHint:
       "Ollama bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
     imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
-    audioPlaceholder: "Sual yazın və ya yazını göndərin…",
+    audioPlaceholder: "Qeyd yazın və ya göndərin…",
     visionFooterHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Şəkil əlavə edin, yapışdırın və ya buraxın",
     audioFooterHint:
@@ -275,7 +277,12 @@ export const az: Messages = {
     recordAudio: "Səs yaz",
     stopRecording: "Yazını dayandır",
     removeAudio: "Yazını sil",
-    voiceRecording: "Səs yazısı",
+    voiceRecording: "Səs mesajı",
+    playVoice: "Səs mesajını oxut",
+    pauseVoice: "Səs mesajını dayandır",
+    listenReply: "Dinlə",
+    stopListening: "Dayandır",
+    listenUnavailable: "Bu brauzer cavabları səsləndirə bilmir.",
     recording: "Yazılır… {n}s",
     audioDefaultPrompt:
       "Bu yazıda nə deyildiyini yaz, sonra deyilənə cavab ver.",

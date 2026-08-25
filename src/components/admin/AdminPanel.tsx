@@ -62,6 +62,7 @@ type OverviewPulse = {
     error_requests: number | null;
     guest_requests: number | null;
     user_requests: number | null;
+    api_requests: number | null;
     avg_duration_ms: number | null;
     avg_ttft_ms: number | null;
     avg_tokens_per_sec: number | null;
@@ -77,7 +78,7 @@ type OverviewPulse = {
   }>;
   topUsers: Array<{
     username: string;
-    source: "user" | "guest";
+    source: "user" | "guest" | "api";
     requests: number;
   }>;
 };
@@ -100,6 +101,7 @@ type ManagedModel = {
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
+  tts?: boolean;
   video?: boolean;
 };
 
@@ -1488,6 +1490,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 showText
                                 vision={model.vision}
                                 audio={model.audio}
+                                tts={model.tts}
                                 video={model.video}
                                 tools={model.tools}
                               />

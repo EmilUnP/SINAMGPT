@@ -18,6 +18,7 @@ export type LlmModel = {
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
+  tts?: boolean;
   video?: boolean;
 };
 
@@ -30,6 +31,8 @@ export type ChatOptions = {
   topP?: number;
   /** Ollama thinking. Audio turns must send false or Gemma 4 may swallow the reply. */
   think?: boolean;
+  /** Abort the upstream LLM request (client disconnect / Stop). */
+  signal?: AbortSignal;
 };
 
 export type BackendHealth = {

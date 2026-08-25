@@ -41,6 +41,7 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
     vision: caps[i]?.vision ?? false,
     tools: caps[i]?.tools ?? false,
     audio: caps[i]?.audio ?? false,
+    tts: caps[i]?.tts ?? false,
     video: caps[i]?.video ?? false,
   }));
 };
@@ -151,6 +152,15 @@ const nativeChatBody = (
   };
 };
 
+const joinSignals = (
+  ...signals: Array<AbortSignal | undefined>
+): AbortSignal | undefined => {
+  const list = signals.filter((s): s is AbortSignal => Boolean(s));
+  if (!list.length) return undefined;
+  if (list.length === 1) return list[0];
+  return AbortSignal.any(list);
+};
+
 const postNativeChat = async (
   model: string,
   messages: ChatMessage[],
@@ -158,12 +168,16 @@ const postNativeChat = async (
   stream: boolean,
   timeoutMs?: number,
 ): Promise<Response> => {
+  const signal = joinSignals(
+    options?.signal,
+    timeoutMs != null ? AbortSignal.timeout(timeoutMs) : undefined,
+  );
   const res = await fetch(`${getBaseUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(nativeChatBody(model, messages, options, stream)),
     cache: "no-store",
-    ...(timeoutMs != null ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+    ...(signal ? { signal } : {}),
   });
   if (!res.ok || (stream && !res.body)) {
     const text = await res.text().catch(() => "");

@@ -18,6 +18,7 @@ type GuideModel = {
   size: number;
   vision: boolean;
   audio: boolean;
+  tts: boolean;
 };
 
 type Props = {
@@ -148,6 +149,7 @@ export const ModelsGuide = ({
                       showText
                       vision={model.vision}
                       audio={model.audio}
+                      tts={model.tts}
                     />
                   </div>
 

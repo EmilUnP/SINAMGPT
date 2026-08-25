@@ -20,6 +20,7 @@ export type ModelOption = {
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
+  tts?: boolean;
   video?: boolean;
 };
 
@@ -251,6 +252,7 @@ export const ModelPicker = ({
           presentation="icons"
           vision={option.vision}
           audio={option.audio}
+          tts={option.tts}
           video={option.video}
           tools={option.tools}
         />
@@ -320,6 +322,7 @@ export const ModelPicker = ({
             presentation="icons"
             vision={selected.vision}
             audio={selected.audio}
+            tts={selected.tts}
             video={selected.video}
             tools={selected.tools}
           />

@@ -7,20 +7,40 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Planned
+- See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
+
+## [1.17.0] — 2026-08-25
+
+OpenAI-compatible developer API (one key, all activated models) and Admin Live usage that includes those API calls.
+
+### Added
+- **OpenAI-compatible developer API** — one SINAMGPT key calls every activated model, like OpenRouter. `POST /api/v1/chat/completions` works with the OpenAI SDK (`base_url` = `/api/v1`). `GET /api/v1/models` returns the OpenAI `{ object, data }` list plus capability flags. Developer page shows the live model catalog and Python / JS / curl snippets.
+- **Clear usage logs** — Admin → Live usage has a **Clear logs** button. It wipes stored prompts/replies (and Developer API request rows) so test clutter is gone. Saved chats and in-flight generations stay.
+
+### Fixed
+- **Admin Live usage** — developer API calls (the ones Dev lab already showed) now appear here too, with an **API** source tag. **All / App / API** filters split in-app chat from third-party keys. Aborted API rows include a reason instead of a blank error.
+- **Slow models (Llama 4 Scout)** — chat no longer dies with a client error while a ~100B model is still loading / evaluating the prompt (60–120s to first token). The SSE stream opens immediately and sends keepalives until tokens arrive; usage already showed **ok** because Ollama did finish.
+
+### Changed
+- **Voice notes** — microphone clips in chat look like a voice message (play, waveform, time), not a file player. The canned “transcribe this” line stays hidden in the bubble.
+- **Listen** — if the selected model has Audio (STT) or Speak (TTS / omni), assistant replies get a Listen button. Pulled Whisper / TTS / omni tags are detected automatically after Activate.
+
+## [1.16.0] — 2026-08-18
+
+Public models catalog plus Gemma 4 26B and Llama 4 Scout / Maverick on the company box.
+
 ### Added
 - **Public models guide** — `/models` is open without signing in (https://ai.sinam.az/models). Home has a Models link. Cards show Fast / Balanced / Strong / Voice, what you can send, when to use it, and one caveat.
 - **Gemma 4 26B** — fleet tag `gemma4:26b` (display name, picker hint, Models card). Pull and Activate on the company box like the other Gemma 4 sizes.
-- **Llama 4 Maverick** — fleet tag `llama4:maverick` (alias `llama4:128x17b`). Native text + image from the Ollama card (vision + tools). No microphone. Pull and Activate like the other fleet models.
 - **Llama 4 Scout** — fleet tag `llama4:scout` (alias `llama4:16x17b`). Same Llama 4 vision family as Maverick, fewer parameters (109B MoE / 17B active vs 400B). No microphone.
+- **Llama 4 Maverick** — fleet tag `llama4:maverick` (alias `llama4:128x17b`). Native text + image from the Ollama card (vision + tools). No microphone. Pull and Activate like the other fleet models.
 
 ### Changed
 - **Gemma 4 inputs** — every Gemma 4 (E4B, 26B, 31B, and other Ollama Gemma 4 tags) is treated as Text + Image + Audio, matching the Ollama card (vision, tools, thinking, audio). 31B is no longer marked “no microphone”.
 
 ### Removed
 - **Models guide extras** — `/models` no longer shows download size, the RTX 5090 fleet note, the text/image/mic limits paragraph, “Ollama also lists Functions”, or the how-to-pick lecture.
-
-### Planned
-- See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
 ## [1.15.0] — 2026-08-18
 
@@ -311,7 +331,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.0...v1.14.1

@@ -3,6 +3,12 @@ import { getDb } from "@/lib/db";
 
 export type ApiUsageStatus = "ok" | "error" | "aborted" | "rejected";
 
+export const CLIENT_DISCONNECT =
+  "Client disconnected before the model finished.";
+
+const MAX_REQUEST_PAYLOAD = 160_000;
+const MAX_RESPONSE_FULL = 80_000;
+
 export type ActiveApiUsage = {
   id: string;
   apiKeyId: string | null;
@@ -16,6 +22,8 @@ export type ActiveApiUsage = {
   responseChars: number;
   ip: string;
   status: "streaming";
+  requestPayload: string;
+  responseText: string;
 };
 
 export type ApiUsageEvent = {
@@ -36,6 +44,8 @@ export type ApiUsageEvent = {
   error_message: string | null;
   ip: string;
   created_at: string;
+  request_payload?: string;
+  response_full?: string;
   key_prefix?: string | null;
   key_name?: string | null;
 };
@@ -58,6 +68,9 @@ const preview = (text: string, max = 90) => {
   return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned;
 };
 
+const clip = (text: string, max: number) =>
+  text.length <= max ? text : `${text.slice(0, max)}\n\n… [truncated]`;
+
 export const startApiUsage = (input: {
   apiKeyId: string | null;
   userId: string | null;
@@ -65,6 +78,7 @@ export const startApiUsage = (input: {
   model: string;
   prompt: string;
   ip?: string;
+  requestPayload?: string;
 }): string => {
   const id = newUsageId();
   active.set(id, {
@@ -80,16 +94,34 @@ export const startApiUsage = (input: {
     responseChars: 0,
     ip: (input.ip ?? "").slice(0, 64),
     status: "streaming",
+    requestPayload: clip(input.requestPayload || input.prompt, MAX_REQUEST_PAYLOAD),
+    responseText: "",
   });
   return id;
 };
 
-export const markApiUsageToken = (id: string, pieceLen: number) => {
+export const markApiUsageToken = (
+  id: string,
+  pieceLen: number,
+  piece?: string,
+) => {
   const row = active.get(id);
   if (!row) return;
   if (row.firstTokenAt == null) row.firstTokenAt = Date.now();
   row.responseChars += pieceLen;
+  if (piece) {
+    row.responseText = clip(row.responseText + piece, MAX_RESPONSE_FULL);
+  }
 };
+
+export const getActiveApiUsageById = (
+  id: string,
+): ActiveApiUsage | undefined => active.get(id);
+
+export const getApiUsageEvent = (id: string): ApiUsageEvent | undefined =>
+  getDb()
+    .prepare(`SELECT * FROM api_usage_events WHERE id = ?`)
+    .get(id) as ApiUsageEvent | undefined;
 
 const persistUsage = (
   row: ActiveApiUsage,
@@ -103,8 +135,9 @@ const persistUsage = (
       `INSERT INTO api_usage_events (
         id, api_key_id, user_id, username, model, prompt_preview, prompt_chars,
         response_chars, ttft_ms, duration_ms, tokens_eval, tokens_prompt,
-        tokens_per_sec, status, error_message, ip, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        tokens_per_sec, status, error_message, ip, request_payload, response_full,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     )
     .run(
       row.id,
@@ -123,6 +156,8 @@ const persistUsage = (
       meta.status,
       meta.errorMessage ?? null,
       row.ip,
+      row.requestPayload,
+      clip(row.responseText, MAX_RESPONSE_FULL),
     );
 };
 
@@ -177,6 +212,8 @@ export const logRejectedApiUsage = (input: {
       responseChars: 0,
       ip: (input.ip ?? "").slice(0, 64),
       status: "streaming",
+      requestPayload: preview(input.prompt ?? ""),
+      responseText: "",
     },
     {
       responseChars: 0,
@@ -339,4 +376,10 @@ export const getApiUsageAnalytics = () => {
     activeKeys: activeKeys?.c ?? 0,
     totalKeys: totalKeys?.c ?? 0,
   };
+};
+
+/** Wipe finished Developer API usage rows. Live streams stay in memory. */
+export const clearApiUsageLogs = (): number => {
+  const info = getDb().prepare(`DELETE FROM api_usage_events`).run();
+  return info.changes;
 };

@@ -2,7 +2,7 @@ export const devlabEn = {
   title: "Dev lab",
   badge: "API gateway",
   description:
-    "Corporate API keys and raw model traffic. Other apps call /api/v1/generate with a SINAMGPT key — no knowledge RAG and no guardrails on this path.",
+    "Corporate API keys and raw model traffic. Other apps call /api/v1/chat/completions with one SINAMGPT key and any activated model — no knowledge RAG and no guardrails on this path.",
   backToChat: "Chat",
   admin: "Admin",
   lab: "Model lab",
@@ -49,7 +49,8 @@ export const devlabEn = {
   saveFailed: "Could not save settings",
   saved: "Settings saved. New API calls use these limits.",
   gatewayOn: "API gateway on",
-  gatewayOnHint: "Master switch for /api/v1/generate and /api/v1/models",
+  gatewayOnHint:
+    "Master switch for /api/v1/chat/completions, /api/v1/generate, and /api/v1/models",
   maxKeys: "Max keys per user",
   rpm: "Requests per minute (per key)",
   maxChars: "Max prompt characters",
@@ -74,7 +75,7 @@ export const devlabAz: DevlabMessages = {
   title: "Dev lab",
   badge: "API şlüzü",
   description:
-    "Korporativ API açarları və xam model trafiki. Digər tətbiqlər SINAMGPT açarı ilə /api/v1/generate çağırır — bu yolda RAG və qoruyucu yoxdur.",
+    "Korporativ API açarları və xam model trafiki. Digər tətbiqlər bir SINAMGPT açarı və istənilən aktiv modellə /api/v1/chat/completions çağırır — bu yolda RAG və qoruyucu yoxdur.",
   backToChat: "Söhbət",
   admin: "Admin",
   lab: "Model lab",
@@ -121,7 +122,8 @@ export const devlabAz: DevlabMessages = {
   saveFailed: "Parametrlər saxlanılmadı",
   saved: "Parametrlər saxlanıldı. Yeni API çağırışları bu limitlərdən istifadə edir.",
   gatewayOn: "API şlüzü açıq",
-  gatewayOnHint: "/api/v1/generate və /api/v1/models üçün əsas açar",
+  gatewayOnHint:
+    "/api/v1/chat/completions, /api/v1/generate və /api/v1/models üçün əsas açar",
   maxKeys: "İstifadəçi başına max açar",
   rpm: "Dəqiqədə sorğu (açar başına)",
   maxChars: "Max sorğu simvolları",
@@ -140,7 +142,7 @@ export const devlabRu: DevlabMessages = {
   title: "Dev lab",
   badge: "API-шлюз",
   description:
-    "Корпоративные API-ключи и сырой трафик модели. Другие приложения вызывают /api/v1/generate с ключом SINAMGPT — на этом пути нет RAG и защитных правил.",
+    "Корпоративные API-ключи и сырой трафик модели. Другие приложения вызывают /api/v1/chat/completions одним ключом SINAMGPT и любой активированной моделью — на этом пути нет RAG и защитных правил.",
   backToChat: "Чат",
   admin: "Админ",
   lab: "Лаборатория моделей",
@@ -187,7 +189,8 @@ export const devlabRu: DevlabMessages = {
   saveFailed: "Не удалось сохранить настройки",
   saved: "Настройки сохранены. Новые API-вызовы используют эти лимиты.",
   gatewayOn: "API-шлюз включён",
-  gatewayOnHint: "Главный переключатель для /api/v1/generate и /api/v1/models",
+  gatewayOnHint:
+    "Главный переключатель для /api/v1/chat/completions, /api/v1/generate и /api/v1/models",
   maxKeys: "Макс. ключей на пользователя",
   rpm: "Запросов в минуту (на ключ)",
   maxChars: "Макс. символов в запросе",
