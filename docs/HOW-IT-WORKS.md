@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.16.0
+**Current product:** v1.17.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -73,7 +73,7 @@ You type a question (any language)  + optional image or short voice clip
 
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** microphone if the selected model lists **Audio** (STT — on this box: every Gemma 4) **and** Admin → Microphone is on (30 seconds). **Listen** on a reply if the selected model has Audio or Speak (TTS). Chat models do not emit WAV; Listen uses the PC’s speech engine. Pull a TTS/omni/Whisper tag, **Activate** it, then pick it in chat to test. Video cannot be sent.
+**Voice:** microphone if the selected model lists **Audio** (STT — on this box: every Gemma 4) **and** Admin → Microphone is on (30 seconds). Clips show as a voice message (play, waveform, time). **Listen** on a reply if the selected model has Audio or Speak (TTS). Chat models do not emit WAV; Listen uses the PC’s speech engine. Pull a TTS/omni/Whisper tag, **Activate** it, then pick it in chat to test. Video cannot be sent.
 
 ---
 
@@ -137,10 +137,10 @@ You do not need engineering to run day-to-day:
 - **Guardrails** — On/Off switches; apply to new chats immediately  
 - **Guest** — daily limit; can turn guest chat off  
 - **Features** — start **off** until you need them: Developer API, Dev lab, File upload, File import, Microphone  
-- **Live usage** — click a generation to see the exact prompt sent to the model and the reply  
+- **Live usage** — click a generation to see the exact prompt sent to the model and the reply. Chat, guest, and developer API calls all show here (API rows say **API**). **All / App / API** filters split in-app chat from third-party keys. **Clear logs** wipes that history (test clutter) without deleting saved chats.  
 - **Model lab** (`/lab`) — run the same chat path employees use and see pass rate / speed  
 
-Developer API (`/api/v1/generate`), when on, is a **raw model pipe**: no knowledge, no guardrails. Use it for other apps, not as a replacement for employee chat.
+Developer API (`/api/v1/chat/completions`), when on, is a **raw model pipe**: one key, every activated model (same idea as OpenRouter). No knowledge, no guardrails. Use it for other apps, not as a replacement for employee chat.
 
 ---
 

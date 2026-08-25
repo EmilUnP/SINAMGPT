@@ -9,6 +9,7 @@ import {
   Copy,
   Radio,
   Server,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -19,12 +20,13 @@ import {
   adminBtnGhost,
   adminFieldClass,
 } from "./AdminChrome";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { LOCALE_BCP47, type AppLocale } from "@/lib/locale";
 
 type LiveRow = {
   id: string;
-  source: "user" | "guest";
+  source: "user" | "guest" | "api";
   username: string;
   model: string;
   promptPreview: string;
@@ -37,7 +39,7 @@ type LiveRow = {
 
 type RecentRow = {
   id: string;
-  source: "user" | "guest";
+  source: "user" | "guest" | "api";
   username: string;
   model: string;
   prompt_preview: string;
@@ -48,7 +50,7 @@ type RecentRow = {
   tokens_eval: number | null;
   tokens_prompt: number | null;
   tokens_per_sec: number | null;
-  status: "ok" | "error" | "aborted";
+  status: "ok" | "error" | "aborted" | "rejected";
   error_message: string | null;
   created_at: string;
 };
@@ -80,7 +82,7 @@ type UsagePayload = {
     }>;
     topUsers: Array<{
       username: string;
-      source: "user" | "guest";
+      source: "user" | "guest" | "api";
       requests: number;
       avg_duration_ms: number | null;
     }>;
@@ -104,7 +106,7 @@ type UsagePayload = {
 type UsageDetail = {
   id: string;
   live: boolean;
-  source: "user" | "guest";
+  source: "user" | "guest" | "api";
   username: string;
   model: string;
   promptPreview: string;
@@ -125,6 +127,7 @@ type UsageDetail = {
 };
 
 type DetailPane = "sent" | "reply";
+type SourceFilter = "all" | "app" | "api";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
@@ -150,6 +153,7 @@ const statusTone = (status: string) => {
 
 export const AdminUsagePanel = () => {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const fmtMs = (value: number | null | undefined) => {
     if (value == null || Number.isNaN(value)) return "—";
     if (value < 1000) return t("common.ms", { n: Math.round(value) });
@@ -157,7 +161,9 @@ export const AdminUsagePanel = () => {
   };
   const [data, setData] = useState<UsagePayload | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
     25,
@@ -167,16 +173,19 @@ export const AdminUsagePanel = () => {
   const [detailError, setDetailError] = useState("");
   const [detailPane, setDetailPane] = useState<DetailPane>("sent");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
-  const sourceLabel = (source: "user" | "guest") =>
-    source === "guest"
-      ? t("admin.usage.sourceGuest")
-      : t("admin.usage.sourceUser");
+  const sourceLabel = (source: "user" | "guest" | "api") => {
+    if (source === "guest") return t("admin.usage.sourceGuest");
+    if (source === "api") return t("admin.usage.sourceApi");
+    return t("admin.usage.sourceUser");
+  };
 
   const statusLabel = (status: string) => {
     if (status === "ok") return t("admin.usage.statusOk");
     if (status === "error") return t("admin.usage.statusError");
     if (status === "aborted") return t("admin.usage.statusAborted");
+    if (status === "rejected") return t("admin.usage.statusRejected");
     return t("admin.usage.streaming");
   };
 
@@ -225,6 +234,7 @@ export const AdminUsagePanel = () => {
       const params = new URLSearchParams({
         page: String(page),
         limit: String(pageSize),
+        source: sourceFilter,
       });
       const res = await fetch(`/api/admin/usage?${params}`, {
         cache: "no-store",
@@ -244,7 +254,7 @@ export const AdminUsagePanel = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, t]);
+  }, [page, pageSize, sourceFilter, t]);
 
   useEffect(() => {
     void load();
@@ -290,9 +300,44 @@ export const AdminUsagePanel = () => {
     ...(data?.analytics.byHour.map((h) => h.requests) ?? [1]),
   );
 
+  const handleSourceFilter = (next: SourceFilter) => {
+    setSourceFilter(next);
+    setPage(1);
+  };
+
   const handlePageSizeChange = (next: (typeof PAGE_SIZE_OPTIONS)[number]) => {
     setPageSize(next);
     setPage(1);
+  };
+
+  const handleClearLogs = async () => {
+    const ok = await confirm({
+      title: t("admin.usage.clearLogs"),
+      description: t("admin.usage.clearLogsConfirm"),
+      confirmLabel: t("admin.usage.clearLogs"),
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setIsClearing(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/admin/usage", { method: "DELETE" });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(json.error || t("admin.usage.clearFailed"));
+        return;
+      }
+      closeDetail();
+      setPage(1);
+      setNotice(t("admin.usage.cleared"));
+      await load();
+    } catch {
+      setError(t("admin.usage.clearFailed"));
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const detailText =
@@ -310,6 +355,11 @@ export const AdminUsagePanel = () => {
       {error ? (
         <p className="rounded-2xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]">
           {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-2.5 text-sm text-[var(--status-ok-fg)]">
+          {notice}
         </p>
       ) : null}
 
@@ -351,6 +401,15 @@ export const AdminUsagePanel = () => {
                   />
                   {t("admin.usage.liveCount", { n: data?.live.length ?? 0 })}
                 </span>
+                <button
+                  type="button"
+                  className={adminBtnGhost}
+                  disabled={isClearing}
+                  onClick={() => void handleClearLogs()}
+                >
+                  <Trash2 size={14} />
+                  {t("admin.usage.clearLogs")}
+                </button>
               </div>
             }
           />
@@ -396,12 +455,38 @@ export const AdminUsagePanel = () => {
               hint={t("admin.usage.guestUser", {
                 g: fmtNum(summary?.guest_requests),
                 u: fmtNum(summary?.user_requests),
+                a: fmtNum(summary?.api_requests),
               })}
               tone={
                 (summary?.error_requests ?? 0) > 0 ? "bad" : "default"
               }
             />
           </AdminStatGrid>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs font-medium text-[var(--admin-muted)]">
+              {t("admin.usage.filterSource")}
+            </span>
+            {(
+              [
+                ["all", t("admin.usage.filterAll")],
+                ["app", t("admin.usage.filterApp")],
+                ["api", t("admin.usage.filterApi")],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handleSourceFilter(id)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  sourceFilter === id
+                    ? "bg-[var(--accent)] text-white"
+                    : "border border-[var(--admin-border)] text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </AdminPanelCard>
 

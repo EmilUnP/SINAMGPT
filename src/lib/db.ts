@@ -353,6 +353,16 @@ const ensureSchema = (database: Database.Database) => {
       `ALTER TABLE usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
     );
   }
+  if (!hasColumn(database, "api_usage_events", "request_payload")) {
+    database.exec(
+      `ALTER TABLE api_usage_events ADD COLUMN request_payload TEXT NOT NULL DEFAULT ''`,
+    );
+  }
+  if (!hasColumn(database, "api_usage_events", "response_full")) {
+    database.exec(
+      `ALTER TABLE api_usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
+    );
+  }
   database.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_share_token
      ON conversations(share_token)

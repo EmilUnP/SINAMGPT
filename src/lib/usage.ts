@@ -1,7 +1,19 @@
 import { randomBytes } from "crypto";
+import {
+  getActiveApiUsageById,
+  getApiUsageEvent,
+  listActiveApiUsage,
+} from "@/lib/api-usage";
 import { getDb } from "@/lib/db";
 
-export type UsageSource = "user" | "guest";
+export type UsageSource = "user" | "guest" | "api";
+
+export type UsageSourceFilter = "all" | "app" | "api";
+
+export const parseUsageSourceFilter = (
+  raw: string | null | undefined,
+): UsageSourceFilter =>
+  raw === "app" || raw === "api" ? raw : "all";
 
 /** Keep SQLite rows bounded — admins still see the start of huge payloads. */
 const MAX_REQUEST_PAYLOAD = 160_000;
@@ -80,17 +92,13 @@ export type UsageEvent = {
   tokens_eval: number | null;
   tokens_prompt: number | null;
   tokens_per_sec: number | null;
-  status: "ok" | "error" | "aborted";
+  status: "ok" | "error" | "aborted" | "rejected";
   error_message: string | null;
   conversation_id: string | null;
   request_payload?: string;
   response_full?: string;
   created_at: string;
 };
-
-const USAGE_LIST_COLUMNS = `id, source, user_id, username, model, prompt_preview, prompt_chars,
-  response_chars, ttft_ms, duration_ms, tokens_eval, tokens_prompt,
-  tokens_per_sec, status, error_message, conversation_id, created_at`;
 
 type FinishMeta = {
   responseChars: number;
@@ -238,25 +246,41 @@ export const finishUsage = (id: string, meta: FinishMeta) => {
   active.delete(id);
 };
 
-export const listActiveUsage = (): UsageListItem[] => {
+export const listActiveUsage = (
+  filter: UsageSourceFilter = "all",
+): UsageListItem[] => {
   const now = Date.now();
-  return [...active.values()]
-    .sort((a, b) => b.startedAt - a.startedAt)
-    .map((row) => ({
-      id: row.id,
-      source: row.source,
-      username: row.username,
-      model: row.model,
-      promptPreview: row.promptPreview,
-      promptChars: row.promptChars,
-      responseChars: row.responseChars,
-      elapsedMs: now - row.startedAt,
-      ttftMs:
-        row.firstTokenAt != null
-          ? Math.max(0, row.firstTokenAt - row.startedAt)
-          : null,
-      status: row.status,
-    }));
+  const chat = [...active.values()].map((row) => ({
+    id: row.id,
+    source: row.source,
+    username: row.username,
+    model: row.model,
+    promptPreview: row.promptPreview,
+    promptChars: row.promptChars,
+    responseChars: row.responseChars,
+    elapsedMs: now - row.startedAt,
+    ttftMs:
+      row.firstTokenAt != null
+        ? Math.max(0, row.firstTokenAt - row.startedAt)
+        : null,
+    status: row.status,
+  }));
+  const api = listActiveApiUsage().map((row) => ({
+    id: row.id,
+    source: "api" as const,
+    username: row.username,
+    model: row.model,
+    promptPreview: row.promptPreview,
+    promptChars: row.promptChars,
+    responseChars: row.responseChars,
+    elapsedMs: row.elapsedMs,
+    ttftMs: row.ttftMs,
+    status: "streaming" as const,
+  }));
+  const rows = [...chat, ...api].sort((a, b) => a.elapsedMs - b.elapsedMs);
+  if (filter === "api") return rows.filter((row) => row.source === "api");
+  if (filter === "app") return rows.filter((row) => row.source !== "api");
+  return rows;
 };
 
 const isUsageId = (id: string) => /^[a-f0-9]{24}$/i.test(id);
@@ -295,40 +319,110 @@ export const getUsageDetail = (id: string): UsageDetail | null => {
     };
   }
 
+  const apiLive = getActiveApiUsageById(id);
+  if (apiLive) {
+    const now = Date.now();
+    return {
+      id: apiLive.id,
+      live: true,
+      source: "api",
+      username: apiLive.username,
+      userId: apiLive.userId,
+      model: apiLive.model,
+      promptPreview: apiLive.promptPreview,
+      promptChars: apiLive.promptChars,
+      responseChars: apiLive.responseChars,
+      elapsedMs: now - apiLive.startedAt,
+      ttftMs:
+        apiLive.firstTokenAt != null
+          ? Math.max(0, apiLive.firstTokenAt - apiLive.startedAt)
+          : null,
+      durationMs: null,
+      tokensEval: null,
+      tokensPrompt: null,
+      tokensPerSec: null,
+      status: apiLive.status,
+      errorMessage: null,
+      conversationId: null,
+      createdAt: new Date(apiLive.startedAt).toISOString(),
+      requestPayload: apiLive.requestPayload,
+      responseFull: apiLive.responseText,
+    };
+  }
+
   const row = getDb()
     .prepare(`SELECT * FROM usage_events WHERE id = ?`)
     .get(id) as UsageEvent | undefined;
-  if (!row) return null;
+  if (row) {
+    return {
+      id: row.id,
+      live: false,
+      source: row.source,
+      username: row.username,
+      userId: row.user_id,
+      model: row.model,
+      promptPreview: row.prompt_preview,
+      promptChars: row.prompt_chars,
+      responseChars: row.response_chars,
+      elapsedMs: null,
+      ttftMs: row.ttft_ms,
+      durationMs: row.duration_ms,
+      tokensEval: row.tokens_eval,
+      tokensPrompt: row.tokens_prompt,
+      tokensPerSec: row.tokens_per_sec,
+      status: row.status,
+      errorMessage: row.error_message,
+      conversationId: row.conversation_id,
+      createdAt: row.created_at,
+      requestPayload: row.request_payload ?? "",
+      responseFull: row.response_full ?? "",
+    };
+  }
+
+  const apiRow = getApiUsageEvent(id);
+  if (!apiRow) return null;
 
   return {
-    id: row.id,
+    id: apiRow.id,
     live: false,
-    source: row.source,
-    username: row.username,
-    userId: row.user_id,
-    model: row.model,
-    promptPreview: row.prompt_preview,
-    promptChars: row.prompt_chars,
-    responseChars: row.response_chars,
+    source: "api",
+    username: apiRow.username,
+    userId: apiRow.user_id,
+    model: apiRow.model,
+    promptPreview: apiRow.prompt_preview,
+    promptChars: apiRow.prompt_chars,
+    responseChars: apiRow.response_chars,
     elapsedMs: null,
-    ttftMs: row.ttft_ms,
-    durationMs: row.duration_ms,
-    tokensEval: row.tokens_eval,
-    tokensPrompt: row.tokens_prompt,
-    tokensPerSec: row.tokens_per_sec,
-    status: row.status,
-    errorMessage: row.error_message,
-    conversationId: row.conversation_id,
-    createdAt: row.created_at,
-    requestPayload: row.request_payload ?? "",
-    responseFull: row.response_full ?? "",
+    ttftMs: apiRow.ttft_ms,
+    durationMs: apiRow.duration_ms,
+    tokensEval: apiRow.tokens_eval,
+    tokensPrompt: apiRow.tokens_prompt,
+    tokensPerSec: apiRow.tokens_per_sec,
+    status: apiRow.status,
+    errorMessage: apiRow.error_message,
+    conversationId: null,
+    createdAt: apiRow.created_at,
+    requestPayload: apiRow.request_payload || apiRow.prompt_preview,
+    responseFull: apiRow.response_full ?? "",
   };
 };
+
+const ALL_USAGE_EVENTS = `
+  SELECT id, source, user_id, username, model, prompt_preview, prompt_chars,
+    response_chars, ttft_ms, duration_ms, tokens_eval, tokens_prompt,
+    tokens_per_sec, status, error_message, conversation_id, created_at
+  FROM usage_events
+  UNION ALL
+  SELECT id, 'api' AS source, user_id, username, model, prompt_preview, prompt_chars,
+    response_chars, ttft_ms, duration_ms, tokens_eval, tokens_prompt,
+    tokens_per_sec, status, error_message, NULL AS conversation_id, created_at
+  FROM api_usage_events
+`;
 
 export const getRecentUsage = (limit = 60): UsageEvent[] => {
   return getDb()
     .prepare(
-      `SELECT ${USAGE_LIST_COLUMNS} FROM usage_events ORDER BY created_at DESC LIMIT ?`,
+      `SELECT * FROM (${ALL_USAGE_EVENTS}) AS all_events ORDER BY created_at DESC LIMIT ?`,
     )
     .all(limit) as UsageEvent[];
 };
@@ -336,6 +430,7 @@ export const getRecentUsage = (limit = 60): UsageEvent[] => {
 export const getPagedUsage = (
   page = 1,
   limit = 25,
+  filter: UsageSourceFilter = "all",
 ): {
   rows: UsageEvent[];
   total: number;
@@ -346,9 +441,21 @@ export const getPagedUsage = (
   const db = getDb();
   const safeLimit = Math.max(5, Math.min(100, Math.floor(limit) || 25));
   const safePage = Math.max(1, Math.floor(page) || 1);
-  const totalRow = db
-    .prepare(`SELECT COUNT(*) AS c FROM usage_events`)
-    .get() as { c: number };
+  const where =
+    filter === "api"
+      ? "WHERE source = 'api'"
+      : filter === "app"
+        ? "WHERE source != 'api'"
+        : "";
+  const totalSql =
+    filter === "api"
+      ? `SELECT COUNT(*) AS c FROM api_usage_events`
+      : filter === "app"
+        ? `SELECT COUNT(*) AS c FROM usage_events`
+        : `SELECT
+            (SELECT COUNT(*) FROM usage_events) +
+            (SELECT COUNT(*) FROM api_usage_events) AS c`;
+  const totalRow = db.prepare(totalSql).get() as { c: number };
   const total = totalRow?.c ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / safeLimit));
   const currentPage = Math.min(safePage, totalPages);
@@ -356,7 +463,8 @@ export const getPagedUsage = (
 
   const rows = db
     .prepare(
-      `SELECT ${USAGE_LIST_COLUMNS} FROM usage_events
+      `SELECT * FROM (${ALL_USAGE_EVENTS}) AS all_events
+       ${where}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
     )
@@ -373,6 +481,7 @@ export const getPagedUsage = (
 
 export const getUsageAnalytics = () => {
   const db = getDb();
+  const fromAll = `FROM (${ALL_USAGE_EVENTS}) AS all_events`;
 
   const summary = db
     .prepare(
@@ -380,9 +489,10 @@ export const getUsageAnalytics = () => {
       SELECT
         COUNT(*) AS total_requests,
         SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_requests,
-        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS error_requests,
+        SUM(CASE WHEN status IN ('error', 'rejected') THEN 1 ELSE 0 END) AS error_requests,
         SUM(CASE WHEN source = 'guest' THEN 1 ELSE 0 END) AS guest_requests,
         SUM(CASE WHEN source = 'user' THEN 1 ELSE 0 END) AS user_requests,
+        SUM(CASE WHEN source = 'api' THEN 1 ELSE 0 END) AS api_requests,
         ROUND(AVG(CASE WHEN status = 'ok' THEN duration_ms END), 0) AS avg_duration_ms,
         ROUND(AVG(CASE WHEN status = 'ok' AND ttft_ms IS NOT NULL THEN ttft_ms END), 0) AS avg_ttft_ms,
         ROUND(AVG(CASE WHEN status = 'ok' AND tokens_per_sec IS NOT NULL THEN tokens_per_sec END), 1) AS avg_tokens_per_sec,
@@ -391,7 +501,7 @@ export const getUsageAnalytics = () => {
         SUM(CASE WHEN created_at >= datetime('now', '-1 day') THEN 1 ELSE 0 END) AS requests_24h,
         SUM(CASE WHEN created_at >= datetime('now', '-7 day') THEN 1 ELSE 0 END) AS requests_7d,
         SUM(CASE WHEN date(created_at) = date('now') THEN 1 ELSE 0 END) AS requests_today
-      FROM usage_events
+      ${fromAll}
     `,
     )
     .get() as Record<string, number | null>;
@@ -405,7 +515,8 @@ export const getUsageAnalytics = () => {
         ROUND(AVG(CASE WHEN status = 'ok' THEN duration_ms END), 0) AS avg_duration_ms,
         ROUND(AVG(CASE WHEN status = 'ok' AND tokens_per_sec IS NOT NULL THEN tokens_per_sec END), 1) AS avg_tokens_per_sec,
         SUM(CASE WHEN status = 'ok' THEN response_chars ELSE 0 END) AS response_chars
-      FROM usage_events
+      ${fromAll}
+      WHERE model != ''
       GROUP BY model
       ORDER BY requests DESC
       LIMIT 12
@@ -426,7 +537,7 @@ export const getUsageAnalytics = () => {
         strftime('%Y-%m-%d %H:00', created_at) AS hour,
         COUNT(*) AS requests,
         ROUND(AVG(CASE WHEN status = 'ok' THEN duration_ms END), 0) AS avg_duration_ms
-      FROM usage_events
+      ${fromAll}
       WHERE created_at >= datetime('now', '-24 hours')
       GROUP BY hour
       ORDER BY hour ASC
@@ -446,7 +557,7 @@ export const getUsageAnalytics = () => {
         source,
         COUNT(*) AS requests,
         ROUND(AVG(CASE WHEN status = 'ok' THEN duration_ms END), 0) AS avg_duration_ms
-      FROM usage_events
+      ${fromAll}
       GROUP BY username, source
       ORDER BY requests DESC
       LIMIT 10
@@ -460,6 +571,12 @@ export const getUsageAnalytics = () => {
   }>;
 
   return { summary, byModel, byHour, topUsers };
+};
+
+/** Wipe finished chat usage rows. Live streams stay in memory and still insert when they finish. */
+export const clearUsageLogs = (): number => {
+  const info = getDb().prepare(`DELETE FROM usage_events`).run();
+  return info.changes;
 };
 
 export { pingBackends, pingLlm } from "@/lib/llm";

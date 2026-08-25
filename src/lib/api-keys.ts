@@ -326,7 +326,8 @@ export const apiCorsHeaders = (
   if (!origin || !allowed.includes(origin)) return {};
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Api-Key",
+    "Access-Control-Allow-Headers":
+      "Authorization, Content-Type, X-Api-Key, HTTP-Referer, X-Title, OpenAI-Beta",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   };

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { clearApiUsageLogs } from "@/lib/api-usage";
 import {
+  clearUsageLogs,
   getPagedUsage,
   getUsageAnalytics,
   listActiveUsage,
+  parseUsageSourceFilter,
   pingLlm,
 } from "@/lib/usage";
 
@@ -17,17 +20,18 @@ export async function GET(request: Request) {
   const page = Number(searchParams.get("page") || "1");
   const limit = Number(searchParams.get("limit") || "25");
   const overview = searchParams.get("overview") === "1";
+  const source = parseUsageSourceFilter(searchParams.get("source"));
 
   const [llm, analytics, recentPage] = await Promise.all([
     pingLlm(),
     Promise.resolve(getUsageAnalytics()),
     overview
       ? Promise.resolve(null)
-      : Promise.resolve(getPagedUsage(page, limit)),
+      : Promise.resolve(getPagedUsage(page, limit, source)),
   ]);
 
   return NextResponse.json({
-    live: listActiveUsage(),
+    live: listActiveUsage(source),
     recent: recentPage?.rows ?? [],
     recentPage: recentPage
       ? {
@@ -49,4 +53,15 @@ export async function GET(request: Request) {
     backends: llm.backends,
     serverTime: new Date().toISOString(),
   });
+}
+
+export async function DELETE() {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const chat = clearUsageLogs();
+  const api = clearApiUsageLogs();
+  return NextResponse.json({ ok: true, deleted: { chat, api } });
 }

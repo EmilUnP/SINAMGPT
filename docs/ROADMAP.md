@@ -7,18 +7,18 @@ For a **plain-language** picture of chat, knowledge, and safety (managers / ever
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.16.0](../CHANGELOG.md#1160--2026-08-18) (see [README](../README.md)).
+**Current release:** [v1.17.0](../CHANGELOG.md#1170--2026-08-25) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.16.0**):
+What operators and users can rely on in the current tree (**v1.17.0**):
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
-| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) and **Listen** on replies when the selected model has Audio or Speak (TTS). No Fast/Smart toggle — pick a model in the composer |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) as a voice-message bubble, and **Listen** on replies when the selected model has Audio or Speak (TTS). Slow models keep the stream alive until the first token. No Fast/Smart toggle — pick a model in the composer |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
@@ -27,8 +27,8 @@ What operators and users can rely on in the current tree (**v1.16.0**):
 | **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`. Every Gemma 4 has images + microphone. Llama 4 Scout and Maverick have images, not microphone. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
-| **Admin usage** | Live usage auto-refresh; click a live or past row for the exact prompt sent to the model and the reply (attachments noted, not stored as raw bytes) |
-| **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys, `/api/v1/generate`, and admin **Dev lab** at `/devlab` |
+| **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt and reply; **Clear logs** |
+| **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys. One key calls every activated model via OpenAI-compatible `/api/v1/chat/completions` and `/api/v1/models` (custom `/api/v1/generate` still works). Admin **Dev lab** at `/devlab` |
 
 ---
 
@@ -67,6 +67,17 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.17.0 — OpenAI-compatible API & Live usage (2026-08-25)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| OpenAI-compatible `/api/v1/chat/completions` | `done` | One key, all activated models; OpenAI SDK `base_url` = `/api/v1` |
+| `GET /api/v1/models` catalog | `done` | OpenAI `{ object, data }` plus capability flags; Developer Models tab + snippets |
+| Admin Live usage includes API | `done` | Same list as chat; **All / App / API** filter; aborted rows have a reason |
+| Clear usage logs | `done` | Admin → Live usage wipes chat + API request history |
+| Voice notes + Listen | `done` | Mic clips look like voice messages; Listen on Audio/Speak models |
+| Slow-model SSE keepalive | `done` | Stream opens immediately so Llama 4 Scout does not look dead while evaluating |
 
 ### v1.16.0 — Public models guide & fleet expansion (2026-08-18)
 
@@ -157,6 +168,7 @@ Closed tracks — keep for context; do not re-open unless regressing.
 |---------|--------|-------|
 | API keys `/developer` | `done` | Users create/revoke keys; secret shown once; hashed at rest |
 | `GET /api/v1/models` + `POST /api/v1/generate` | `done` | Custom JSON/SSE; raw model proxy (no RAG, no guardrails) |
+| OpenAI-compatible `/api/v1/chat/completions` | `done` | One key, all activated models; OpenAI SDK `base_url` |
 | Dev lab `/devlab` | `done` | Admin keys, request log, RPM/CORS/gateway settings |
 
 ### v1.8.0 — Lab console (2026-08-13)
