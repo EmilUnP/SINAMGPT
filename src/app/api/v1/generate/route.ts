@@ -48,6 +48,7 @@ const schema = z
     }
   });
 
+// Numeric literal required; Next.js cannot analyze imported constants.
 export const maxDuration = 300;
 
 export async function OPTIONS(request: Request) {

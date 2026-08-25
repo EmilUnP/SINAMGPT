@@ -149,6 +149,7 @@ type DbMessage = {
   attachments?: string | null;
 };
 
+// Numeric literal required; Next.js cannot analyze imported constants.
 export const maxDuration = 300;
 
 const LLM_HISTORY_HARD_CAP = 500;

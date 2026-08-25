@@ -16,7 +16,11 @@ export const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 } as const;
 
-/** Self-hosted Node has no Vercel cap; this covers long Scout/Maverick waits. */
+/**
+ * Canonical chat timeout in seconds. Route files must export
+ * `maxDuration = 300` as a numeric literal — Next.js cannot statically
+ * analyze this imported constant, and a non-literal export fails `next build`.
+ */
 export const CHAT_MAX_DURATION_SEC = 300;
 
 const KEEPALIVE_MS = 10_000;

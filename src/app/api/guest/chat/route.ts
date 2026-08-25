@@ -86,6 +86,7 @@ const imagesToBase64 = (
   return { images: out };
 };
 
+// Numeric literal required; Next.js cannot analyze imported constants.
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
