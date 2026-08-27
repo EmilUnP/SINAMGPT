@@ -20,7 +20,7 @@ const hasColumn = (database: Database.Database, table: string, column: string) =
   return cols.some((c) => c.name === column);
 };
 
-const ensureSchema = (database: Database.Database) => {
+export const ensureDatabaseSchema = (database: Database.Database) => {
   database.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA wal_autocheckpoint = 1;
@@ -67,6 +67,7 @@ const ensureSchema = (database: Database.Database) => {
       content TEXT NOT NULL,
       sources TEXT,
       attachments TEXT,
+      tool_trace TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -82,14 +83,26 @@ const ensureSchema = (database: Database.Database) => {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS providers (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      base_url TEXT NOT NULL,
+      api_key_enc TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1))
+    );
+
     CREATE TABLE IF NOT EXISTS models (
       name TEXT PRIMARY KEY,
       is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
-      backend TEXT NOT NULL DEFAULT 'ollama' CHECK (backend IN ('ollama', 'vllm')),
+      backend TEXT NOT NULL DEFAULT 'ollama',
+      kind TEXT NOT NULL DEFAULT 'chat' CHECK (
+        kind IN ('chat', 'image', 'video', 'stt', 'tts', 'embedding', 'rerank')
+      ),
       vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),
       tools INTEGER NOT NULL DEFAULT 0 CHECK (tools IN (0, 1)),
       audio INTEGER NOT NULL DEFAULT 0 CHECK (audio IN (0, 1)),
+      tts INTEGER NOT NULL DEFAULT 0 CHECK (tts IN (0, 1)),
       video INTEGER NOT NULL DEFAULT 0 CHECK (video IN (0, 1)),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -234,6 +247,36 @@ const ensureSchema = (database: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_api_usage_key
       ON api_usage_events(api_key_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued' CHECK (
+        status IN ('queued', 'running', 'completed', 'failed', 'cancelled')
+      ),
+      progress INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+      progress_message TEXT NOT NULL DEFAULT '',
+      input_json TEXT NOT NULL DEFAULT '{}',
+      result_ref TEXT,
+      error TEXT,
+      cancel_requested INTEGER NOT NULL DEFAULT 0 CHECK (cancel_requested IN (0, 1)),
+      worker_id TEXT,
+      lease_expires_at TEXT,
+      started_at TEXT,
+      finished_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_jobs_user_created
+      ON jobs(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_jobs_status_lease
+      ON jobs(status, lease_expires_at);
+    CREATE INDEX IF NOT EXISTS idx_jobs_queued
+      ON jobs(status, created_at ASC)
+      WHERE status = 'queued';
   `);
 
   // Seed defaults once (admin can change later in Admin → Settings / Guardrails)
@@ -278,8 +321,21 @@ const ensureSchema = (database: Database.Database) => {
       fileUpload: false,
       fileImport: false,
       microphone: false,
+      jobQueue: false,
+      toolCalling: false,
     }),
   );
+
+  const ollamaBaseUrl =
+    process.env.OLLAMA_BASE_URL?.trim().replace(/\/+$/, "") ||
+    "http://127.0.0.1:11434";
+  database
+    .prepare(
+      `INSERT INTO providers (id, kind, base_url, api_key_enc, enabled)
+       VALUES ('ollama', 'ollama', ?, NULL, 1)
+       ON CONFLICT(id) DO NOTHING`,
+    )
+    .run(ollamaBaseUrl);
 
   // Migrate older DBs created before admin fields existed
   if (!hasColumn(database, "users", "role")) {
@@ -314,6 +370,9 @@ const ensureSchema = (database: Database.Database) => {
   if (!hasColumn(database, "messages", "attachments")) {
     database.exec(`ALTER TABLE messages ADD COLUMN attachments TEXT`);
   }
+  if (!hasColumn(database, "messages", "tool_trace")) {
+    database.exec(`ALTER TABLE messages ADD COLUMN tool_trace TEXT`);
+  }
   if (!hasColumn(database, "models", "vision")) {
     database.exec(
       `ALTER TABLE models ADD COLUMN vision INTEGER NOT NULL DEFAULT 0`,
@@ -333,6 +392,50 @@ const ensureSchema = (database: Database.Database) => {
     database.exec(
       `ALTER TABLE models ADD COLUMN video INTEGER NOT NULL DEFAULT 0`,
     );
+  }
+  if (!hasColumn(database, "models", "kind")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN kind TEXT NOT NULL DEFAULT 'chat'
+       CHECK (kind IN ('chat', 'image', 'video', 'stt', 'tts', 'embedding', 'rerank'))`,
+    );
+  }
+  if (!hasColumn(database, "models", "tts")) {
+    database.exec(
+      `ALTER TABLE models ADD COLUMN tts INTEGER NOT NULL DEFAULT 0
+       CHECK (tts IN (0, 1))`,
+    );
+  }
+
+  const modelsTable = database
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'models'`)
+    .get() as { sql?: string } | undefined;
+  if (modelsTable?.sql && /CHECK\s*\(\s*backend\s+IN\s*\(/i.test(modelsTable.sql)) {
+    database.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE models_provider_migration (
+        name TEXT PRIMARY KEY,
+        is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
+        display_name TEXT,
+        backend TEXT NOT NULL DEFAULT 'ollama',
+        kind TEXT NOT NULL DEFAULT 'chat' CHECK (
+          kind IN ('chat', 'image', 'video', 'stt', 'tts', 'embedding', 'rerank')
+        ),
+        vision INTEGER NOT NULL DEFAULT 0 CHECK (vision IN (0, 1)),
+        tools INTEGER NOT NULL DEFAULT 0 CHECK (tools IN (0, 1)),
+        audio INTEGER NOT NULL DEFAULT 0 CHECK (audio IN (0, 1)),
+        tts INTEGER NOT NULL DEFAULT 0 CHECK (tts IN (0, 1)),
+        video INTEGER NOT NULL DEFAULT 0 CHECK (video IN (0, 1)),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO models_provider_migration
+        (name, is_enabled, display_name, backend, kind, vision, tools, audio, tts, video, updated_at)
+      SELECT
+        name, is_enabled, display_name, backend, kind, vision, tools, audio, tts, video, updated_at
+      FROM models;
+      DROP TABLE models;
+      ALTER TABLE models_provider_migration RENAME TO models;
+      COMMIT;
+    `);
   }
   if (!hasColumn(database, "conversations", "project_id")) {
     database.exec(`ALTER TABLE conversations ADD COLUMN project_id TEXT`);
@@ -426,7 +529,7 @@ export const getDb = (): Database.Database => {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     db = new Database(DB_PATH);
-    ensureSchema(db);
+    ensureDatabaseSchema(db);
     ensureAdminUser(db);
     try {
       db.pragma("wal_checkpoint(TRUNCATE)");
@@ -438,7 +541,7 @@ export const getDb = (): Database.Database => {
 
   // Re-run on cached connections too (idempotent). Next.js HMR can keep an
   // older connection after new columns were added to ensureSchema.
-  ensureSchema(db);
+  ensureDatabaseSchema(db);
   return db;
 };
 

@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.17.0](./CHANGELOG.md#1170--2026-08-25)
+**Current version:** [1.18.0](./CHANGELOG.md#1180--2026-08-27)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -11,6 +11,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | How the product works (no install) | [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) |
 | Install, env vars, API examples | This README |
 | What shipped vs what is next | [docs/ROADMAP.md](./docs/ROADMAP.md) |
+| The v2.0 platform plan (more runtimes, more model types, search, files) | [docs/PLATFORM-ROADMAP.md](./docs/PLATFORM-ROADMAP.md) |
 | What changed in each version | [CHANGELOG.md](./CHANGELOG.md) |
 | How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
@@ -121,14 +122,23 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 
 | Variable | Meaning |
 |----------|---------|
-| `SESSION_SECRET` | Cookie signing secret (change for company use) |
-| `OLLAMA_BASE_URL` | Default `http://127.0.0.1:11434` |
+| `SESSION_SECRET` | Cookie signing secret and provider-key encryption secret (change for company use; keep stable) |
+| `OLLAMA_BASE_URL` | Seeds the default `ollama` provider on first startup (`http://127.0.0.1:11434`); SQLite is authoritative afterwards |
 | `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
 | `DEFAULT_MODEL` | Preferred Ollama model name if installed |
 | `ADMIN_USERNAME` | Seeded admin username |
 | `ADMIN_PASSWORD` | Required to seed the admin account (min 10 characters) |
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
 | `GUEST_MAX_MESSAGE_CHARS` | Max guest message length |
+
+Additional LAN Ollama endpoints can be managed in **Admin → Providers**. The
+server connects to the configured URL; provider API keys are encrypted with
+`SESSION_SECRET` and are never returned by the Admin API.
+
+The persistent job worker is designed for this project's single-process,
+self-hosted Node deployment. It is not a distributed queue and must not be used
+for serverless or horizontally scaled deployments without an external queue.
+The job and tool-calling feature flags are off by default.
 
 ## Data
 

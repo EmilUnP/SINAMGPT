@@ -7,7 +7,9 @@ export type FeatureId =
   | "devLab"
   | "fileUpload"
   | "fileImport"
-  | "microphone";
+  | "microphone"
+  | "jobQueue"
+  | "toolCalling";
 
 export type FeatureFlags = {
   developerApi: boolean;
@@ -15,6 +17,8 @@ export type FeatureFlags = {
   fileUpload: boolean;
   fileImport: boolean;
   microphone: boolean;
+  jobQueue: boolean;
+  toolCalling: boolean;
 };
 
 /** Off until an admin turns the surface on in Settings. */
@@ -24,6 +28,8 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   fileUpload: false,
   fileImport: false,
   microphone: false,
+  jobQueue: false,
+  toolCalling: false,
 };
 
 export const getFeatureFlags = (): FeatureFlags => {
@@ -39,6 +45,8 @@ export const getFeatureFlags = (): FeatureFlags => {
       fileUpload: parsed.fileUpload === true,
       fileImport: parsed.fileImport === true,
       microphone: parsed.microphone === true,
+      jobQueue: parsed.jobQueue === true,
+      toolCalling: parsed.toolCalling === true,
     };
   } catch {
     return { ...DEFAULT_FEATURE_FLAGS };

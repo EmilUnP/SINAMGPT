@@ -94,7 +94,7 @@ type UsagePayload = {
     backend?: string;
   };
   backends?: Array<{
-    backend: "ollama" | "vllm";
+    backend: string;
     ok: boolean;
     latencyMs: number;
     error?: string;
@@ -389,7 +389,11 @@ export const AdminUsagePanel = () => {
                     className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                   >
                     <Server size={12} />
-                    {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
+                    {b.backend === "ollama"
+                      ? "Ollama"
+                      : b.backend === "vllm"
+                        ? "vLLM"
+                        : b.backend}{" "}
                     {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")} ·{" "}
                     {fmtMs(b.latencyMs)}
                   </span>

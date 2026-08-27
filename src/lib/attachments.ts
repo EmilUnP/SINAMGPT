@@ -14,7 +14,11 @@ import {
   isAllowedImageMime,
   type AllowedImageMime,
 } from "@/lib/image-limits";
-import type { Message, MessageAttachment } from "@/lib/types";
+import type {
+  Message,
+  MessageAttachment,
+  ToolTraceEntry,
+} from "@/lib/types";
 
 export {
   ALLOWED_IMAGE_MIMES,
@@ -123,6 +127,53 @@ export const parseAttachments = (raw: string | null | undefined): MessageAttachm
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isStoredAttachment);
+  } catch {
+    return [];
+  }
+};
+
+const TOOL_TRACE_STATUSES = new Set<ToolTraceEntry["status"]>([
+  "completed",
+  "unknown_tool",
+  "invalid_input",
+  "blocked_input",
+  "handler_error",
+  "invalid_output",
+  "blocked_output",
+]);
+
+export const parseToolTrace = (
+  raw: string | null | undefined,
+): ToolTraceEntry[] => {
+  if (!raw || raw.length > 65_536) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, 32).flatMap((value) => {
+      if (!value || typeof value !== "object") return [];
+      const row = value as Partial<ToolTraceEntry>;
+      if (
+        typeof row.callId !== "string" ||
+        typeof row.toolName !== "string" ||
+        !row.status ||
+        !TOOL_TRACE_STATUSES.has(row.status) ||
+        typeof row.durationMs !== "number" ||
+        !Number.isFinite(row.durationMs)
+      ) {
+        return [];
+      }
+      const bounded = (text: unknown) =>
+        typeof text === "string" ? text.slice(0, 2_048) : undefined;
+      return [{
+        callId: row.callId.slice(0, 128),
+        toolName: row.toolName.slice(0, 64),
+        status: row.status,
+        input: bounded(row.input),
+        output: bounded(row.output),
+        error: bounded(row.error),
+        durationMs: Math.max(0, Math.min(300_000, Math.round(row.durationMs))),
+      }];
+    });
   } catch {
     return [];
   }
@@ -267,6 +318,7 @@ export const hydrateUiMessage = (row: {
   content: string;
   sources: string | null;
   attachments?: string | null;
+  tool_trace?: string | null;
   created_at: string;
 }): Message => {
   let sources: Message["sources"] = null;
@@ -279,6 +331,7 @@ export const hydrateUiMessage = (row: {
     }
   }
   const attachments = parseAttachments(row.attachments);
+  const toolTrace = parseToolTrace(row.tool_trace);
   return {
     id: row.id,
     conversation_id: row.conversation_id,
@@ -287,6 +340,7 @@ export const hydrateUiMessage = (row: {
     created_at: row.created_at,
     sources,
     attachments: attachments.length ? attachments : null,
+    tool_trace: toolTrace.length ? toolTrace : null,
   };
 };
 

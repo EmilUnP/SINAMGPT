@@ -10,6 +10,21 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.18.0] — 2026-08-27
+
+Phase 0 opens the internal seams needed by later provider, retrieval, media, and tool releases without enabling unfinished user features.
+
+### Added
+- **Phase 0 test harness** — Vitest runs isolated unit tests for model capabilities, multilingual matching, knowledge ranking, guardrails, provider routing, jobs, chat helpers, tool adapters, and encrypted provider keys without requiring Ollama or the app database.
+- **Provider registry foundation** — enabled model providers now come from SQLite instead of a hardcoded backend list. Existing installs automatically seed the current Ollama endpoint, model rows can reference any provider id, and additional provider credentials are encrypted with AES-256-GCM.
+- **Model task kinds** — models are classified as chat, image, video, STT, TTS, embedding, or rerank; chat endpoints reject non-chat models.
+- **Minimal provider Admin** — admins can add, edit, enable, disable, and safely remove LAN Ollama endpoints without exposing stored keys.
+- **Persistent jobs** — owner-scoped SQLite jobs support atomic claims, one worker, leases, stale recovery, cancellation, bounded progress, and SSE events. The internal demo surface is off by default.
+- **Secure tool runtime** — strict JSON Schema validation, guarded inputs and outputs, timeout/abort handling, capped loops, and redacted persisted traces. No tools are registered and the feature is off by default.
+
+### Changed
+- **Chat client decomposition** — the former monolithic Chat app is split into typed hooks, pure helpers, and focused components while preserving its single client state root and behavior.
+
 ## [1.17.0] — 2026-08-25
 
 OpenAI-compatible developer API (one key, all activated models) and Admin Live usage that includes those API calls.
@@ -331,7 +346,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.14.1...v1.15.0

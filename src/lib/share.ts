@@ -71,7 +71,7 @@ export const getSharedMessages = (conversationId: string): Message[] => {
   const rows = getDb()
     .prepare(
       `SELECT * FROM (
-         SELECT id, conversation_id, role, content, sources, attachments, created_at
+         SELECT id, conversation_id, role, content, sources, attachments, tool_trace, created_at
          FROM messages
          WHERE conversation_id = ?
          ORDER BY created_at DESC
@@ -80,7 +80,11 @@ export const getSharedMessages = (conversationId: string): Message[] => {
        ORDER BY created_at ASC`,
     )
     .all(conversationId) as Array<
-    Message & { sources: string | null; attachments?: string | null }
+    Message & {
+      sources: string | null;
+      attachments?: string | null;
+      tool_trace?: string | null;
+    }
   >;
 
   return rows.map((row) => hydrateUiMessage(row));

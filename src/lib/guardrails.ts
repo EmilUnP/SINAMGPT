@@ -500,6 +500,29 @@ export const checkInputGuardrails = async (
   return { blocked: false, inspection };
 };
 
+/**
+ * Inspect serialized tool I/O with deterministic local layers only.
+ * This intentionally skips query gloss and knowledge retrieval so tools
+ * cannot recursively trigger another model or retrieval operation.
+ */
+export const checkToolPayloadGuardrails = async (
+  text: string,
+  audience: "guest" | "user" = "user",
+): Promise<{ blocked: boolean; reason?: string }> => {
+  const inspection = await inspectGuardrails({
+    text,
+    audience,
+    config: getGuardrails(),
+    skipExternalInspection: true,
+  });
+  return inspection.decision === "block"
+    ? {
+        blocked: true,
+        reason: inspection.blockReason || "Tool payload blocked",
+      }
+    : { blocked: false };
+};
+
 export type PreparedChat<T extends { role: string; content: string }> = {
   messages: T[];
   /** Citations to show under the next assistant reply (empty if disabled / none) */

@@ -27,6 +27,7 @@ import {
   getChatRuntimeOptions,
   getGuestEnabledSetting,
   getGuestHistoryLimitSetting,
+  isChatModel,
   isModelEnabled,
   modelSupportsVision,
   resolveOllamaModelName,
@@ -134,6 +135,12 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
+      );
+    }
+    if (!isChatModel(model)) {
+      return Response.json(
+        { error: "This endpoint only accepts chat models." },
+        { status: 400 },
       );
     }
 

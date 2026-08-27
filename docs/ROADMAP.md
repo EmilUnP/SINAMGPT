@@ -5,15 +5,17 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 For a **plain-language** picture of chat, knowledge, and safety (managers / everyday users), see [HOW-IT-WORKS.md](./HOW-IT-WORKS.md).
 
+For the **multi-release expansion arc** — more runtimes than Ollama, image / speech / embedding models, internet search, and file understanding — see [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md). That track feeds this file: phases land here as releases when they ship.
+
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.17.0](../CHANGELOG.md#1170--2026-08-25) (see [README](../README.md)).
+**Current release:** [v1.18.0](../CHANGELOG.md#1180--2026-08-27) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.17.0**):
+What operators and users can rely on in the current tree (**v1.18.0**):
 
 | Area | Reality |
 |------|---------|
@@ -25,7 +27,7 @@ What operators and users can rely on in the current tree (**v1.17.0**):
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
-| **LLM** | Ollama only (`OLLAMA_BASE_URL`). Company RTX 5090 fleet: `gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`. Every Gemma 4 has images + microphone. Llama 4 Scout and Maverick have images, not microphone. New pulls stay inactive until Admin → Models → Activate |
+| **LLM** | Provider registry with one seeded Ollama endpoint and minimal Admin CRUD for additional LAN Ollama servers; vLLM stays parked until P1. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt and reply; **Clear logs** |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys. One key calls every activated model via OpenAI-compatible `/api/v1/chat/completions` and `/api/v1/models` (custom `/api/v1/generate` still works). Admin **Dev lab** at `/devlab` |
@@ -36,7 +38,7 @@ What operators and users can rely on in the current tree (**v1.17.0**):
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| — | *(none chosen)* | — | Promote from candidates when you start work |
+| P1 | **More inference backends** | `planned` | Un-park and verify vLLM, then add the generic OpenAI-compatible adapter, connection tests, sync, and fallback routing |
 
 ### Candidates (suggested order)
 
@@ -67,6 +69,16 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.18.0 — Open the seams (2026-08-27)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Provider registry and Admin management | `done` | Free-form provider ids, encrypted keys, protected defaults, and LAN-safe URL validation |
+| Model task kinds | `done` | Chat/image/video/STT/TTS/embedding/rerank classification with chat-only routing |
+| Persistent jobs | `done` | Single-process SQLite queue, owner APIs, cancellation, leases, recovery, and SSE progress; off by default |
+| Chat decomposition | `done` | Focused components/hooks and tested pure helpers; one preserved client state root |
+| Secure tool runtime | `done` | Strict validated/guarded loop and redacted traces; zero registered tools and off by default |
 
 ### v1.17.0 — OpenAI-compatible API & Live usage (2026-08-25)
 

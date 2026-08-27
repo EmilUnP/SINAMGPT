@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.17.0
+**Current product:** v1.18.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -31,7 +31,7 @@ Three promises:
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
 | **Employee** | Signs in. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. |
-| **Admin** | Turns models on, edits knowledge, sets guardrails, watches usage (including the exact prompt), can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
+| **Admin** | Turns models on, manages LAN Ollama providers, edits knowledge, sets guardrails, watches usage (including the exact prompt), and can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
 ---
@@ -70,6 +70,11 @@ You type a question (any language)  + optional image or short voice clip
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
 **Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
+
+**Foundation in v1.18:** long internal work can use a persistent single-process
+job queue, and future model tools have a validated, guarded runtime. Both are
+off by default, and the tool registry ships empty, so normal chat follows the
+same path as before.
 
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 

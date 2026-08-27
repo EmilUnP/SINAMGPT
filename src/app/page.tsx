@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { HomeTryChat } from "@/components/chat";
+import { HomeTryChat } from "@/components/chat/HomeTryChat";
 import { getPageUser } from "@/lib/auth";
 import { getFeatureFlags } from "@/lib/features";
 

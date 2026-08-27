@@ -1,33 +1,34 @@
 import {
   inferCapabilities,
 } from "./capabilities";
-import type { BackendHealth, ChatMessage, ChatOptions, LlmModel } from "./types";
+import { inferModelKind } from "./model-kind";
+import type {
+  BackendHealth,
+  ChatMessage,
+  ChatOptions,
+  LlmCompletion,
+  LlmModel,
+  LlmProviderConfig,
+} from "./types";
 
-const getBaseUrl = (): string =>
-  process.env.VLLM_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
-
-const getApiKey = (): string | undefined => {
-  const key = process.env.VLLM_API_KEY?.trim();
-  return key || undefined;
-};
-
-const authHeaders = (): HeadersInit => {
-  const key = getApiKey();
-  return key ? { Authorization: `Bearer ${key}` } : {};
-};
+const authHeaders = (provider: LlmProviderConfig): HeadersInit =>
+  provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {};
 
 /** Parked: chat and model lists are Ollama-only until we turn vLLM back on. */
 export const isVllmEnabled = (): boolean => false;
 
-export const listVllmModels = async (): Promise<LlmModel[]> => {
-  const res = await fetch(`${getBaseUrl()}/v1/models`, {
+export const listVllmModels = async (
+  provider: LlmProviderConfig,
+): Promise<LlmModel[]> => {
+  const res = await fetch(`${provider.baseUrl}/v1/models`, {
     cache: "no-store",
-    headers: { ...authHeaders() },
+    redirect: "manual",
+    headers: { ...authHeaders(provider) },
   });
 
   if (!res.ok) {
     throw new Error(
-      `vLLM is not reachable at ${getBaseUrl()}. Is the OpenAI-compatible server running?`,
+      `vLLM is not reachable at ${provider.baseUrl}. Is the OpenAI-compatible server running?`,
     );
   }
 
@@ -43,7 +44,8 @@ export const listVllmModels = async (): Promise<LlmModel[]> => {
       modified_at: m.created
         ? new Date(m.created * 1000).toISOString()
         : new Date().toISOString(),
-      backend: "vllm" as const,
+      backend: provider.id,
+      kind: inferModelKind(m.id),
       vision: caps.vision,
       tools: caps.tools,
       audio: caps.audio,
@@ -56,7 +58,24 @@ export const listVllmModels = async (): Promise<LlmModel[]> => {
 const toVllmMessages = (messages: ChatMessage[]) =>
   messages.map((message) => {
     if (!message.images?.length) {
-      return { role: message.role, content: message.content };
+      return {
+        role: message.role,
+        content: message.content,
+        ...(message.toolCalls?.length
+          ? {
+              tool_calls: message.toolCalls.map((call) => ({
+                id: call.id,
+                type: "function",
+                function: {
+                  name: call.name,
+                  arguments: JSON.stringify(call.arguments),
+                },
+              })),
+            }
+          : {}),
+        ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
+        ...(message.toolName ? { name: message.toolName } : {}),
+      };
     }
     const parts: Array<Record<string, unknown>> = [];
     if (message.content.trim()) {
@@ -76,6 +95,7 @@ const toVllmMessages = (messages: ChatMessage[]) =>
  * existing chat routes keep working unchanged.
  */
 export const streamVllmChat = async (
+  provider: LlmProviderConfig,
   model: string,
   messages: ChatMessage[],
   options?: ChatOptions,
@@ -91,20 +111,22 @@ export const streamVllmChat = async (
     body.max_tokens = options.numPredict;
   }
   if (options?.topP != null) body.top_p = options.topP;
+  if (options?.tools?.length) body.tools = options.tools;
 
-  const res = await fetch(`${getBaseUrl()}/v1/chat/completions`, {
+  const res = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...authHeaders(provider),
     },
     body: JSON.stringify(body),
+    redirect: "manual",
     ...(options?.signal ? { signal: options.signal } : {}),
   });
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
-    throw new Error(formatVllmError(text, res.status, model));
+    throw new Error(formatVllmError(text, res.status, model, provider.baseUrl));
   }
 
   const encoder = new TextEncoder();
@@ -223,10 +245,35 @@ export const streamVllmChat = async (
 };
 
 export const completeVllmChat = async (
+  provider: LlmProviderConfig,
   model: string,
   messages: ChatMessage[],
   options?: ChatOptions & { timeoutMs?: number },
 ): Promise<string> => {
+  const completion = await completeVllmToolChat(
+    provider,
+    model,
+    messages,
+    options,
+  );
+  return completion.content;
+};
+
+const parseToolArguments = (value: string | undefined): unknown => {
+  if (!value) return {};
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+};
+
+export const completeVllmToolChat = async (
+  provider: LlmProviderConfig,
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<LlmCompletion> => {
   const body: Record<string, unknown> = {
     model,
     messages: toVllmMessages(messages),
@@ -237,25 +284,39 @@ export const completeVllmChat = async (
     body.max_tokens = options.numPredict;
   }
   if (options?.topP != null) body.top_p = options.topP;
+  if (options?.tools?.length) body.tools = options.tools;
 
-  const res = await fetch(`${getBaseUrl()}/v1/chat/completions`, {
+  const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 8000);
+  const signal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutSignal])
+    : timeoutSignal;
+  const res = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...authHeaders(provider),
     },
     body: JSON.stringify(body),
     cache: "no-store",
-    signal: AbortSignal.timeout(options?.timeoutMs ?? 8000),
+    redirect: "manual",
+    signal,
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(formatVllmError(text, res.status, model));
+    throw new Error(formatVllmError(text, res.status, model, provider.baseUrl));
   }
 
   const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{
+      message?: {
+        content?: string;
+        tool_calls?: Array<{
+          id?: string;
+          function?: { name?: string; arguments?: string };
+        }>;
+      };
+    }>;
     error?: { message?: string } | string;
   };
   if (data.error) {
@@ -265,31 +326,46 @@ export const completeVllmChat = async (
         : data.error.message || "vLLM complete failed",
     );
   }
-  return (data.choices?.[0]?.message?.content ?? "").trim();
+  const message = data.choices?.[0]?.message;
+  return {
+    content: (message?.content ?? "").trim(),
+    toolCalls: (message?.tool_calls ?? []).flatMap((call, index) => {
+      const name = call.function?.name?.trim();
+      if (!name) return [];
+      return [{
+        id: call.id?.trim() || `vllm-call-${index}`,
+        name,
+        arguments: parseToolArguments(call.function?.arguments),
+      }];
+    }),
+  };
 };
 
-export const pingVllm = async (): Promise<BackendHealth> => {
-  const baseUrl = getBaseUrl();
+export const pingVllm = async (
+  provider: LlmProviderConfig,
+): Promise<BackendHealth> => {
+  const baseUrl = provider.baseUrl;
   const started = Date.now();
   try {
     const res = await fetch(`${baseUrl}/v1/models`, {
       cache: "no-store",
-      headers: { ...authHeaders() },
+      redirect: "manual",
+      headers: { ...authHeaders(provider) },
     });
     const latencyMs = Date.now() - started;
     if (!res.ok) {
       return {
-        backend: "vllm",
+        backend: provider.id,
         ok: false,
         latencyMs,
         error: `HTTP ${res.status}`,
         baseUrl,
       };
     }
-    return { backend: "vllm", ok: true, latencyMs, baseUrl };
+    return { backend: provider.id, ok: true, latencyMs, baseUrl };
   } catch (error) {
     return {
-      backend: "vllm",
+      backend: provider.id,
       ok: false,
       latencyMs: Date.now() - started,
       error: error instanceof Error ? error.message : "Unreachable",
@@ -302,6 +378,7 @@ const formatVllmError = (
   text: string,
   status: number,
   model: string,
+  baseUrl: string,
 ): string => {
   const raw = text.trim();
   let message = raw;
@@ -318,6 +395,6 @@ const formatVllmError = (
 
   return (
     message ||
-    `vLLM chat failed (${status}) for "${model}". Is vLLM running at ${getBaseUrl()}?`
+    `vLLM chat failed (${status}) for "${model}". Is vLLM running at ${baseUrl}?`
   );
 };

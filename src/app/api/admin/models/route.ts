@@ -4,8 +4,10 @@ import { requireAdmin } from "@/lib/auth";
 import {
   setModelDisplayName,
   setModelEnabled,
-  syncModelsFromOllama,
+  setModelKind,
+  syncModelsFromProviders,
 } from "@/lib/settings";
+import { MODEL_KINDS } from "@/lib/llm/model-kind";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -14,7 +16,7 @@ export async function GET() {
   }
 
   try {
-    const models = await syncModelsFromOllama();
+    const models = await syncModelsFromProviders();
     return NextResponse.json({ models });
   } catch (error) {
     const message =
@@ -28,10 +30,14 @@ const patchSchema = z
     name: z.string().trim().min(1).max(120),
     is_enabled: z.boolean().optional(),
     display_name: z.string().max(120).optional(),
+    kind: z.enum(MODEL_KINDS).optional(),
   })
   .refine(
-    (data) => data.is_enabled !== undefined || data.display_name !== undefined,
-    { message: "Provide is_enabled and/or display_name" },
+    (data) =>
+      data.is_enabled !== undefined ||
+      data.display_name !== undefined ||
+      data.kind !== undefined,
+    { message: "Provide is_enabled, display_name, and/or kind" },
   );
 
 export async function PATCH(request: Request) {
@@ -55,9 +61,12 @@ export async function PATCH(request: Request) {
   if (parsed.data.display_name !== undefined) {
     setModelDisplayName(parsed.data.name, parsed.data.display_name);
   }
+  if (parsed.data.kind !== undefined) {
+    setModelKind(parsed.data.name, parsed.data.kind);
+  }
 
   try {
-    const models = await syncModelsFromOllama();
+    const models = await syncModelsFromProviders();
     return NextResponse.json({ models });
   } catch {
     return NextResponse.json({

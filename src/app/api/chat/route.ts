@@ -12,7 +12,11 @@ import {
   checkInputGuardrails,
   withSystemPrompt,
 } from "@/lib/guardrails";
-import { streamChat, type ChatMessage } from "@/lib/ollama";
+import {
+  completeToolChat,
+  streamChat,
+  type ChatMessage,
+} from "@/lib/llm";
 import {
   SSE_HEADERS,
   startSseKeepalive,
@@ -27,6 +31,7 @@ import {
   getChatRuntimeOptions,
   getUserHistoryLimitSetting,
   getUserMaxCharsSetting,
+  isChatModel,
   isModelEnabled,
   modelSupportsAudio,
   modelSupportsVision,
@@ -40,6 +45,12 @@ import {
 } from "@/lib/usage";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import type { Conversation, Message } from "@/lib/types";
+import {
+  inspectToolPayload,
+  runToolLoop,
+  shouldUseToolRuntime,
+  toolRegistry,
+} from "@/lib/tools";
 
 const imageSchema = z.object({
   mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
@@ -238,6 +249,7 @@ const streamAssistantReply = async (input: {
   let tokensEval: number | null = null;
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
+  let toolTrace: Message["tool_trace"] = null;
   let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   const stream = new ReadableStream({
@@ -260,61 +272,84 @@ const streamAssistantReply = async (input: {
       let buffer = "";
 
       try {
-        const ollamaRes = await streamChat(model, promptedHistory, {
-          temperature: runtime.temperature,
-          numPredict: runtime.numPredict,
-          topP: runtime.topP,
-          signal: abort.signal,
-        });
-        ollamaReader = ollamaRes.body!.getReader();
+        if (shouldUseToolRuntime(model)) {
+          const result = await runToolLoop({
+            messages: promptedHistory,
+            registry: toolRegistry,
+            inspectPayload: inspectToolPayload,
+            signal: abort.signal,
+            complete: (messages, options) =>
+              completeToolChat(model, messages, {
+                temperature: runtime.temperature,
+                numPredict: runtime.numPredict,
+                topP: runtime.topP,
+                signal: options.signal,
+                tools: options.tools,
+              }),
+          });
+          assistantText = result.content;
+          toolTrace = result.trace.length ? result.trace : null;
+          if (assistantText) {
+            markUsageToken(usageId, assistantText);
+            send("token", { content: assistantText });
+          }
+        } else {
+          const ollamaRes = await streamChat(model, promptedHistory, {
+            temperature: runtime.temperature,
+            numPredict: runtime.numPredict,
+            topP: runtime.topP,
+            signal: abort.signal,
+          });
+          ollamaReader = ollamaRes.body!.getReader();
 
-        while (true) {
-          const { done, value } = await ollamaReader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await ollamaReader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
 
-            let chunk: {
-              message?: { content?: string };
-              done?: boolean;
-              error?: string;
-              eval_count?: number;
-              prompt_eval_count?: number;
-              eval_duration?: number;
-            };
+              let chunk: {
+                message?: { content?: string };
+                done?: boolean;
+                error?: string;
+                eval_count?: number;
+                prompt_eval_count?: number;
+                eval_duration?: number;
+              };
 
-            try {
-              chunk = JSON.parse(trimmed);
-            } catch {
-              continue;
-            }
-
-            if (chunk.error) {
-              throw new Error(chunk.error);
-            }
-
-            const piece = chunk.message?.content ?? "";
-            if (piece) {
-              assistantText += piece;
-              markUsageToken(usageId, piece);
-              send("token", { content: piece });
-            }
-
-            if (chunk.done) {
-              if (typeof chunk.eval_count === "number") {
-                tokensEval = chunk.eval_count;
+              try {
+                chunk = JSON.parse(trimmed);
+              } catch {
+                continue;
               }
-              if (typeof chunk.prompt_eval_count === "number") {
-                tokensPrompt = chunk.prompt_eval_count;
+
+              if (chunk.error) {
+                throw new Error(chunk.error);
               }
-              if (typeof chunk.eval_duration === "number") {
-                evalDurationNs = chunk.eval_duration;
+
+              const piece = chunk.message?.content ?? "";
+              if (piece) {
+                assistantText += piece;
+                markUsageToken(usageId, piece);
+                send("token", { content: piece });
+              }
+
+              if (chunk.done) {
+                if (typeof chunk.eval_count === "number") {
+                  tokensEval = chunk.eval_count;
+                }
+                if (typeof chunk.prompt_eval_count === "number") {
+                  tokensPrompt = chunk.prompt_eval_count;
+                }
+                if (typeof chunk.eval_duration === "number") {
+                  evalDurationNs = chunk.eval_duration;
+                }
               }
             }
           }
@@ -326,13 +361,15 @@ const streamAssistantReply = async (input: {
             ? JSON.stringify(knowledgeSources)
             : null;
         db.prepare(
-          `INSERT INTO messages (id, conversation_id, role, content, sources)
-           VALUES (?, ?, 'assistant', ?, ?)`,
+          `INSERT INTO messages
+           (id, conversation_id, role, content, sources, tool_trace)
+           VALUES (?, ?, 'assistant', ?, ?, ?)`,
         ).run(
           assistantMessageId,
           conversationId,
           assistantText,
           sourcesJson,
+          toolTrace ? JSON.stringify(toolTrace) : null,
         );
 
         db.prepare(
@@ -356,6 +393,7 @@ const streamAssistantReply = async (input: {
             content: assistantText,
             created_at: new Date().toISOString(),
             sources: knowledgeSources.length ? knowledgeSources : null,
+            tool_trace: toolTrace,
           } satisfies Message,
           usage: {
             tokensEval,
@@ -455,6 +493,12 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "This model is disabled by admin. Choose another model." },
         { status: 403 },
+      );
+    }
+    if (!isChatModel(model)) {
+      return Response.json(
+        { error: "This endpoint only accepts chat models." },
+        { status: 400 },
       );
     }
 

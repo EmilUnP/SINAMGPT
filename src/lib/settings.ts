@@ -1,11 +1,13 @@
 import { getDb } from "@/lib/db";
 import { inferCapabilities } from "@/lib/llm/capabilities";
+import { inferModelKind, isModelKind } from "@/lib/llm/model-kind";
 import { fleetDisplayName } from "@/lib/model-fleet";
 import {
   getDefaultModel,
   listModels,
   type LlmBackend,
   type LlmModel,
+  type ModelKind,
 } from "@/lib/llm";
 import {
   getFeatureFlags,
@@ -24,6 +26,9 @@ const KEY_USER_HISTORY_LIMIT = "user_history_limit";
 const KEY_TEMPERATURE = "chat_temperature";
 const KEY_NUM_PREDICT = "chat_num_predict";
 const KEY_TOP_P = "chat_top_p";
+
+const normalizeModelKind = (value: string | null): ModelKind =>
+  value && isModelKind(value) ? value : "chat";
 
 export type ManagedModel = LlmModel & {
   is_enabled: boolean;
@@ -272,25 +277,27 @@ export const getChatRuntimeOptions = () => ({
   topP: getTopPSetting(),
 });
 
-/** Sync live Ollama models into DB. New names stay inactive until an admin activates them. */
-export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
+/** Sync live provider models into DB. New names stay inactive until activated. */
+export const syncModelsFromProviders = async (): Promise<ManagedModel[]> => {
   const liveModels = await listModels();
   const db = getDb();
   const hadAny = Boolean(
     db.prepare(`SELECT 1 AS ok FROM models LIMIT 1`).get(),
   );
-  // First catalog fill (empty table) enables current Ollama models so setup works.
+  // First catalog fill enables current provider models so setup works.
   // Later pulls insert as inactive until Admin → Models → Activate.
   const enableNew = hadAny ? 0 : 1;
 
   const upsert = db.prepare(
-    `INSERT INTO models (name, is_enabled, backend, vision, tools, audio, video, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO models
+       (name, is_enabled, backend, kind, vision, tools, audio, tts, video, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(name) DO UPDATE SET
        backend = excluded.backend,
        vision = excluded.vision,
        tools = excluded.tools,
        audio = excluded.audio,
+       tts = excluded.tts,
        video = excluded.video,
        updated_at = datetime('now')`,
   );
@@ -300,9 +307,11 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       rows: Array<{
         name: string;
         backend: LlmBackend;
+        kind: ModelKind;
         vision: boolean;
         tools: boolean;
         audio: boolean;
+        tts: boolean;
         video: boolean;
       }>,
     ) => {
@@ -311,9 +320,11 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
           row.name,
           enableNew,
           row.backend,
+          row.kind,
           row.vision ? 1 : 0,
           row.tools ? 1 : 0,
           row.audio ? 1 : 0,
+          row.tts ? 1 : 0,
           row.video ? 1 : 0,
         );
       }
@@ -323,20 +334,23 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     liveModels.map((m) => ({
       name: m.name,
       backend: m.backend,
+      kind: m.kind,
       vision: Boolean(m.vision),
       tools: Boolean(m.tools),
       audio: Boolean(m.audio),
+      tts: Boolean(m.tts),
       video: Boolean(m.video),
     })),
   );
 
   const rows = db
-    .prepare(`SELECT name, is_enabled, display_name, backend FROM models`)
+    .prepare(`SELECT name, is_enabled, display_name, backend, kind FROM models`)
     .all() as Array<{
     name: string;
     is_enabled: number;
     display_name: string | null;
     backend: string | null;
+    kind: string | null;
   }>;
   const metaMap = new Map(
     rows.map((row) => [
@@ -344,7 +358,8 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
       {
         is_enabled: row.is_enabled === 1,
         display_name: row.display_name,
-        backend: (row.backend === "vllm" ? "vllm" : "ollama") as LlmBackend,
+        backend: (row.backend?.trim() || "ollama") as LlmBackend,
+        kind: normalizeModelKind(row.kind),
       },
     ]),
   );
@@ -379,6 +394,7 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     return {
       ...m,
       backend: meta?.backend ?? m.backend,
+      kind: meta?.kind ?? m.kind,
       is_enabled: meta?.is_enabled ?? false,
       display_name,
       vision: Boolean(m.vision),
@@ -389,6 +405,9 @@ export const syncModelsFromOllama = async (): Promise<ManagedModel[]> => {
     };
   });
 };
+
+/** @deprecated Use syncModelsFromProviders. */
+export const syncModelsFromOllama = syncModelsFromProviders;
 
 export const setModelEnabled = (name: string, enabled: boolean) => {
   getDb()
@@ -415,6 +434,14 @@ export const setModelDisplayName = (name: string, displayName: string) => {
          updated_at = datetime('now')`,
     )
     .run(name, stored);
+};
+
+export const setModelKind = (name: string, kind: ModelKind) => {
+  getDb()
+    .prepare(
+      `UPDATE models SET kind = ?, updated_at = datetime('now') WHERE name = ?`,
+    )
+    .run(kind, name);
 };
 
 /** Map UI label or model id → stored model name. */
@@ -450,6 +477,17 @@ export const isModelEnabled = (name: string): boolean => {
   return row.is_enabled === 1;
 };
 
+export const getModelKind = (name: string): ModelKind => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT kind FROM models WHERE name = ?`)
+    .get(resolved) as { kind: string } | undefined;
+  return row && isModelKind(row.kind) ? row.kind : inferModelKind(resolved);
+};
+
+export const isChatModel = (name: string): boolean =>
+  getModelKind(name) === "chat";
+
 export const modelSupportsVision = (name: string): boolean => {
   const resolved = resolveOllamaModelName(name);
   const row = getDb()
@@ -457,6 +495,15 @@ export const modelSupportsVision = (name: string): boolean => {
     .get(resolved) as { vision: number } | undefined;
   if (row) return row.vision === 1;
   return inferCapabilities(resolved).vision;
+};
+
+export const modelSupportsTools = (name: string): boolean => {
+  const resolved = resolveOllamaModelName(name);
+  const row = getDb()
+    .prepare(`SELECT tools FROM models WHERE name = ?`)
+    .get(resolved) as { tools: number } | undefined;
+  if (row) return row.tools === 1;
+  return inferCapabilities(resolved).tools;
 };
 
 export const modelSupportsAudio = (name: string): boolean => {
@@ -472,8 +519,8 @@ export const getEnabledModels = async (): Promise<{
   models: PublicModel[];
   defaultModel: string;
 }> => {
-  const all = await syncModelsFromOllama();
-  const enabled = all.filter((m) => m.is_enabled && m.backend !== "vllm");
+  const all = await syncModelsFromProviders();
+  const enabled = all.filter((m) => m.is_enabled && m.kind === "chat");
   const names = enabled.map((m) => m.name);
   const preferred = getDefaultModelSetting();
   const defaultModel =

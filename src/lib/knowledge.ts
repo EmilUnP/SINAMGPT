@@ -236,23 +236,28 @@ export const deleteKnowledgeDoc = (id: string) => {
   getDb().prepare(`DELETE FROM knowledge_docs WHERE id = ?`).run(id);
 };
 
-/** Lightweight retrieval — multi-language keyword overlap + always-include (RAG-lite).
- * Pass a query already unioned with EN/AZ/RU gloss terms (see glossUserQuery). */
-export const retrieveKnowledge = (
+export type RankKnowledgeOptions = {
+  categoryHint?: KnowledgeCategory | "none" | null;
+  /** Company-intent from the user's words — not from search-keyword expansion. */
+  companyIntent?: boolean;
+  /** Raw user text; gloss keywords cannot invent product hits from this. */
+  originalQuery?: string;
+};
+
+/**
+ * Pure RAG-lite scorer over supplied documents.
+ * Pass a query already unioned with EN/AZ/RU gloss terms (see glossUserQuery).
+ */
+export const rankKnowledgeDocs = (
+  inputDocs: KnowledgeDoc[],
   query: string,
-  settings = getKnowledgeSettings(),
+  settings: KnowledgeSettings = DEFAULT_KNOWLEDGE_SETTINGS,
   projectId?: string | null,
-  opts?: {
-    categoryHint?: KnowledgeCategory | "none" | null;
-    /** Company-intent from the user's words — not from search-keyword expansion. */
-    companyIntent?: boolean;
-    /** Raw user text; gloss keywords cannot invent product hits from this. */
-    originalQuery?: string;
-  },
+  opts?: RankKnowledgeOptions,
 ): KnowledgeDoc[] => {
   if (!settings.enabled) return [];
 
-  const docs = listKnowledgeDocs().filter((d) => d.is_enabled === 1);
+  const docs = inputDocs.filter((d) => d.is_enabled === 1);
   if (!docs.length) return [];
 
   const originalQuery = (opts?.originalQuery ?? query).trim() || query;
@@ -459,6 +464,17 @@ export const retrieveKnowledge = (
 
 const normalizeForPhrase = (value: string): string =>
   tokenizeMultilang(value, 2).join(" ");
+
+/** DB-backed retrieval wrapper used by chat and guardrail inspection. */
+export const retrieveKnowledge = (
+  query: string,
+  settings = getKnowledgeSettings(),
+  projectId?: string | null,
+  opts?: RankKnowledgeOptions,
+): KnowledgeDoc[] => {
+  if (!settings.enabled) return [];
+  return rankKnowledgeDocs(listKnowledgeDocs(), query, settings, projectId, opts);
+};
 
 export const resolveKnowledgeContext = async (
   query: string,

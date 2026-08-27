@@ -8,6 +8,8 @@ export const normalizeMultilangText = (value: string): string =>
   value
     .toLowerCase()
     .normalize("NFKC")
+    // Unicode lowercasing turns capital İ into `i` + combining dot.
+    .replace(/\u0307/g, "")
     .replace(/['’`´]/g, "")
     .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
     .replace(/\s+/g, " ")
@@ -312,10 +314,10 @@ export const tokensAlign = (a: string, b: string): boolean => {
   if (!a || !b) return false;
   if (a === b) return true;
   if (a.length < 4 || b.length < 4) return false;
-  if (a.startsWith(b) || b.startsWith(a)) return true;
   const shorter = a.length <= b.length ? a : b;
   const longer = a.length <= b.length ? b : a;
   if (shorter.length < 5) return false;
+  if (a.startsWith(b) || b.startsWith(a)) return true;
   if (longer.length - shorter.length > 3) return false;
   let i = 0;
   while (i < shorter.length && shorter[i] === longer[i]) i += 1;

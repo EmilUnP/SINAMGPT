@@ -35,7 +35,7 @@ export async function GET(_request: Request, { params }: Params) {
   const rows = getDb()
     .prepare(
       `SELECT * FROM (
-         SELECT id, conversation_id, role, content, sources, attachments, created_at
+         SELECT id, conversation_id, role, content, sources, attachments, tool_trace, created_at
          FROM messages
          WHERE conversation_id = ?
          ORDER BY created_at DESC
@@ -44,7 +44,11 @@ export async function GET(_request: Request, { params }: Params) {
        ORDER BY created_at ASC`,
     )
     .all(id) as Array<
-    Message & { sources: string | null; attachments?: string | null }
+    Message & {
+      sources: string | null;
+      attachments?: string | null;
+      tool_trace?: string | null;
+    }
   >;
 
   const messages: Message[] = rows.map((row) => hydrateUiMessage(row));

@@ -45,6 +45,23 @@ export type MessageAttachment = {
   index: number;
 };
 
+export type ToolTraceEntry = {
+  callId: string;
+  toolName: string;
+  status:
+    | "completed"
+    | "unknown_tool"
+    | "invalid_input"
+    | "blocked_input"
+    | "handler_error"
+    | "invalid_output"
+    | "blocked_output";
+  input?: string;
+  output?: string;
+  error?: string;
+  durationMs: number;
+};
+
 export type Message = {
   id: string;
   conversation_id: string;
@@ -55,6 +72,8 @@ export type Message = {
   sources?: KnowledgeCitation[] | null;
   /** Image / audio attachments on user messages */
   attachments?: MessageAttachment[] | null;
+  /** Bounded, redacted tool execution metadata (JSON in DB). */
+  tool_trace?: ToolTraceEntry[] | null;
 };
 
 export type SessionPayload = {

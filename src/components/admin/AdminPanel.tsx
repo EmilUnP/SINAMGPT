@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
+import { AdminProvidersPanel } from "./AdminProvidersPanel";
 import { AdminSettingsPanel } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
@@ -45,7 +46,7 @@ type Totals = {
 };
 
 type BackendPulse = {
-  backend: "ollama" | "vllm";
+  backend: string;
   ok: boolean;
   latencyMs: number;
   error?: string;
@@ -97,7 +98,8 @@ type ManagedModel = {
   modified_at: string;
   is_enabled: boolean;
   display_name: string;
-  backend?: "ollama" | "vllm";
+  backend?: string;
+  kind: "chat" | "image" | "video" | "stt" | "tts" | "embedding" | "rerank";
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
@@ -130,6 +132,7 @@ type TabId =
   | "usage"
   | "users"
   | "models"
+  | "providers"
   | "knowledge"
   | "guardrails"
   | "settings";
@@ -179,6 +182,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       { id: "usage", label: t("admin.tabs.usage"), icon: Activity },
       { id: "users", label: t("admin.tabs.users"), icon: Users },
       { id: "models", label: t("admin.tabs.models"), icon: Bot },
+      { id: "providers", label: t("admin.tabs.providers"), icon: Server },
       { id: "knowledge", label: t("admin.tabs.knowledge"), icon: BookOpen },
       {
         id: "guardrails",
@@ -614,6 +618,36 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     }
   };
 
+  const handleModelKindChange = async (
+    model: ManagedModel,
+    kind: ManagedModel["kind"],
+  ) => {
+    setBusyModel(model.name);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/admin/models", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: model.name, kind }),
+      });
+      const data = (await res.json()) as {
+        models?: ManagedModel[];
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || t("admin.models.couldNotUpdate"));
+        return;
+      }
+      setModels(data.models ?? []);
+      setNotice(`${model.name}: ${kind}`);
+    } catch {
+      setError(t("admin.chrome.networkError"));
+    } finally {
+      setBusyModel(null);
+    }
+  };
+
   const handleSaveSettings = async () => {
     const guestDailyLimit = Number(settingsDraft.guestDailyLimit);
     const guestMaxMessageChars = Number(settingsDraft.guestMaxMessageChars);
@@ -851,7 +885,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                 >
                   <Server size={12} />
-                  {b.backend === "vllm" ? "vLLM" : "Ollama"}{" "}
+                  {b.backend === "ollama"
+                    ? "Ollama"
+                    : b.backend === "vllm"
+                      ? "vLLM"
+                      : b.backend}{" "}
                   {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")}
                   {` · ${fmtMs(b.latencyMs)}`}
                 </span>
@@ -1452,6 +1490,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   <thead>
                     <tr>
                       <th>{t("admin.models.colId")}</th>
+                      <th>Task</th>
                       <th>{t("admin.models.colCaps")}</th>
                       <th>{t("admin.models.colSize")}</th>
                       <th className="min-w-[220px]">{t("admin.models.colDisplay")}</th>
@@ -1483,6 +1522,33 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                                 {formatDate(model.modified_at)}
                               </p>
                             ) : null}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <select
+                              value={model.kind}
+                              disabled={busy}
+                              onChange={(event) =>
+                                void handleModelKindChange(
+                                  model,
+                                  event.target.value as ManagedModel["kind"],
+                                )
+                              }
+                              className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2 py-1.5 text-xs"
+                            >
+                              {[
+                                "chat",
+                                "image",
+                                "video",
+                                "stt",
+                                "tts",
+                                "embedding",
+                                "rerank",
+                              ].map((kind) => (
+                                <option key={kind} value={kind}>
+                                  {kind}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex flex-wrap gap-1">
@@ -1563,6 +1629,8 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
             )}
           </section>
         ) : null}
+
+        {tab === "providers" ? <AdminProvidersPanel /> : null}
 
         {tab === "settings" ? (
           <AdminSettingsPanel

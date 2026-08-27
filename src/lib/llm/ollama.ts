@@ -3,24 +3,32 @@ import {
   parseOllamaCapabilities,
   type ModelCapabilities,
 } from "./capabilities";
-import type { BackendHealth, ChatMessage, ChatOptions, LlmModel } from "./types";
-
-const getBaseUrl = (): string =>
-  process.env.OLLAMA_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:11434";
+import { inferModelKind } from "./model-kind";
+import type {
+  BackendHealth,
+  ChatMessage,
+  ChatOptions,
+  LlmCompletion,
+  LlmModel,
+  LlmProviderConfig,
+} from "./types";
 
 const getKeepAlive = (): string =>
   process.env.OLLAMA_KEEP_ALIVE?.trim() || "30m";
 
 export const isOllamaEnabled = (): boolean => true;
 
-export const listOllamaModels = async (): Promise<LlmModel[]> => {
-  const res = await fetch(`${getBaseUrl()}/api/tags`, {
+export const listOllamaModels = async (
+  provider: LlmProviderConfig,
+): Promise<LlmModel[]> => {
+  const res = await fetch(`${provider.baseUrl}/api/tags`, {
     cache: "no-store",
+    redirect: "manual",
   });
 
   if (!res.ok) {
     throw new Error(
-      `Ollama is not reachable at ${getBaseUrl()}. Is Ollama running?`,
+      `Ollama is not reachable at ${provider.baseUrl}. Is Ollama running?`,
     );
   }
 
@@ -30,14 +38,15 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
 
   const listed = data.models ?? [];
   const caps = await Promise.all(
-    listed.map((m) => inspectOllamaCapabilities(m.name)),
+    listed.map((m) => inspectOllamaCapabilities(provider, m.name)),
   );
 
   return listed.map((m, i) => ({
     name: m.name,
     size: m.size,
     modified_at: m.modified_at,
-    backend: "ollama" as const,
+    backend: provider.id,
+    kind: inferModelKind(m.name),
     vision: caps[i]?.vision ?? false,
     tools: caps[i]?.tools ?? false,
     audio: caps[i]?.audio ?? false,
@@ -47,15 +56,17 @@ export const listOllamaModels = async (): Promise<LlmModel[]> => {
 };
 
 const inspectOllamaCapabilities = async (
+  provider: LlmProviderConfig,
   name: string,
 ): Promise<ModelCapabilities> => {
   const heuristic = inferCapabilities(name);
   try {
-    const res = await fetch(`${getBaseUrl()}/api/show`, {
+    const res = await fetch(`${provider.baseUrl}/api/show`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: name, name }),
       cache: "no-store",
+      redirect: "manual",
       signal: AbortSignal.timeout(1500),
     });
     if (!res.ok) return heuristic;
@@ -125,6 +136,23 @@ const thinkDisabled = (
   options?: ChatOptions,
 ): boolean => options?.think === false || messagesHaveAudio(messages);
 
+const toNativeMessages = (messages: ChatMessage[]) =>
+  withAudioSystem(messages).map((message) => ({
+    role: message.role,
+    content: message.content,
+    ...(message.images?.length ? { images: message.images } : {}),
+    ...(message.toolCalls?.length
+      ? {
+          tool_calls: message.toolCalls.map((call) => ({
+            id: call.id,
+            type: "function",
+            function: { name: call.name, arguments: call.arguments },
+          })),
+        }
+      : {}),
+    ...(message.toolName ? { tool_name: message.toolName } : {}),
+  }));
+
 const nativeChatBody = (
   model: string,
   messages: ChatMessage[],
@@ -144,11 +172,12 @@ const nativeChatBody = (
   }
   return {
     model,
-    messages: withAudioSystem(messages),
+    messages: toNativeMessages(messages),
     stream,
     keep_alive: getKeepAlive(),
     ...(disableThink ? { think: false } : {}),
     ...(Object.keys(ollamaOptions).length ? { options: ollamaOptions } : {}),
+    ...(options?.tools?.length ? { tools: options.tools } : {}),
   };
 };
 
@@ -162,6 +191,7 @@ const joinSignals = (
 };
 
 const postNativeChat = async (
+  provider: LlmProviderConfig,
   model: string,
   messages: ChatMessage[],
   options: ChatOptions | undefined,
@@ -172,11 +202,12 @@ const postNativeChat = async (
     options?.signal,
     timeoutMs != null ? AbortSignal.timeout(timeoutMs) : undefined,
   );
-  const res = await fetch(`${getBaseUrl()}/api/chat`, {
+  const res = await fetch(`${provider.baseUrl}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(nativeChatBody(model, messages, options, stream)),
     cache: "no-store",
+    redirect: "manual",
     ...(signal ? { signal } : {}),
   });
   if (!res.ok || (stream && !res.body)) {
@@ -187,46 +218,92 @@ const postNativeChat = async (
 };
 
 export const streamOllamaChat = async (
+  provider: LlmProviderConfig,
   model: string,
   messages: ChatMessage[],
   options?: ChatOptions,
-): Promise<Response> => postNativeChat(model, messages, options, true);
+): Promise<Response> => postNativeChat(provider, model, messages, options, true);
 
 export const completeOllamaChat = async (
+  provider: LlmProviderConfig,
   model: string,
   messages: ChatMessage[],
   options?: ChatOptions & { timeoutMs?: number },
 ): Promise<string> => {
+  const completion = await completeOllamaToolChat(
+    provider,
+    model,
+    messages,
+    options,
+  );
+  return completion.content;
+};
+
+export const completeOllamaToolChat = async (
+  provider: LlmProviderConfig,
+  model: string,
+  messages: ChatMessage[],
+  options?: ChatOptions & { timeoutMs?: number },
+): Promise<LlmCompletion> => {
   const hasAudio = messagesHaveAudio(messages);
   const timeoutMs = options?.timeoutMs ?? (hasAudio ? 60_000 : 8000);
-  const res = await postNativeChat(model, messages, options, false, timeoutMs);
+  const res = await postNativeChat(
+    provider,
+    model,
+    messages,
+    options,
+    false,
+    timeoutMs,
+  );
   const data = (await res.json()) as {
-    message?: { content?: string };
+    message?: {
+      content?: string;
+      tool_calls?: Array<{
+        id?: string;
+        function?: { name?: string; arguments?: unknown };
+      }>;
+    };
     error?: string;
   };
   if (data.error) throw new Error(data.error);
-  return (data.message?.content ?? "").trim();
+  return {
+    content: (data.message?.content ?? "").trim(),
+    toolCalls: (data.message?.tool_calls ?? []).flatMap((call, index) => {
+      const name = call.function?.name?.trim();
+      if (!name) return [];
+      return [{
+        id: call.id?.trim() || `ollama-call-${index}`,
+        name,
+        arguments: call.function?.arguments ?? {},
+      }];
+    }),
+  };
 };
 
-export const pingOllama = async (): Promise<BackendHealth> => {
-  const baseUrl = getBaseUrl();
+export const pingOllama = async (
+  provider: LlmProviderConfig,
+): Promise<BackendHealth> => {
+  const baseUrl = provider.baseUrl;
   const started = Date.now();
   try {
-    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store" });
+    const res = await fetch(`${baseUrl}/api/tags`, {
+      cache: "no-store",
+      redirect: "manual",
+    });
     const latencyMs = Date.now() - started;
     if (!res.ok) {
       return {
-        backend: "ollama",
+        backend: provider.id,
         ok: false,
         latencyMs,
         error: `HTTP ${res.status}`,
         baseUrl,
       };
     }
-    return { backend: "ollama", ok: true, latencyMs, baseUrl };
+    return { backend: provider.id, ok: true, latencyMs, baseUrl };
   } catch (error) {
     return {
-      backend: "ollama",
+      backend: provider.id,
       ok: false,
       latencyMs: Date.now() - started,
       error: error instanceof Error ? error.message : "Unreachable",

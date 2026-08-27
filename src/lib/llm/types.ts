@@ -1,13 +1,57 @@
-export type LlmBackend = "ollama" | "vllm";
+/** Stable provider id stored on each model (for example `ollama` or `gpu-2`). */
+export type LlmBackend = string;
+
+/** Adapter protocol. Provider ids are free-form; kinds are code-supported. */
+export type ProviderKind = "ollama" | "vllm";
+
+export type ModelKind =
+  | "chat"
+  | "image"
+  | "video"
+  | "stt"
+  | "tts"
+  | "embedding"
+  | "rerank";
+
+export type LlmProviderConfig = {
+  id: LlmBackend;
+  kind: ProviderKind;
+  baseUrl: string;
+  enabled: boolean;
+  apiKey?: string;
+};
+
+export type LlmToolCall = {
+  id: string;
+  name: string;
+  arguments: unknown;
+};
+
+export type LlmToolDefinition = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
 
 export type ChatMessage = {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
   /**
    * Raw base64 (no data-URL prefix). Vision still uses this array; WAV
    * recordings go here too (Ollama detects RIFF/WAVE in `images`).
    */
   images?: string[];
+  toolCalls?: LlmToolCall[];
+  toolCallId?: string;
+  toolName?: string;
+};
+
+export type LlmCompletion = {
+  content: string;
+  toolCalls: LlmToolCall[];
 };
 
 export type LlmModel = {
@@ -15,6 +59,7 @@ export type LlmModel = {
   size: number;
   modified_at: string;
   backend: LlmBackend;
+  kind: ModelKind;
   vision?: boolean;
   tools?: boolean;
   audio?: boolean;
@@ -33,6 +78,8 @@ export type ChatOptions = {
   think?: boolean;
   /** Abort the upstream LLM request (client disconnect / Stop). */
   signal?: AbortSignal;
+  /** Omitted from provider requests when empty or undefined. */
+  tools?: LlmToolDefinition[];
 };
 
 export type BackendHealth = {

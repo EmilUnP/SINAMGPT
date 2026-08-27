@@ -82,16 +82,18 @@ const normalizeLines = (value: string) =>
 
 /** Light de-obfuscation so `b0mb` / `h@ck` still hit keyword rules. */
 export const deobfuscateForSafety = (text: string): string =>
-  normalizeMultilangText(text)
+  normalizeMultilangText(
+    text
+      .replace(/(\p{L})@(?=\p{L})/gu, "$1a")
+      .replace(/(\p{L})\$(?=\p{L})/gu, "$1s")
+      .replace(/(\p{L})!(?=\p{L})/gu, "$1i"),
+  )
     .replace(/0/g, "o")
     .replace(/1/g, "i")
     .replace(/3/g, "e")
     .replace(/4/g, "a")
     .replace(/5/g, "s")
-    .replace(/7/g, "t")
-    .replace(/@/g, "a")
-    .replace(/\$/g, "s")
-    .replace(/!/g, "i");
+    .replace(/7/g, "t");
 
 const redactMatch = (value: string, max = 48): string => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -238,6 +240,8 @@ export const inspectGuardrails = async (input: {
   projectId?: string | null;
   config: GuardrailsConfig;
   model?: string;
+  /** Tool payloads use local checks only to avoid recursive LLM/retrieval calls. */
+  skipExternalInspection?: boolean;
 }): Promise<GuardrailInspection> => {
   const started = Date.now();
   const config = input.config;
@@ -245,7 +249,9 @@ export const inspectGuardrails = async (input: {
   const lang = detectReplyLanguage(text);
   const findings: GuardrailFinding[] = [];
   const layersRun: GuardrailLayer[] = ["master_switch", "audience", "language"];
-  const gloss = await glossUserQuery(text, { model: input.model });
+  const gloss = input.skipExternalInspection
+    ? { searchText: text, usedLlm: false }
+    : await glossUserQuery(text, { model: input.model });
 
   const applied = isApplied(input.audience, config);
 
@@ -420,24 +426,28 @@ export const inspectGuardrails = async (input: {
     }
   }
 
-  layersRun.push("knowledge");
-  const knowledge = await resolveKnowledgeContext(
-    text,
-    input.audience,
-    input.projectId,
-    { model: input.model },
-  );
-  findings.push({
-    layer: "knowledge",
-    severity: "info",
-    ruleId: knowledge.sources.length ? "knowledge_match" : "knowledge_none",
-    title: knowledge.sources.length
-      ? `Knowledge would inject ${knowledge.sources.length} doc(s)`
-      : "No company knowledge injected",
-    detail: knowledge.sources.length
-      ? `Docs: ${knowledge.sources.map((s) => s.title).join(" · ")}`
-      : "Query did not match company docs (or knowledge is off for this audience).",
-  });
+  const knowledge = input.skipExternalInspection
+    ? { sources: [] as Array<{ title: string }> }
+    : await resolveKnowledgeContext(
+        text,
+        input.audience,
+        input.projectId,
+        { model: input.model },
+      );
+  if (!input.skipExternalInspection) {
+    layersRun.push("knowledge");
+    findings.push({
+      layer: "knowledge",
+      severity: "info",
+      ruleId: knowledge.sources.length ? "knowledge_match" : "knowledge_none",
+      title: knowledge.sources.length
+        ? `Knowledge would inject ${knowledge.sources.length} doc(s)`
+        : "No company knowledge injected",
+      detail: knowledge.sources.length
+        ? `Docs: ${knowledge.sources.map((s) => s.title).join(" · ")}`
+        : "Query did not match company docs (or knowledge is off for this audience).",
+    });
+  }
 
   const blockFindings = findings.filter((f) => f.severity === "block");
   const warnFindings = findings.filter((f) => f.severity === "warn");

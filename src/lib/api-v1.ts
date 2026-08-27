@@ -24,6 +24,7 @@ import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import {
   getChatRuntimeOptions,
   getEnabledModels,
+  isChatModel,
   isModelEnabled,
   modelSupportsVision,
   resolveOllamaModelName,
@@ -85,6 +86,7 @@ export type ApiModelCard = {
   name: string;
   displayName: string;
   backend: PublicModel["backend"];
+  kind: PublicModel["kind"];
   vision: boolean;
   tools: boolean;
   audio: boolean;
@@ -297,6 +299,7 @@ export const toApiModelCard = (model: PublicModel): ApiModelCard => {
     name: model.display_name || model.name,
     displayName: model.display_name || model.name,
     backend: model.backend,
+    kind: model.kind,
     vision: Boolean(model.vision),
     tools: Boolean(model.tools),
     audio: Boolean(model.audio),
@@ -445,6 +448,18 @@ export const prepareGatewayGenerate = (
       ip,
       "This model is disabled by admin. Call GET /api/v1/models for the list your key can use.",
       403,
+      format,
+      { model: input.model, prompt: input.prompt },
+    );
+  }
+
+  if (!isChatModel(input.model)) {
+    return rejectGateway(
+      request,
+      auth,
+      ip,
+      "This endpoint only accepts chat models.",
+      400,
       format,
       { model: input.model, prompt: input.prompt },
     );
