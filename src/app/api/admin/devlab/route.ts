@@ -10,7 +10,7 @@ import {
   getApiUsageAnalytics,
   getPagedApiUsage,
   listActiveApiUsage,
-} from "@/lib/api-usage";
+} from "@/lib/usage/api";
 import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 const settingsSchema = z.object({

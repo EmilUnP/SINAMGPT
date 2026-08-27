@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { ShareUnavailable, SharedChatView } from "@/components/share";
+import { SharedChatView } from "@/components/share/SharedChatView";
+import { ShareUnavailable } from "@/components/share/ShareUnavailable";
 import { getPageUser } from "@/lib/auth";
 import { getSharedConversation, getSharedMessages } from "@/lib/share";
 

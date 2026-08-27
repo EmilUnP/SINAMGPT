@@ -26,7 +26,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiGatewaySettings, ApiKeyPublic } from "@/lib/api-keys";
-import type { ApiUsageEvent, ApiUsageStatus } from "@/lib/api-usage";
+import type { ApiUsageEvent, ApiUsageStatus } from "@/lib/usage/api";
 import type { User } from "@/lib/types";
 
 type Props = { admin: User; developerApiEnabled?: boolean };

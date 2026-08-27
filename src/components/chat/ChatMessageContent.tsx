@@ -1,4 +1,4 @@
-import { isCannedVoicePrompt } from "@/lib/voice-prompt";
+import { isCannedVoicePrompt } from "@/lib/media/voice-prompt";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageAudio } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";

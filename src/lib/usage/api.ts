@@ -1,13 +1,11 @@
 import { randomBytes } from "crypto";
 import { getDb } from "@/lib/db";
+import { MAX_REQUEST_PAYLOAD, MAX_RESPONSE_FULL } from "./limits";
 
 export type ApiUsageStatus = "ok" | "error" | "aborted" | "rejected";
 
 export const CLIENT_DISCONNECT =
   "Client disconnected before the model finished.";
-
-const MAX_REQUEST_PAYLOAD = 160_000;
-const MAX_RESPONSE_FULL = 80_000;
 
 export type ActiveApiUsage = {
   id: string;

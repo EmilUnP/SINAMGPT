@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChatApp } from "@/components/chat";
+import { ChatApp } from "@/components/chat/ChatApp";
 import { getPageUser } from "@/lib/auth";
 import { getFeatureFlags } from "@/lib/features";
 

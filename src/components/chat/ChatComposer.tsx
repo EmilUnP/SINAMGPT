@@ -6,9 +6,9 @@ import type {
   RefObject,
 } from "react";
 import type { useLocale } from "@/components/LocaleProvider";
-import { imagePreviewUrl } from "@/lib/compress-image";
-import { MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
-import type { MicDevice } from "@/lib/record-mic";
+import { imagePreviewUrl } from "@/lib/media/compress-image";
+import { MAX_AUDIO_SECONDS } from "@/lib/media/limits";
+import type { MicDevice } from "@/lib/media/record-mic";
 import { fleetHintKey } from "@/lib/model-fleet";
 import {
   ComposerToolsMenu,

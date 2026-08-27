@@ -3,8 +3,9 @@ import {
   getActiveApiUsageById,
   getApiUsageEvent,
   listActiveApiUsage,
-} from "@/lib/api-usage";
+} from "./api";
 import { getDb } from "@/lib/db";
+import { MAX_REQUEST_PAYLOAD, MAX_RESPONSE_FULL } from "./limits";
 
 export type UsageSource = "user" | "guest" | "api";
 
@@ -14,10 +15,6 @@ export const parseUsageSourceFilter = (
   raw: string | null | undefined,
 ): UsageSourceFilter =>
   raw === "app" || raw === "api" ? raw : "all";
-
-/** Keep SQLite rows bounded — admins still see the start of huge payloads. */
-const MAX_REQUEST_PAYLOAD = 160_000;
-const MAX_RESPONSE_FULL = 80_000;
 
 export type UsagePayloadMessage = {
   role: string;

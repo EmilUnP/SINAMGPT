@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ModelLab } from "@/components/lab";
+import { ModelLab } from "@/components/lab/ModelLab";
 import { getPageUser } from "@/lib/auth";
 import { getFeatureFlags } from "@/lib/features";
 

@@ -36,6 +36,7 @@ import {
   type LabEvaluation,
   type LabSuiteId,
 } from "@/lib/lab";
+import { parseSseChunk } from "@/lib/parse-sse-chunk";
 import type { MessageKey } from "@/messages";
 import type { User } from "@/lib/types";
 
@@ -64,18 +65,6 @@ type LabRow = {
   totalMs: number | null;
   evaluation?: LabEvaluation;
   error?: string;
-};
-
-const parseSseChunk = (raw: string) => {
-  const lines = raw.split("\n");
-  let event = "message";
-  const dataLines: string[] = [];
-  for (const line of lines) {
-    if (line.startsWith("event:")) event = line.slice(6).trim();
-    if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
-  }
-  if (!dataLines.length) return null;
-  return { event, data: JSON.parse(dataLines.join("\n")) as unknown };
 };
 
 const CASE_LABEL: Partial<Record<LabCaseId, MessageKey>> = {

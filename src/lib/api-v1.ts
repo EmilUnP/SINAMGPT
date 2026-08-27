@@ -11,14 +11,14 @@ import {
   logRejectedApiUsage,
   markApiUsageToken,
   startApiUsage,
-} from "@/lib/api-usage";
+} from "@/lib/usage/api";
 import {
   decodeImageData,
   MAX_CHAT_IMAGES,
   type IncomingImage,
 } from "@/lib/attachments";
 import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
-import { isAllowedImageMime, type AllowedImageMime } from "@/lib/image-limits";
+import { isAllowedImageMime, type AllowedImageMime } from "@/lib/media/limits";
 import { streamChat, type ChatMessage } from "@/lib/llm";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import {

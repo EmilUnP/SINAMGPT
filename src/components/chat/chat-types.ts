@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
-import type { ChatImagePayload } from "@/lib/compress-image";
-import { AUDIO_MIME } from "@/lib/audio-limits";
+import type { ChatImagePayload } from "@/lib/media/compress-image";
+import { AUDIO_MIME } from "@/lib/media/limits";
 import type { Message } from "@/lib/types";
 
 export type ChatAppProps = {

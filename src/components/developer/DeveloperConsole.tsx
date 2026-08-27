@@ -17,7 +17,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { copyText, formatDateTime, usageStatusLabel } from "@/lib/ui";
 import type { ApiKeyPublic } from "@/lib/api-keys";
-import type { ApiUsageEvent } from "@/lib/api-usage";
+import type { ApiUsageEvent } from "@/lib/usage/api";
 import type { User } from "@/lib/types";
 
 type Props = { user: User; devLabEnabled?: boolean };

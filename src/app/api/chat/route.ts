@@ -6,7 +6,7 @@ import {
   saveMessageImages,
   toLlmHistory,
 } from "@/lib/attachments";
-import { AUDIO_MIME } from "@/lib/audio-limits";
+import { AUDIO_MIME } from "@/lib/media/limits";
 import { getDb } from "@/lib/db";
 import {
   checkInputGuardrails,

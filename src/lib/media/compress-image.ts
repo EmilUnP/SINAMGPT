@@ -2,7 +2,7 @@ import {
   MAX_IMAGE_BYTES,
   isAllowedImageMime,
   type AllowedImageMime,
-} from "@/lib/image-limits";
+} from "./limits";
 
 export type ChatImagePayload = {
   mime: AllowedImageMime;

@@ -1,4 +1,4 @@
-import { isAllowedImageMime } from "@/lib/image-limits";
+import { isAllowedImageMime } from "./limits";
 
 const IMAGE_NAME_RE = /\.(jpe?g|png|webp|gif)$/i;
 

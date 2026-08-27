@@ -1,4 +1,4 @@
-import { ModelsGuide } from "@/components/models";
+import { ModelsGuide } from "@/components/models/ModelsGuide";
 import { getPageUser } from "@/lib/auth";
 import { getEnabledModels } from "@/lib/settings";
 

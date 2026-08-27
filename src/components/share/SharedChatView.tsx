@@ -8,11 +8,11 @@ import { KnowledgeCitations } from "@/components/chat/KnowledgeCitations";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { MessageAudio } from "@/components/chat/MessageAudio";
 import { MessageImages } from "@/components/chat/MessageImages";
-import { isCannedVoicePrompt } from "@/lib/voice-prompt";
+import { isCannedVoicePrompt } from "@/lib/media/voice-prompt";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useTranslations } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { attachmentUrl } from "@/lib/image-limits";
+import { attachmentUrl } from "@/lib/media/limits";
 import type { Message } from "@/lib/types";
 
 type SharedChatViewProps = {

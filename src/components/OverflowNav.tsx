@@ -5,7 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
 import { useTranslations } from "@/components/LocaleProvider";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 
 export type OverflowNavItem = {
   href: string;

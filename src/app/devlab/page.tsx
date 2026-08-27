@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { DevLab } from "@/components/devlab";
+import { DevLab } from "@/components/devlab/DevLab";
 import { getPageUser } from "@/lib/auth";
 import { getFeatureFlags } from "@/lib/features";
 

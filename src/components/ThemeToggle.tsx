@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
 import { useTheme } from "@/components/ThemeProvider";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 import type { ThemePreference } from "@/lib/theme";
 
 type ThemeToggleProps = {

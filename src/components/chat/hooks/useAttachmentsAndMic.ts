@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import type { useLocale } from "@/components/LocaleProvider";
-import { fileToChatImage } from "@/lib/compress-image";
-import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
-import { MAX_CHAT_IMAGES } from "@/lib/image-limits";
+import { fileToChatImage } from "@/lib/media/compress-image";
+import { dropHasFiles, isDroppedImageFile } from "@/lib/media/chat-drop";
+import { MAX_CHAT_IMAGES } from "@/lib/media/limits";
 import {
   ensureMicPermission,
   listMicDevices,
   startMicRecording,
   type MicSession,
   type RecordedWav,
-} from "@/lib/record-mic";
+} from "@/lib/media/record-mic";
 import { persistMicChoice, readStoredMic } from "../chat-storage";
 import type { PendingAudio, PendingImage } from "../chat-types";
 

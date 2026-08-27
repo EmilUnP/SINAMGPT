@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { clearApiUsageLogs } from "@/lib/api-usage";
+import { clearApiUsageLogs } from "@/lib/usage/api";
 import {
   clearUsageLogs,
   getPagedUsage,

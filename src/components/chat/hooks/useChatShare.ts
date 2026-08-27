@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { useConfirm } from "@/components/ConfirmDialog";
 import type { useLocale } from "@/components/LocaleProvider";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 
 type Translate = ReturnType<typeof useLocale>["t"];
 

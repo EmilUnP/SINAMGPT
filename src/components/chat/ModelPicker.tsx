@@ -11,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 
 export type ModelOption = {
   name: string;

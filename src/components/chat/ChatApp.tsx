@@ -15,7 +15,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import type { OverflowNavItem } from "@/components/OverflowNav";
 import { autoResizeTextarea, withComposerStarter } from "@/lib/ui";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 import { ChatComposerContainer } from "./ChatComposerContainer";
 import { ChatConversationPanel } from "./ChatConversationPanel";
 import { ChatHeader } from "./ChatHeader";

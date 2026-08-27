@@ -1,19 +1,17 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import path from "path";
+import { getDb } from "@/lib/db";
 import {
   AUDIO_MIME,
   MAX_AUDIO_BYTES,
   MAX_CHAT_AUDIO,
-  inspectWavPcm,
-  isAllowedAudioMime,
-} from "@/lib/audio-limits";
-import { getDb } from "@/lib/db";
-import {
   MAX_CHAT_IMAGES,
   MAX_IMAGE_BYTES,
+  inspectWavPcm,
+  isAllowedAudioMime,
   isAllowedImageMime,
   type AllowedImageMime,
-} from "@/lib/image-limits";
+} from "@/lib/media/limits";
 import type {
   Message,
   MessageAttachment,
@@ -26,7 +24,7 @@ export {
   MAX_GUEST_IMAGES,
   MAX_IMAGE_BYTES,
   type AllowedImageMime,
-} from "@/lib/image-limits";
+} from "@/lib/media/limits";
 
 export type IncomingImage = {
   mime: string;

@@ -38,12 +38,13 @@ import {
   fileToChatImage,
   imagePreviewUrl,
   type ChatImagePayload,
-} from "@/lib/compress-image";
-import { dropHasFiles, isDroppedImageFile } from "@/lib/chat-drop";
+} from "@/lib/media/compress-image";
+import { dropHasFiles, isDroppedImageFile } from "@/lib/media/chat-drop";
 import { fleetHintKey } from "@/lib/model-fleet";
-import { MAX_GUEST_IMAGES } from "@/lib/image-limits";
+import { MAX_GUEST_IMAGES } from "@/lib/media/limits";
+import { parseSseChunk } from "@/lib/parse-sse-chunk";
 import { autoResizeTextarea, formatChatTime, withComposerStarter } from "@/lib/ui";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 import type { KnowledgeCitation } from "@/lib/types";
 
 type ChatTurn = {
@@ -73,18 +74,6 @@ type Usage = {
 
 /** Module scope keeps the clock read out of component render analysis. */
 const makeTurnId = (prefix: "u" | "a") => `${prefix}-${Date.now()}`;
-
-const parseSseChunk = (raw: string) => {
-  const lines = raw.split("\n");
-  let event = "message";
-  const dataLines: string[] = [];
-  for (const line of lines) {
-    if (line.startsWith("event:")) event = line.slice(6).trim();
-    if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
-  }
-  if (!dataLines.length) return null;
-  return { event, data: JSON.parse(dataLines.join("\n")) };
-};
 
 export const HomeTryChat = ({
   features = {},

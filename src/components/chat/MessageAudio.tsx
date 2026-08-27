@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { Mic, Pause, Play, X } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
-import { MAX_AUDIO_SECONDS } from "@/lib/audio-limits";
+import { MAX_AUDIO_SECONDS } from "@/lib/media/limits";
 
 type MessageAudioProps = {
   src: string;

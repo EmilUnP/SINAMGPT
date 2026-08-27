@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { DeveloperConsole } from "@/components/developer";
+import { DeveloperConsole } from "@/components/developer/DeveloperConsole";
 import { getPageUser } from "@/lib/auth";
 import { getFeatureFlags } from "@/lib/features";
 

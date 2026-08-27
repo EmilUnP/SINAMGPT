@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Mic, Square } from "lucide-react";
 import type { RefObject } from "react";
 import type { useLocale } from "@/components/LocaleProvider";
-import type { MicDevice } from "@/lib/record-mic";
+import type { MicDevice } from "@/lib/media/record-mic";
 
 type Translate = ReturnType<typeof useLocale>["t"];
 

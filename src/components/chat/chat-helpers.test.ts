@@ -6,7 +6,7 @@ import {
   readStoredModel,
 } from "./chat-storage";
 import { messageAudioItems, messageImageItems } from "./message-attachments";
-import { parseSseChunk } from "./parse-sse-chunk";
+import { parseSseChunk } from "@/lib/parse-sse-chunk";
 import type { UiMessage } from "./chat-types";
 
 describe("parseSseChunk", () => {

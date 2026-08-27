@@ -1,5 +1,5 @@
-import { imagePreviewUrl } from "@/lib/compress-image";
-import { attachmentUrl } from "@/lib/image-limits";
+import { imagePreviewUrl } from "@/lib/media/compress-image";
+import { attachmentUrl } from "@/lib/media/limits";
 import type { UiMessage } from "./chat-types";
 
 export type MessageImageItem = {

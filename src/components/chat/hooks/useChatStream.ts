@@ -3,7 +3,7 @@ import type { useLocale } from "@/components/LocaleProvider";
 import type { AppLocale } from "@/lib/locale";
 import type { Conversation, KnowledgeCitation, Message } from "@/lib/types";
 import type { PendingAudio, PendingImage, UiMessage } from "../chat-types";
-import { parseSseChunk } from "../parse-sse-chunk";
+import { parseSseChunk } from "@/lib/parse-sse-chunk";
 
 type Translate = ReturnType<typeof useLocale>["t"];
 

@@ -1,6 +1,8 @@
+import { checkToolPayloadGuardrails } from "@/lib/guardrails";
+import type { ToolPayloadGuard } from "./types";
+
 export { registeredTools, toolRegistry } from "./bootstrap";
 export { shouldUseToolRuntime } from "./gate";
-export { inspectToolPayload } from "./guard";
 export {
   DEFAULT_MAX_TOOL_ITERATIONS,
   DEFAULT_TOOL_CALL_TIMEOUT_MS,
@@ -27,3 +29,8 @@ export {
   MAX_TOOL_PAYLOAD_BYTES,
   MAX_TOOL_SCHEMA_BYTES,
 } from "./validation";
+
+/** Default local-only guard used for every serialized tool input and output. */
+export const inspectToolPayload: ToolPayloadGuard = async (
+  serializedPayload,
+) => checkToolPayloadGuardrails(serializedPayload, "user");

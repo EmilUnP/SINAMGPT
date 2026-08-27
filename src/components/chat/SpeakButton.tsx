@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Square, Volume2 } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
-import { browserCanSpeak, speakText, stripForSpeech } from "@/lib/speak";
+import { browserCanSpeak, speakText, stripForSpeech } from "@/lib/media/speak";
 
 type SpeakButtonProps = {
   text: string;

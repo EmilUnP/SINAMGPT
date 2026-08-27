@@ -14,7 +14,7 @@ import {
   checkInputGuardrails,
   withSystemPrompt,
 } from "@/lib/guardrails";
-import { streamChat, type ChatMessage } from "@/lib/ollama";
+import { streamChat, type ChatMessage } from "@/lib/llm";
 import {
   SSE_HEADERS,
   startSseKeepalive,

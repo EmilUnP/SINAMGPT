@@ -2,7 +2,7 @@ import {
   AUDIO_MIME,
   AUDIO_SAMPLE_RATE,
   MAX_AUDIO_MS,
-} from "@/lib/audio-limits";
+} from "./limits";
 
 export type RecordedWav = {
   mime: typeof AUDIO_MIME;

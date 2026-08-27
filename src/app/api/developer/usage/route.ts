@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getPagedApiUsage } from "@/lib/api-usage";
+import { getPagedApiUsage } from "@/lib/usage/api";
 import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 
 export async function GET(request: Request) {

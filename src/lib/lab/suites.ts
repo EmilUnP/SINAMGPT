@@ -1,4 +1,4 @@
-import type { LabCase, LabSuiteId } from "./lab";
+import type { LabCase, LabSuiteId } from ".";
 
 export const LAB_SUITES: Record<LabSuiteId, LabCase[]> = {
   quick: [

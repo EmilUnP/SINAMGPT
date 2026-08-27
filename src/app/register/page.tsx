@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { AuthForm } from "@/components/auth";
+import { AuthForm } from "@/components/auth/AuthForm";
 import { LoadingFallback } from "@/components/LoadingFallback";
 
 export default function RegisterPage() {

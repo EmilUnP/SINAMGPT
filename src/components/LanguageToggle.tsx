@@ -9,7 +9,7 @@ import {
   LOCALE_LABELS,
   type AppLocale,
 } from "@/lib/locale";
-import { useIsMounted } from "@/lib/use-mounted";
+import { useIsMounted } from "@/hooks/use-mounted";
 
 type LanguageToggleProps = {
   size?: "sm" | "md";
