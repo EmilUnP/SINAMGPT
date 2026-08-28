@@ -2,7 +2,10 @@
 export type LlmBackend = string;
 
 /** Adapter protocol. Provider ids are free-form; kinds are code-supported. */
-export type ProviderKind = "ollama" | "vllm";
+export type ProviderKind = "ollama" | "vllm" | "openai";
+
+export const isOpenAiCompatKind = (kind: ProviderKind): boolean =>
+  kind === "vllm" || kind === "openai";
 
 export type ModelKind =
   | "chat"
@@ -19,6 +22,9 @@ export type LlmProviderConfig = {
   baseUrl: string;
   enabled: boolean;
   apiKey?: string;
+  fallbackId?: string | null;
+  /** 0 = unlimited. In-process only. */
+  maxConcurrent?: number;
 };
 
 export type LlmToolCall = {

@@ -5,6 +5,7 @@ import { fleetDisplayName } from "@/lib/model-fleet";
 import {
   getDefaultModel,
   listModels,
+  listModelsFromProvider,
   type LlmBackend,
   type LlmModel,
   type ModelKind,
@@ -278,8 +279,12 @@ export const getChatRuntimeOptions = () => ({
 });
 
 /** Sync live provider models into DB. New names stay inactive until activated. */
-export const syncModelsFromProviders = async (): Promise<ManagedModel[]> => {
-  const liveModels = await listModels();
+export const syncModelsFromProviders = async (
+  providerId?: string,
+): Promise<ManagedModel[]> => {
+  const liveModels = providerId
+    ? await listModelsFromProvider(providerId)
+    : await listModels();
   const db = getDb();
   const hadAny = Boolean(
     db.prepare(`SELECT 1 AS ok FROM models LIMIT 1`).get(),

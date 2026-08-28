@@ -58,11 +58,11 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const [requests, setRequests] = useState<ApiUsageEvent[]>([]);
   const [snippetLang, setSnippetLang] = useState<SnippetLang>("python");
   const [streamExample, setStreamExample] = useState(false);
-  const [origin, setOrigin] = useState("http://localhost:3055");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
+  const [origin] = useState(() =>
+    typeof window === "undefined"
+      ? "http://localhost:3055"
+      : window.location.origin,
+  );
 
   const load = useCallback(async () => {
     setError(null);

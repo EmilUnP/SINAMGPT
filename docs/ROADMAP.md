@@ -9,13 +9,13 @@ For the **multi-release expansion arc** — more runtimes than Ollama, image / s
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.18.1](../CHANGELOG.md#1181--2026-08-28) (see [README](../README.md)).
+**Current release:** [v1.19.0](../CHANGELOG.md#1190--2026-08-28) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.18.1**):
+What operators and users can rely on in the current tree (**v1.19.0**):
 
 | Area | Reality |
 |------|---------|
@@ -27,7 +27,7 @@ What operators and users can rely on in the current tree (**v1.18.1**):
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts with **username or work email**; field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
-| **LLM** | Provider registry with one seeded Ollama endpoint and minimal Admin CRUD for additional LAN Ollama servers; vLLM stays parked until P1. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
+| **LLM** | Provider registry for Ollama, vLLM, and OpenAI-compatible servers; Admin → Providers for kind, test, health, model sync, fallback, and concurrency. Hosted URLs need a remote-traffic acknowledgement. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt and reply; **Clear logs** |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys. One key calls every activated model via OpenAI-compatible `/api/v1/chat/completions` and `/api/v1/models` (custom `/api/v1/generate` still works). Admin **Dev lab** at `/devlab` |
@@ -38,7 +38,7 @@ What operators and users can rely on in the current tree (**v1.18.1**):
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| P1 | **More inference backends** | `planned` | Un-park and verify vLLM, then add the generic OpenAI-compatible adapter, connection tests, sync, and fallback routing |
+| P2a | **Embeddings & reranking** | `planned` | Hybrid keyword + vector retrieval — see [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md) |
 
 ### Candidates (suggested order)
 
@@ -69,6 +69,15 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.19.0 — Any runtime (2026-08-28)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| OpenAI-compatible providers | `done` | vLLM, LM Studio, llama.cpp, TGI share one adapter |
+| Admin provider ops | `done` | Kind, test, health, sync, fallback, max concurrent |
+| LAN by default | `done` | Hosted URLs need a “traffic leaves the building” acknowledgement |
+| Provider key secret | `done` | `PROVIDER_KEY_SECRET` preferred; `SESSION_SECRET` still works |
 
 ### v1.18.1 — Mobile chat & email login (2026-08-28)
 

@@ -7,7 +7,7 @@ This is a **separate track** from [ROADMAP.md](./ROADMAP.md). That file stays th
 record of what shipped release by release; this one is the multi-release arc those releases
 will come from. When a phase here ships, record it there as usual.
 
-Updated for **v1.18.1**, re-verified against the tree on **2026-08-28**.
+Updated for **v1.19.0**, re-verified against the tree on **2026-08-28**.
 Status key: `planned` · `in progress` · `done` · `deferred`.
 
 ---
@@ -21,7 +21,7 @@ Re-checked against the code, not the changelog. Three of the four ❌ rows are c
 | Provider layer | SQLite registry, AES-256-GCM keys, free-text provider ids, Admin CRUD | ✅ **Seam open** *(was: welded shut)* |
 | Long work | Persistent jobs, atomic claims, leases, recovery, cancel, SSE progress | ✅ **Solved** *(was: missing entirely)* |
 | Tool calling | Validated, bounded, guarded loop — zero tools registered by design | ✅ **Ready** *(was: missing entirely)* |
-| Unit tests | 77 passing across 13 files, no Ollama or app DB needed | ✅ **Established** *(was: missing entirely)* |
+| Unit tests | 97 passing across 16 files, no Ollama or app DB needed | ✅ **Established** *(was: missing entirely)* |
 | Model catalog | `models.kind` constrains all seven task types | ✅ **Task dimension added** |
 | Chat client | 350-line orchestrator, 6 hooks, ~20 components | ✅ **Ready for new surfaces** |
 | Auth & roles | Local accounts, bcrypt, signed cookie, middleware role gate, rate limits | ✅ Reuse as-is |
@@ -34,7 +34,7 @@ Re-checked against the code, not the changelog. Three of the four ❌ rows are c
 | Usage telemetry | Still chat-shaped; `jobs` covers job state but not usage reporting | ⚠️ Fold into **P5** |
 | Guardrails | Layered detectors; P0.6 added a guard pass over tool inputs **and** outputs | ⚠️ Extend with domain policy in **P3** |
 | Guest chat client | `HomeTryChat.tsx` is 949 lines — the P0.4 split covered the signed-in app only | ⚠️ Carry-forward — **P6.4** |
-| Lint gate | 4 errors + 1 warning, all pre-existing, none in P0 code | ❌ **Red** — see §3a |
+| Lint gate | F1 setState-in-effect errors and ModelPicker warning | ✅ **Cleared** in P1 gate |
 
 ---
 
@@ -43,7 +43,7 @@ Re-checked against the code, not the changelog. Three of the four ❌ rows are c
 *Original diagnosis, annotated with what Phase 0 resolved. Kept as a record of why the
 plan is shaped the way it is.*
 
-### Goal 1 — Universal, not Ollama-only · **mostly resolved**
+### Goal 1 — Universal, not Ollama-only · **resolved**
 
 The abstraction folder (`src/lib/llm/`) was real and well-factored, but every entry point
 routed back to one adapter, and provider config was a single env var with no credentials,
@@ -55,8 +55,8 @@ no second instance and no registry.
 | `resolveModelBackend() → "ollama"` | ✅ resolves through the registry |
 | `CHECK (backend IN ('ollama','vllm'))` | ✅ dropped — provider id is free text |
 | single `OLLAMA_BASE_URL`, no credentials | ✅ `providers` table, AES-256-GCM keys |
-| `isVllmEnabled() → false` | ⏳ **still false** — P1.1 |
-| — | ⏳ `ProviderKind` still `"ollama" \| "vllm"` — P1.2 |
+| `isVllmEnabled() → false` | ✅ **removed** — OpenAI-compatible adapter is live |
+| — | ✅ `ProviderKind` is `"ollama" \| "vllm" \| "openai"` |
 
 ### Goal 2 — Many model types · **classification resolved, models not built**
 
@@ -99,7 +99,7 @@ Not features — conditions that make every later feature cheaper or more expens
 |---|------|--------|
 | **R1** | `ChatApp.tsx` is 2,477 lines | ✅ **Cleared** by P0.4 — now 350 lines. Partially recurs as `HomeTryChat.tsx` (949 lines), see F4. |
 | **R2** | Long work has nowhere to run | ✅ **Cleared** by P0.3 — persistent jobs with leases, recovery, cancel and SSE progress. |
-| **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 77 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters. |
+| **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 97 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters, routing. |
 | **R4** | 32 GB cannot hold the whole roster | ⏳ **Open, unchanged.** Nothing in P0 loads a model. Chat + embed + STT + TTS fit; image gen does not. See §6. |
 
 ---
@@ -111,11 +111,11 @@ once providers carry real credentials.
 
 | # | Severity | Finding |
 |---|----------|---------|
-| **F1** | **Fix now** | **Lint gate is red.** Four `setState`-in-effect errors plus one missing-dependency warning — `AdminUsagePanel:260`, `HomeTryChat:173`, `MessageAudio:168`, `DeveloperConsole:64`, `ModelPicker:125` (warn). All predate P0; none are in new code. But v1.4.2 shipped “green lint gate” as an achievement and it has quietly stopped being true. |
-| **F2** | **Decide** | **Provider keys are encrypted with `SESSION_SECRET`** (`providers.ts:63`). Harmless today — the only provider is a LAN Ollama with no key. But the README tells operators to rotate `SESSION_SECRET` for company use, and once P1 adds a keyed provider, rotating it makes every stored key undecryptable. It fails loudly (`providers.ts:117`), which is right. Choose: a dedicated `PROVIDER_KEY_SECRET`, or document “re-enter provider keys after rotating”. **Decide before P1, not after.** |
-| **F3** | Soon | **Both P0 exit-criteria proofs are skipped by default.** `providers.integration.test.ts` needs `RUN_PROVIDER_INTEGRATION=1`; the four-minute job test needs `RUN_LONG_JOB_TEST=1`. Correctly gated — a 4-minute test does not belong in a 4-second suite — but it means the exit criteria are proven by tests nobody runs. Add a `test:integration` script and run it once per phase. |
+| **F1** | **Fix now** | ✅ **Cleared.** Lint errors in `AdminUsagePanel`, `HomeTryChat`, `MessageAudio`, `DeveloperConsole`, and the `ModelPicker` warning are fixed. |
+| **F2** | **Decide** | ✅ **Decided.** Prefer `PROVIDER_KEY_SECRET`; fall back to `SESSION_SECRET` so existing installs keep working. Rotating `SESSION_SECRET` without a dedicated provider secret still invalidates stored keys — documented in `.env.example` and README. |
+| **F3** | Soon | ✅ **Cleared.** `npm run test:integration` runs the gated provider + long-job tests. |
 | **F4** | Soon | **`HomeTryChat.tsx` is now the biggest chat file** (949 lines) and duplicates composer, streaming and model-picker logic that P0.4 just extracted into shared hooks. Out of scope then, reasonably — but it drifts from its signed-in twin on every change. Fold it before P3/P4 add more surfaces. Scheduled as P6.4. |
-| **F5** | Minor | **`.env.example` did not move with the schema.** It still calls `SESSION_SECRET` only a cookie signing secret (no longer the whole truth) and `OLLAMA_BASE_URL` “the only LLM runtime for now” (now registry seed data). One comment edit. |
+| **F5** | Minor | ✅ **Cleared.** `.env.example` documents `PROVIDER_KEY_SECRET` and that SQLite is the runtime list after first startup. |
 
 ---
 
@@ -140,18 +140,18 @@ Pure enablement. Five of six items are prerequisites for two or more later phase
 **Exit:** a second provider can be added from Admin, a job can run for four minutes, and a
 tool can be registered in one file.
 
-### P1 — Any runtime · `v1.19` · **~1 week** (was 1–2) · **Goal 1** · `next`
+### P1 — Any runtime · `v1.19` · **~1 week** (was 1–2) · **Goal 1** · `done`
 
 **Smaller than scoped.** The registry, encrypted credentials and the Admin CRUD panel all
 landed inside P0. What is left is adapter work plus operational controls.
 
 | # | Item | Detail |
 |---|------|--------|
-| 1.1 | Un-park vLLM | `isVllmEnabled()` still returns `false` (`llm/vllm.ts:18`) and the registry already routes around it. Flip it, then verify streaming translation against a live server. |
-| 1.2 | Generic OpenAI adapter | `ProviderKind` is still `"ollama" \| "vllm"` (`llm/types.ts:5`). Widening it to a generic OpenAI-compatible kind covers LM Studio, llama.cpp server, TGI and LocalAI in one adapter. |
-| 1.3 | Admin → Providers · **CRUD `done`** | Add / edit / enable / disable / delete already ship (`AdminProvidersPanel.tsx`, 326 lines). **Remaining:** test-connection, per-provider health, model sync from the panel. |
-| 1.4 | Routing & fallback | `provider:model` addressing already exists (`qualifyModelName` in `llm/index.ts`). **Remaining:** fallback chain when a provider is down, per-provider concurrency limits. |
-| 1.5 | Keep the LAN promise honest | Hosted providers possible but **off by default**, with an explicit warning at add-time that traffic leaves the building. The README claim stays true unless an admin deliberately changes it. |
+| 1.1 | Un-park vLLM · `done` | Shared OpenAI-compatible adapter serves vLLM; parked `isVllmEnabled()` is gone. |
+| 1.2 | Generic OpenAI adapter · `done` | `ProviderKind` is `"ollama" \| "vllm" \| "openai"`. vLLM is a labeled alias of the same client (LM Studio, llama.cpp server, TGI). |
+| 1.3 | Admin → Providers · `done` | Kind picker, test-connection, per-row health, per-provider model sync, plus existing CRUD. |
+| 1.4 | Routing & fallback · `done` | `fallback_id` retries once on connect failure; `max_concurrent` is an in-process semaphore (`0` = unlimited). |
+| 1.5 | Keep the LAN promise honest · `done` | Hosted providers allowed only with `acknowledgeRemote` and a visible Admin warning. Localhost and RFC1918 stay quiet. |
 
 **Exit:** a model on a second machine appears in the picker and answers.
 
@@ -304,7 +304,7 @@ Re-dated after Phase 0. One is now urgent because P1 is next; the rest sit where
 
 | # | Decision | Blocks |
 |---|----------|--------|
-| 1 | **Are hosted models allowed at all, ever?** ⚠️ **Now urgent.** “No third-party cloud APIs” has already stopped being a property of the *code* — the registry accepts any provider id. After P1 it is purely a property of *configuration*. If it must stay absolute, say so and it gets enforced in the registry rather than left to admin discipline. | **P1 — next up** |
+| 1 | **Are hosted models allowed at all, ever?** ✅ **LAN by default.** Public/cloud URLs are allowed only after the admin checks “traffic may leave the building.” Localhost and RFC1918 stay quiet. | **P1** |
 | 2 | **How large does the knowledge base actually get?** Under ~50k chunks, vectors in SQLite with brute-force cosine are fine and add no dependency. Well beyond that wants a real vector index. Changes P2a’s storage design and nothing else. | P2a |
 | 3 | **Self-hosted search or a commercial search API?** Self-hosted keeps every employee query inside the building and matches the README. A commercial API returns better results and sends each query to a third party. Policy call, not technical. | P3 |
 | 4 | **Second GPU machine, or unload-and-swap on the one we have?** A second box makes image/video routine and costs money; swapping is free and pauses chat during renders. Still several phases away — and P0.1 already made either answer a configuration change rather than a code change. | P5, P7 |

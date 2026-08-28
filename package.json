@@ -1,6 +1,6 @@
 {
   "name": "sinamgpt",
-  "version": "1.18.1",
+  "version": "1.19.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,6 +10,7 @@
     "setup": "node scripts/setup.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "node scripts/test-integration.mjs",
     "test:chat": "node scripts/deep-chat-test.mjs"
   },
   "dependencies": {

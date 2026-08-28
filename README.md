@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.18.1](./CHANGELOG.md#1181--2026-08-28)
+**Current version:** [1.19.0](./CHANGELOG.md#1190--2026-08-28)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -16,7 +16,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
-- **Local models** via [Ollama](https://ollama.com) — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`
+- **Local models** via [Ollama](https://ollama.com) by default — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`. Extra runtimes (vLLM, LM Studio, llama.cpp, other OpenAI-compatible servers) from **Admin → Providers**
 - **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
 - **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Llama 4 / Qwen no
 - **Login / register** with a username or work email (accounts stored locally)
@@ -27,13 +27,13 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
 - **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
-- **Admin** — users, models (Activate before users can pick them), live usage (chat + API, All / App / API filter; click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
+- **Admin** — users, models (Activate before users can pick them), providers (Ollama / vLLM / OpenAI-compatible; test, health, sync, fallback), live usage (chat + API, All / App / API filter; click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Developer API** (`/developer`) — off until Admin → Settings → Features; then one key calls every activated model from other company apps (OpenAI-compatible `/api/v1/chat/completions`, plus `/api/v1/models`). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
 - **Guest try-chat** on the home page (daily + burst limits; signed-in users unlimited; up to 2 images on vision models when File upload / File import is on)
 
-No third-party cloud LLM APIs. Traffic stays on your machine / LAN backends.
+No third-party cloud LLM APIs unless an admin adds a public URL and confirms that traffic may leave the building. Localhost and LAN stay the default.
 
 ## Requirements
 
@@ -122,8 +122,9 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 
 | Variable | Meaning |
 |----------|---------|
-| `SESSION_SECRET` | Cookie signing secret and provider-key encryption secret (change for company use; keep stable) |
-| `OLLAMA_BASE_URL` | Seeds the default `ollama` provider on first startup (`http://127.0.0.1:11434`); SQLite is authoritative afterwards |
+| `SESSION_SECRET` | Cookie signing secret. Also encrypts provider API keys unless `PROVIDER_KEY_SECRET` is set. Rotating this without a dedicated provider secret invalidates stored keys |
+| `PROVIDER_KEY_SECRET` | Optional dedicated secret for provider API-key encryption. Prefer this so cookie rotation does not lock stored keys |
+| `OLLAMA_BASE_URL` | Seeds the default `ollama` provider on first startup (`http://127.0.0.1:11434`); SQLite (`providers` table) is the runtime list afterwards |
 | `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
 | `DEFAULT_MODEL` | Preferred Ollama model name if installed |
 | `ADMIN_USERNAME` | Seeded admin username |
@@ -131,9 +132,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
 | `GUEST_MAX_MESSAGE_CHARS` | Max guest message length |
 
-Additional LAN Ollama endpoints can be managed in **Admin → Providers**. The
-server connects to the configured URL; provider API keys are encrypted with
-`SESSION_SECRET` and are never returned by the Admin API.
+Additional runtimes (Ollama, vLLM, LM Studio, llama.cpp, and other OpenAI-compatible servers) are managed in **Admin → Providers**. Extra runtimes stay off until an admin adds and enables a provider. Localhost and LAN addresses need no extra confirmation; a public or cloud URL requires an explicit “traffic may leave the building” acknowledgement. Provider API keys are encrypted with `PROVIDER_KEY_SECRET` (or `SESSION_SECRET` if that is unset) and are never returned by the Admin API.
 
 The persistent job worker is designed for this project's single-process,
 self-hosted Node deployment. It is not a distributed queue and must not be used

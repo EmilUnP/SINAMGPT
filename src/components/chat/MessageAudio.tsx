@@ -160,15 +160,20 @@ export const MessageAudio = ({
     durationMs && durationMs > 0 ? durationMs / 1000 : 0,
   );
   const [bars, setBars] = useState<number[]>(() => dummyBars(src));
+  const [track, setTrack] = useState({ src, durationMs });
   const resolvedRemove = removeLabel || t("chat.removeAudio");
   const resolvedName = name || t("chat.voiceRecording");
   const isUser = tone === "user";
 
-  useEffect(() => {
+  if (src !== track.src || durationMs !== track.durationMs) {
+    setTrack({ src, durationMs });
     setPlaying(false);
     setCurrent(0);
     setDuration(durationMs && durationMs > 0 ? durationMs / 1000 : 0);
     setBars(dummyBars(src));
+  }
+
+  useEffect(() => {
     let cancelled = false;
     void loadPeaks(src)
       .then((next) => {
@@ -178,7 +183,7 @@ export const MessageAudio = ({
     return () => {
       cancelled = true;
     };
-  }, [src, durationMs]);
+  }, [src]);
 
   useEffect(() => {
     const el = audioRef.current;

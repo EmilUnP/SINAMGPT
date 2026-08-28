@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.18.1
+**Current product:** v1.19.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -19,7 +19,7 @@ SINAMGPT is SINAM’s **internal ChatGPT-style assistant**. Employees sign in, a
 
 Three promises:
 
-1. **It stays with us.** Models run on the company machine (Ollama). We do not send chats to ChatGPT, Gemini, or other public clouds.
+1. **It stays with us.** Models run on company machines by default (Ollama, vLLM, or another server you add). We do not send chats to public clouds unless an admin adds a hosted URL and confirms that traffic may leave the building.
 2. **Admins own the facts and the rules.** Product text and “do not answer this” policy live in Admin, not only in code.
 3. **It answers in the user’s language.** The screen is English / Azərbaycan / Русский. Azerbaijani typed without special letters (nedir, nece, menim) still counts as Azerbaijani. Clarifying questions stay in that language. Questions in Turkish still get a reply in that language when possible.
 
@@ -31,7 +31,7 @@ Three promises:
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
 | **Employee** | Signs in with a username or work email. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
-| **Admin** | Turns models on, manages LAN Ollama providers, edits knowledge, sets guardrails, watches usage (including the exact prompt), and can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. |
+| **Admin** | Turns models on, manages providers (Ollama, vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt), and can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
 ---
@@ -58,7 +58,7 @@ You type a question (any language)  + optional image or short voice clip
 └──────────┬──────────┘
            ▼
 ┌─────────────────────┐
-│ 4. Local model      │  Ollama writes the answer, streaming on screen
+│ 4. Local model      │  The selected runtime writes the answer, streaming on screen
 └──────────┬──────────┘
            ▼
    Reply in your language
@@ -124,7 +124,7 @@ Everything is on the company PC (or the LAN host):
 |------|--------|
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
-| Models | Ollama on that machine (`gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`) |
+| Models | Ollama on that machine by default (`gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`). Extra runtimes are added in Admin → Providers |
 | Passwords | Hashed (not stored as plain text) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 

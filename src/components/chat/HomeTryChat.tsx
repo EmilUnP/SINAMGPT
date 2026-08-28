@@ -168,11 +168,9 @@ export const HomeTryChat = ({
   const canAttachImages = supportsVision && features.fileUpload === true;
   const canImportImages = supportsVision && features.fileImport === true;
 
-  useEffect(() => {
-    if (!canAttachImages && !canImportImages && pendingImages.length) {
-      setPendingImages([]);
-    }
-  }, [canAttachImages, canImportImages, pendingImages.length]);
+  if (!canAttachImages && !canImportImages && pendingImages.length > 0) {
+    setPendingImages([]);
+  }
 
   const handleStop = () => abortRef.current?.abort();
 

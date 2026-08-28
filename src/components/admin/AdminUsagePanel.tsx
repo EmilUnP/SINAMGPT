@@ -257,7 +257,9 @@ export const AdminUsagePanel = () => {
   }, [page, pageSize, sourceFilter, t]);
 
   useEffect(() => {
-    void load();
+    const start = window.setTimeout(() => {
+      void load();
+    }, 0);
     const tick = () => {
       if (document.visibilityState === "hidden") return;
       void load();
@@ -268,6 +270,7 @@ export const AdminUsagePanel = () => {
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
+      window.clearTimeout(start);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVis);
     };

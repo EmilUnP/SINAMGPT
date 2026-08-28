@@ -88,7 +88,9 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       kind TEXT NOT NULL,
       base_url TEXT NOT NULL,
       api_key_enc TEXT,
-      enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1))
+      enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+      fallback_id TEXT,
+      max_concurrent INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS models (
@@ -464,6 +466,14 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
   if (!hasColumn(database, "api_usage_events", "response_full")) {
     database.exec(
       `ALTER TABLE api_usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
+    );
+  }
+  if (!hasColumn(database, "providers", "fallback_id")) {
+    database.exec(`ALTER TABLE providers ADD COLUMN fallback_id TEXT`);
+  }
+  if (!hasColumn(database, "providers", "max_concurrent")) {
+    database.exec(
+      `ALTER TABLE providers ADD COLUMN max_concurrent INTEGER NOT NULL DEFAULT 0`,
     );
   }
   database.exec(

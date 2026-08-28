@@ -6,6 +6,10 @@ import {
 } from "crypto";
 import { getDb } from "@/lib/db";
 import type { LlmProviderConfig, ProviderKind } from "@/lib/llm/types";
+import {
+  providerUrlIsRemote,
+  REMOTE_PROVIDER_ACK_MESSAGE,
+} from "@/lib/provider-url";
 
 const API_KEY_VERSION = "v1";
 const PROVIDER_ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
@@ -16,6 +20,8 @@ type ProviderRow = {
   base_url: string;
   api_key_enc: string | null;
   enabled: number;
+  fallback_id: string | null;
+  max_concurrent: number;
 };
 
 export type ProviderSummary = {
@@ -24,6 +30,8 @@ export type ProviderSummary = {
   baseUrl: string;
   enabled: boolean;
   hasApiKey: boolean;
+  fallbackId: string | null;
+  maxConcurrent: number;
 };
 
 export type SaveProviderInput = {
@@ -33,6 +41,10 @@ export type SaveProviderInput = {
   enabled?: boolean;
   /** Undefined preserves the stored key; null clears it. */
   apiKey?: string | null;
+  /** Undefined preserves; null clears. */
+  fallbackId?: string | null;
+  maxConcurrent?: number;
+  acknowledgeRemote?: boolean;
 };
 
 export const assertProviderCanDisable = (
@@ -60,9 +72,13 @@ export const assertProviderCanDelete = (input: {
 };
 
 const encryptionKey = (): Buffer => {
-  const secret = process.env.SESSION_SECRET?.trim();
+  const dedicated = process.env.PROVIDER_KEY_SECRET?.trim();
+  const session = process.env.SESSION_SECRET?.trim();
+  const secret = dedicated || session;
   if (!secret) {
-    throw new Error("SESSION_SECRET is required to encrypt provider API keys.");
+    throw new Error(
+      "PROVIDER_KEY_SECRET or SESSION_SECRET is required to encrypt provider API keys.",
+    );
   }
   return createHash("sha256")
     .update("sinamgpt:provider-api-key:v1\0")
@@ -114,13 +130,13 @@ export const decryptProviderApiKey = (encrypted: string): string => {
     ]).toString("utf8");
   } catch {
     throw new Error(
-      "Provider API key could not be decrypted. Check SESSION_SECRET.",
+      "Provider API key could not be decrypted. Check PROVIDER_KEY_SECRET or SESSION_SECRET.",
     );
   }
 };
 
-const providerKind = (value: string): ProviderKind | null => {
-  if (value === "ollama" || value === "vllm") return value;
+export const parseProviderKind = (value: string): ProviderKind | null => {
+  if (value === "ollama" || value === "vllm" || value === "openai") return value;
   return null;
 };
 
@@ -164,8 +180,18 @@ export const normalizeProviderBaseUrl = (value: string): string => {
   return url.toString().replace(/\/+$/, "");
 };
 
+export const assertRemoteProviderAcknowledged = (
+  baseUrl: string,
+  acknowledgeRemote?: boolean,
+): void => {
+  if (!providerUrlIsRemote(baseUrl)) return;
+  if (!acknowledgeRemote) {
+    throw new Error(REMOTE_PROVIDER_ACK_MESSAGE);
+  }
+};
+
 const toSummary = (row: ProviderRow): ProviderSummary | null => {
-  const kind = providerKind(row.kind);
+  const kind = parseProviderKind(row.kind);
   if (!kind) return null;
   return {
     id: row.id,
@@ -173,6 +199,8 @@ const toSummary = (row: ProviderRow): ProviderSummary | null => {
     baseUrl: row.base_url,
     enabled: row.enabled === 1,
     hasApiKey: Boolean(row.api_key_enc),
+    fallbackId: row.fallback_id,
+    maxConcurrent: Number.isFinite(row.max_concurrent) ? row.max_concurrent : 0,
   };
 };
 
@@ -184,17 +212,21 @@ const toConfig = (row: ProviderRow): LlmProviderConfig | null => {
     kind: summary.kind,
     baseUrl: summary.baseUrl,
     enabled: summary.enabled,
+    fallbackId: summary.fallbackId,
+    maxConcurrent: summary.maxConcurrent,
     ...(row.api_key_enc
       ? { apiKey: decryptProviderApiKey(row.api_key_enc) }
       : {}),
   };
 };
 
+const PROVIDER_COLUMNS = `id, kind, base_url, api_key_enc, enabled, fallback_id, max_concurrent`;
+
 export const listProviders = (): ProviderSummary[] =>
   (
     getDb()
       .prepare(
-        `SELECT id, kind, base_url, api_key_enc, enabled
+        `SELECT ${PROVIDER_COLUMNS}
          FROM providers ORDER BY id`,
       )
       .all() as ProviderRow[]
@@ -206,7 +238,7 @@ export const listProviders = (): ProviderSummary[] =>
 export const getProviderConfig = (id: string): LlmProviderConfig | null => {
   const row = getDb()
     .prepare(
-      `SELECT id, kind, base_url, api_key_enc, enabled
+      `SELECT ${PROVIDER_COLUMNS}
        FROM providers WHERE id = ?`,
     )
     .get(id) as ProviderRow | undefined;
@@ -217,7 +249,7 @@ export const listEnabledProviderConfigs = (): LlmProviderConfig[] =>
   (
     getDb()
       .prepare(
-        `SELECT id, kind, base_url, api_key_enc, enabled
+        `SELECT ${PROVIDER_COLUMNS}
          FROM providers WHERE enabled = 1 ORDER BY id`,
       )
       .all() as ProviderRow[]
@@ -229,13 +261,21 @@ export const listEnabledProviderConfigs = (): LlmProviderConfig[] =>
 export const saveProvider = (input: SaveProviderInput): ProviderSummary => {
   const id = normalizeProviderId(input.id);
   const baseUrl = normalizeProviderBaseUrl(input.baseUrl);
+  if (id === "ollama" && input.kind !== "ollama") {
+    throw new Error("The default provider must stay Ollama.");
+  }
   const current = getDb()
-    .prepare(`SELECT api_key_enc, enabled FROM providers WHERE id = ?`)
-    .get(id) as Pick<ProviderRow, "api_key_enc" | "enabled"> | undefined;
-  if (
-    current?.enabled === 1 &&
-    input.enabled === false
-  ) {
+    .prepare(
+      `SELECT api_key_enc, enabled, base_url, fallback_id, max_concurrent
+       FROM providers WHERE id = ?`,
+    )
+    .get(id) as
+    | Pick<
+        ProviderRow,
+        "api_key_enc" | "enabled" | "base_url" | "fallback_id" | "max_concurrent"
+      >
+    | undefined;
+  if (current?.enabled === 1 && input.enabled === false) {
     const enabledCount = (
       getDb()
         .prepare(`SELECT COUNT(*) AS count FROM providers WHERE enabled = 1`)
@@ -243,6 +283,12 @@ export const saveProvider = (input: SaveProviderInput): ProviderSummary => {
     ).count;
     assertProviderCanDisable(true, enabledCount);
   }
+
+  const urlChanged = !current || current.base_url !== baseUrl;
+  if (urlChanged) {
+    assertRemoteProviderAcknowledged(baseUrl, input.acknowledgeRemote);
+  }
+
   const apiKeyEnc =
     input.apiKey === undefined
       ? current?.api_key_enc ?? null
@@ -250,17 +296,50 @@ export const saveProvider = (input: SaveProviderInput): ProviderSummary => {
         ? null
         : encryptProviderApiKey(input.apiKey);
 
+  const fallbackId =
+    input.fallbackId === undefined
+      ? current?.fallback_id ?? null
+      : input.fallbackId
+        ? normalizeProviderId(input.fallbackId)
+        : null;
+  if (fallbackId === id) {
+    throw new Error("A provider cannot fall back to itself.");
+  }
+  if (fallbackId) {
+    const target = getDb()
+      .prepare(`SELECT id FROM providers WHERE id = ?`)
+      .get(fallbackId) as { id: string } | undefined;
+    if (!target) {
+      throw new Error(`Fallback provider "${fallbackId}" was not found.`);
+    }
+  }
+
+  const maxConcurrent =
+    input.maxConcurrent === undefined
+      ? current?.max_concurrent ?? 0
+      : Math.max(0, Math.min(10_000, Math.floor(input.maxConcurrent)));
+
   getDb()
     .prepare(
-      `INSERT INTO providers (id, kind, base_url, api_key_enc, enabled)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO providers (id, kind, base_url, api_key_enc, enabled, fallback_id, max_concurrent)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          kind = excluded.kind,
          base_url = excluded.base_url,
          api_key_enc = excluded.api_key_enc,
-         enabled = excluded.enabled`,
+         enabled = excluded.enabled,
+         fallback_id = excluded.fallback_id,
+         max_concurrent = excluded.max_concurrent`,
     )
-    .run(id, input.kind, baseUrl, apiKeyEnc, input.enabled === false ? 0 : 1);
+    .run(
+      id,
+      input.kind,
+      baseUrl,
+      apiKeyEnc,
+      input.enabled === false ? 0 : 1,
+      fallbackId,
+      maxConcurrent,
+    );
 
   const saved = listProviders().find((provider) => provider.id === id);
   if (!saved) throw new Error("Provider could not be saved.");
@@ -290,5 +369,8 @@ export const deleteProvider = (idInput: string): void => {
     enabledProviderCount: enabledCount,
   });
 
+  getDb()
+    .prepare(`UPDATE providers SET fallback_id = NULL WHERE fallback_id = ?`)
+    .run(id);
   getDb().prepare(`DELETE FROM providers WHERE id = ?`).run(id);
 };

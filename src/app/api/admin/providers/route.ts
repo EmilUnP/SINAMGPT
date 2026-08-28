@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { getProviderConfig, listProviders, saveProvider } from "@/lib/providers";
 
+const kindSchema = z.enum(["ollama", "vllm", "openai"]);
+
 const createSchema = z.object({
   id: z
     .string()
@@ -10,10 +12,13 @@ const createSchema = z.object({
     .min(1)
     .max(64)
     .regex(/^[a-z0-9][a-z0-9_-]{0,63}$/),
-  kind: z.literal("ollama"),
+  kind: kindSchema,
   baseUrl: z.string().trim().min(1).max(2048),
   enabled: z.boolean().optional(),
   apiKey: z.string().trim().min(1).max(512).optional(),
+  fallbackId: z.string().trim().min(1).max(64).nullable().optional(),
+  maxConcurrent: z.number().int().min(0).max(10_000).optional(),
+  acknowledgeRemote: z.boolean().optional(),
 });
 
 export async function GET() {

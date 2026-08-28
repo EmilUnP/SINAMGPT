@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -76,7 +77,7 @@ export const ModelPicker = ({
 
   const isComposer = variant === "composer";
 
-  const updatePos = () => {
+  const updatePos = useCallback(() => {
     if (isComposer) return;
     const el = triggerRef.current;
     if (!el) return;
@@ -110,7 +111,7 @@ export const ModelPicker = ({
             openUp: false,
           },
     );
-  };
+  }, [isComposer]);
 
   useLayoutEffect(() => {
     if (!open || isComposer) return;
@@ -122,7 +123,7 @@ export const ModelPicker = ({
       window.removeEventListener("resize", onReflow);
       window.removeEventListener("scroll", onReflow, true);
     };
-  }, [open, isComposer]);
+  }, [open, isComposer, updatePos]);
 
   // The panel owns the key handling while it is open, so it needs the focus.
   useEffect(() => {
