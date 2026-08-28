@@ -27,7 +27,7 @@ export const ChatMessageContent = ({
           />
         ))}
         {message.content && !isCannedVoicePrompt(message.content) ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : null}
       </div>
     );

@@ -191,7 +191,7 @@ export const ComposerToolsMenu = ({
           role="menu"
           aria-label={ariaLabel}
           tabIndex={-1}
-          className="menu-surface absolute bottom-full left-0 z-50 mb-2 max-h-80 min-w-[16rem] max-w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl p-1.5"
+          className="menu-surface absolute bottom-full left-0 z-50 mb-2 max-h-80 min-w-[min(16rem,calc(100vw-2rem))] max-w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl p-1.5"
         >
           {indexedSections.map((section, sectionIndex) => (
             <div

@@ -90,8 +90,8 @@ export const ChatSidebar = ({
 }: ChatSidebarProps) => {
   const atProjectLimit = projects.length >= projectLimit;
   return (
-    <aside className="flex h-full max-h-dvh w-[min(20rem,86vw)] shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-fg)]">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-4 py-4">
+    <aside className="flex h-full max-h-dvh w-[min(20rem,calc(100vw-2.5rem))] max-w-full shrink-0 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] text-[var(--sidebar-fg)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--sidebar-border)] px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <Image
             src={sinamLogo}
@@ -111,7 +111,7 @@ export const ChatSidebar = ({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg p-2 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
+          className="touch-target rounded-lg p-2 text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-fg)]"
           aria-label={t("chat.closeSidebar")}
         >
           <PanelLeftClose size={18} />
@@ -133,7 +133,7 @@ export const ChatSidebar = ({
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder={t("chat.searchPlaceholder")}
-            className="w-full bg-transparent text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)]"
+            className="w-full bg-transparent text-base text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] sm:text-sm"
           />
         </label>
       </div>
@@ -174,13 +174,13 @@ export const ChatSidebar = ({
                 if (event.key === "Escape") onCancelNewProject();
               }}
               placeholder={t("chat.projectNamePlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-2 text-base text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)] sm:py-1.5 sm:text-sm"
               autoFocus
             />
             <button
               type="button"
               onClick={onCreateProject}
-              className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
+              className="rounded-lg bg-[var(--accent)] px-2.5 py-2 text-xs font-medium text-white sm:py-1.5"
             >
               {t("common.add")}
             </button>
@@ -199,13 +199,13 @@ export const ChatSidebar = ({
                 if (event.key === "Escape") onCancelRenameProject();
               }}
               placeholder={t("chat.renameProjectPlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-1.5 text-sm text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)]"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-subtle)] px-2 py-2 text-base text-[var(--sidebar-fg)] outline-none placeholder:text-[var(--sidebar-muted)] focus:border-[var(--accent)] sm:py-1.5 sm:text-sm"
               autoFocus
             />
             <button
               type="button"
               onClick={onSaveRenameProject}
-              className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white"
+              className="rounded-lg bg-[var(--accent)] px-2.5 py-2 text-xs font-medium text-white sm:py-1.5"
             >
               {t("common.save")}
             </button>
@@ -368,7 +368,7 @@ export const ChatSidebar = ({
           <button
             type="button"
             onClick={onLogout}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-subtle)] hover:text-[var(--sidebar-fg)] sm:min-h-0 sm:py-1.5"
           >
             <LogOut size={14} />
             {t("chat.signOut")}

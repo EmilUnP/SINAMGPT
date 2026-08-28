@@ -10,6 +10,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.18.1] — 2026-08-28
+
+Phone-friendly login, register, and chat, plus username-or-email accounts with clearer form errors.
+
+### Added
+- **Username or email** — register and sign in with a short name (`emil`) or a work email (`you@company.com`), like other apps.
+
+### Changed
+- **Auth errors** — invalid email, short/long password, taken name, and similar problems show under the field with a calm sentence (EN / AZ / RU), not a blunt red banner.
+
+### Fixed
+- **Mobile layout** — login/register scroll with the keyboard; chat header, composer, sidebar, and signed-in pages (Models, Developer, Lab) fit small phones without clipping.
+
 ## [1.18.0] — 2026-08-27
 
 Phase 0 opens the internal seams needed by later provider, retrieval, media, and tool releases without enabling unfinished user features.
@@ -346,7 +359,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.1...HEAD
+[1.18.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.15.0...v1.16.0

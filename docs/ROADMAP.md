@@ -9,13 +9,13 @@ For the **multi-release expansion arc** — more runtimes than Ollama, image / s
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.18.0](../CHANGELOG.md#1180--2026-08-27) (see [README](../README.md)).
+**Current release:** [v1.18.1](../CHANGELOG.md#1181--2026-08-28) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.18.0**):
+What operators and users can rely on in the current tree (**v1.18.1**):
 
 | Area | Reality |
 |------|---------|
@@ -26,7 +26,7 @@ What operators and users can rely on in the current tree (**v1.18.0**):
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
+| **Auth / guest** | Local accounts with **username or work email**; field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Provider registry with one seeded Ollama endpoint and minimal Admin CRUD for additional LAN Ollama servers; vLLM stays parked until P1. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt and reply; **Clear logs** |
@@ -69,6 +69,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.18.1 — Mobile chat & email login (2026-08-28)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Username or email | `done` | Register and sign in with a short name or work email |
+| Auth field errors | `done` | Invalid email, password length, taken name, and similar show under the field (EN / AZ / RU) |
+| Mobile user surfaces | `done` | Login, register, chat, Models, Developer, and Lab fit small phones |
 
 ### v1.18.0 — Open the seams (2026-08-27)
 

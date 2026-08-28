@@ -64,14 +64,14 @@ export const ShareMenuPortal = ({
         readOnly
         value={url}
         autoFocus
-        className="mt-2 w-full truncate rounded-lg border border-[var(--border)] bg-[var(--select-bg)] px-2 py-1.5 text-[11px] text-[var(--text)]"
+        className="mt-2 w-full truncate rounded-lg border border-[var(--border)] bg-[var(--select-bg)] px-2.5 py-2 text-base text-[var(--text)] sm:py-1.5 sm:text-[11px]"
         onFocus={(event) => event.target.select()}
       />
       <div className="mt-2 flex flex-wrap gap-1.5">
         <button
           type="button"
           onClick={onCopy}
-          className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[11px] font-medium text-white"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-medium text-white sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[11px]"
         >
           {isCopied ? <Check size={12} /> : <Link2 size={12} />}
           {isCopied ? t("common.copied") : t("chat.copyLink")}
@@ -80,7 +80,7 @@ export const ShareMenuPortal = ({
           type="button"
           onClick={onRotate}
           disabled={isBusy}
-          className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--hover)]"
+          className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--hover)] sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[11px]"
         >
           {t("chat.newLink")}
         </button>
@@ -88,7 +88,7 @@ export const ShareMenuPortal = ({
           type="button"
           onClick={onRevoke}
           disabled={isBusy}
-          className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--danger)] hover:bg-[var(--hover)]"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--danger)] hover:bg-[var(--hover)] sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[11px]"
         >
           <Link2Off size={12} />
           {t("chat.revoke")}

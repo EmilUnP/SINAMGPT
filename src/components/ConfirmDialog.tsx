@@ -94,7 +94,7 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
     pending && typeof document !== "undefined"
       ? createPortal(
           <div
-            className="fixed inset-0 z-[300] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+            className="fixed inset-0 z-[300] flex items-end justify-center bg-black/60 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:items-center sm:p-4"
             onClick={() => close(false)}
             role="presentation"
           >
@@ -104,7 +104,7 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
               aria-modal="true"
               aria-labelledby={titleId}
               aria-describedby={descId}
-              className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 shadow-2xl sm:p-5"
+              className="w-full max-w-md rounded-t-3xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 shadow-2xl sm:rounded-2xl sm:p-5"
               onClick={(event) => event.stopPropagation()}
             >
               <h2
@@ -124,7 +124,7 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
                   ref={cancelRef}
                   type="button"
                   onClick={() => close(false)}
-                  className="rounded-xl border border-[var(--border)] px-3.5 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--hover)]"
+                  className="min-h-11 rounded-xl border border-[var(--border)] px-3.5 py-2.5 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--hover)] sm:min-h-0 sm:py-2"
                 >
                   {pending.cancelLabel || t("common.cancel")}
                 </button>
@@ -134,8 +134,8 @@ export const ConfirmProvider = ({ children }: { children: ReactNode }) => {
                   onClick={() => close(true)}
                   className={
                     pending.tone === "danger"
-                      ? "rounded-xl bg-[var(--danger)] px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                      : "rounded-xl bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                      ? "min-h-11 rounded-xl bg-[var(--danger)] px-3.5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 sm:min-h-0 sm:py-2"
+                      : "min-h-11 rounded-xl bg-[var(--accent)] px-3.5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 sm:min-h-0 sm:py-2"
                   }
                 >
                   {pending.confirmLabel || t("common.confirm")}

@@ -81,7 +81,7 @@ export const ChatMessageList = ({
               ) : null}
             </div>
             <div
-              className={`rounded-2xl px-4 py-3 text-sm ${
+              className={`rounded-2xl px-3 py-2.5 text-sm sm:px-4 sm:py-3 ${
                 isUser
                   ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-sm"
                   : "border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] shadow-sm"

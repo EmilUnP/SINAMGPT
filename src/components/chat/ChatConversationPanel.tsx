@@ -39,7 +39,7 @@ export const ChatConversationPanel = ({
 }: ChatConversationPanelProps) => (
   <>
     {(modelState.modelsError || error) && (
-      <div className="border-b border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-[var(--text)]">
+      <div className="border-b border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-[var(--text)] sm:px-4">
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
           <p>{error || modelState.modelsError}</p>
           <button

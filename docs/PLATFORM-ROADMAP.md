@@ -7,72 +7,87 @@ This is a **separate track** from [ROADMAP.md](./ROADMAP.md). That file stays th
 record of what shipped release by release; this one is the multi-release arc those releases
 will come from. When a phase here ships, record it there as usual.
 
-Updated for **v1.18.0**. Status key: `planned` · `in progress` · `done` · `deferred`.
+Updated for **v1.18.1**, re-verified against the tree on **2026-08-28**.
+Status key: `planned` · `in progress` · `done` · `deferred`.
 
 ---
 
-## 1. Audit — what 17 releases actually bought us
+## 1. Audit — the board after Phase 0
 
-Most of the codebase is reusable as-is. The expansion does not need a rewrite.
+Re-checked against the code, not the changelog. Three of the four ❌ rows are cleared.
 
-| Layer | What is there | Verdict |
-|-------|---------------|---------|
-| Auth & roles | Local accounts, bcrypt, signed cookie, middleware role gate, rate limits | **Reuse as-is** |
-| Feature flags | `feature_flags` in `app_settings`, 5 flags, default-off, admin toggles | **Exactly the right pattern** — every new capability ships behind one |
-| Admin console | Users, model Activate gate, settings, live usage, knowledge, guardrails | **Control surface for everything new** |
-| Streaming | SSE with keepalive, abort on disconnect, token accounting | **Reuse for job progress** |
-| Citations | `messages.sources` + the “From: …” UI | **Ready-made surface for web results** |
-| Public API | OpenAI-compatible `/api/v1`, keys, limits, CORS, dev lab | **Extend, don’t rebuild** |
-| Model catalog | `models` table with `vision / tools / audio / video` booleans | ⚠️ Needs a **task** dimension |
-| Retrieval | Keyword + IDF with an EN/AZ/RU query gloss — no vectors | ⚠️ Keep it, **add** a second retriever |
-| Usage telemetry | `usage_events` shaped around prompt chars, TTFT, tokens/sec | ⚠️ Cannot describe a render job |
-| Guardrails | Layered detectors over user input, DB-editable policy | ⚠️ Must also cover **tool output** |
-| Provider layer | `getEnabledBackends()` returns literal `["ollama"]`; vLLM adapter is dead code | ❌ Seam exists, welded shut |
-| Long work | Everything request-scoped; no queue, no job records, no worker | ❌ Missing entirely |
-| Tool calling | One forward pass per turn; `tools` flag is display-only | ❌ Missing entirely |
-| Unit tests | `scripts/deep-chat-test.mjs` + `/lab` suites only | ❌ Missing entirely |
+| Layer | State today | Verdict |
+|-------|-------------|---------|
+| Provider layer | SQLite registry, AES-256-GCM keys, free-text provider ids, Admin CRUD | ✅ **Seam open** *(was: welded shut)* |
+| Long work | Persistent jobs, atomic claims, leases, recovery, cancel, SSE progress | ✅ **Solved** *(was: missing entirely)* |
+| Tool calling | Validated, bounded, guarded loop — zero tools registered by design | ✅ **Ready** *(was: missing entirely)* |
+| Unit tests | 77 passing across 13 files, no Ollama or app DB needed | ✅ **Established** *(was: missing entirely)* |
+| Model catalog | `models.kind` constrains all seven task types | ✅ **Task dimension added** |
+| Chat client | 350-line orchestrator, 6 hooks, ~20 components | ✅ **Ready for new surfaces** |
+| Auth & roles | Local accounts, bcrypt, signed cookie, middleware role gate, rate limits | ✅ Reuse as-is |
+| Feature flags | Now **7** flags (`jobQueue`, `toolCalling` added), all default-off | ✅ Still exactly the right pattern |
+| Admin console | Users, Activate gate, settings, usage, knowledge, guardrails, **providers** | ✅ Control surface for everything new |
+| Streaming | SSE with keepalive, abort, token accounting — now also job progress | ✅ Reuse |
+| Citations | `messages.sources` + the “From: …” UI | ✅ Ready-made surface for web results |
+| Public API | OpenAI-compatible `/api/v1`, keys, limits, CORS, dev lab | ✅ Extend, don’t rebuild |
+| Retrieval | Still keyword + IDF with the EN/AZ/RU gloss — no vectors yet | ⚠️ Scheduled — **P2a** |
+| Usage telemetry | Still chat-shaped; `jobs` covers job state but not usage reporting | ⚠️ Fold into **P5** |
+| Guardrails | Layered detectors; P0.6 added a guard pass over tool inputs **and** outputs | ⚠️ Extend with domain policy in **P3** |
+| Guest chat client | `HomeTryChat.tsx` is 949 lines — the P0.4 split covered the signed-in app only | ⚠️ Carry-forward — **P6.4** |
+| Lint gate | 4 errors + 1 warning, all pre-existing, none in P0 code | ❌ **Red** — see §3a |
 
 ---
 
 ## 2. Diagnosis — what blocks each goal
 
-### Goal 1 — Universal, not Ollama-only
+*Original diagnosis, annotated with what Phase 0 resolved. Kept as a record of why the
+plan is shaped the way it is.*
 
-The abstraction folder (`src/lib/llm/`) is real and well-factored, but every entry point
-routes back to one adapter. The vLLM adapter is ~90 % complete and permanently off.
+### Goal 1 — Universal, not Ollama-only · **mostly resolved**
 
-```
-src/lib/llm/index.ts   getEnabledBackends()  → ["ollama"]
-src/lib/llm/index.ts   resolveModelBackend() → "ollama"
-src/lib/llm/vllm.ts    isVllmEnabled()       → false
-src/lib/db.ts          CHECK (backend IN ('ollama','vllm'))
-```
+The abstraction folder (`src/lib/llm/`) was real and well-factored, but every entry point
+routed back to one adapter, and provider config was a single env var with no credentials,
+no second instance and no registry.
 
-Provider config is a single env var (`OLLAMA_BASE_URL`) — no credentials, no second
-instance, no registry.
+| Was | Now |
+|-----|-----|
+| `getEnabledBackends() → ["ollama"]` | ✅ reads `listEnabledProviderConfigs()` |
+| `resolveModelBackend() → "ollama"` | ✅ resolves through the registry |
+| `CHECK (backend IN ('ollama','vllm'))` | ✅ dropped — provider id is free text |
+| single `OLLAMA_BASE_URL`, no credentials | ✅ `providers` table, AES-256-GCM keys |
+| `isVllmEnabled() → false` | ⏳ **still false** — P1.1 |
+| — | ⏳ `ProviderKind` still `"ollama" \| "vllm"` — P1.2 |
 
-### Goal 2 — Many model types
+### Goal 2 — Many model types · **classification resolved, models not built**
 
-Every capability flag answers *“what can the chat model swallow?”*. Nothing expresses
-*“this model’s output is a PNG”* or *“this model returns a vector”*.
+Every capability flag answered *“what can the chat model swallow?”*. Nothing expressed
+*“this model’s output is a PNG”* or *“this model returns a vector”*. `models.kind` now
+does, with all seven kinds constrained at the schema level and chat routes rejecting
+non-chat models.
 
-- `src/lib/llm/types.ts` — `{ vision, tools, audio, tts, video }`, all input-shaped
+Still true, and still the work of P2a / P2b / P5:
+
 - `src/lib/speak.ts` — TTS is `window.speechSynthesis`, i.e. the browser, not a model
 - `src/lib/llm/ollama.ts` — STT is a WAV smuggled through the `images[]` array, plus an
   `AUDIO_SYSTEM` prompt talking the model out of claiming the file is missing
 - Embeddings, reranking, image generation, video generation — not present
 
-### Goal 3 — Internet search
+### Goal 3 — Internet search · **blocker removed**
 
-A turn is one forward pass: `withSystemPrompt()` → `streamChat()` → done. No `tool_calls`
-handling in any adapter. Search is not blocked by a missing search API — it is blocked by
-the absence of the runtime primitive that search, file writing and image generation share.
+A turn was one forward pass: `withSystemPrompt()` → `streamChat()` → done, with no
+`tool_calls` handling anywhere. Search was never blocked by a missing search API — it was
+blocked by the absence of the runtime primitive that search, file writing and image
+generation share.
 
-### Goal 4 — Files
+P0.6 built that primitive: validated, bounded, guarded, traced, and shipping with an empty
+registry. What remains is a search provider and two tool definitions.
+
+### Goal 4 — Files · **unchanged**
 
 Five accepted mime types: four image formats plus `audio/wav` (30 s cap). No extraction,
-no chunking, no generation, no editing. And retrieval is keyword-only, so even perfect
-extraction would land in a search engine that cannot match a paraphrase.
+no chunking, no generation, no editing. And retrieval is still keyword-only, so even
+perfect extraction would land in a search engine that cannot match a paraphrase — which is
+why P2a comes first.
 
 ---
 
@@ -80,12 +95,27 @@ extraction would land in a search engine that cannot match a paraphrase.
 
 Not features — conditions that make every later feature cheaper or more expensive.
 
-| # | Risk | Why it compounds |
-|---|------|------------------|
-| **R1** | `ChatApp.tsx` is **2,477 lines** | About to receive file cards, image galleries, video players, tool traces and a search panel. Splitting costs days now, ~10× that after four surfaces tangle into it. |
-| **R2** | Long work has nowhere to run | Image gen 5–30 s, video minutes, embedding a 300-page PDF minutes. The last two commits both fought `maxDuration` on the chat route. Raising the ceiling does not fix the shape. |
-| **R3** | Nothing pure is under test | `capabilities`, `multilang`, `knowledge` scoring and `guardrail-engine` are pure functions with real logic and zero unit tests. |
-| **R4** | 32 GB cannot hold the whole roster | Chat + embed + STT + TTS fit. Image gen does not fit alongside a 32B chat model. See §6. |
+| # | Risk | Status |
+|---|------|--------|
+| **R1** | `ChatApp.tsx` is 2,477 lines | ✅ **Cleared** by P0.4 — now 350 lines. Partially recurs as `HomeTryChat.tsx` (949 lines), see F4. |
+| **R2** | Long work has nowhere to run | ✅ **Cleared** by P0.3 — persistent jobs with leases, recovery, cancel and SSE progress. |
+| **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 77 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters. |
+| **R4** | 32 GB cannot hold the whole roster | ⏳ **Open, unchanged.** Nothing in P0 loads a model. Chat + embed + STT + TTS fit; image gen does not. See §6. |
+
+---
+
+## 3a. Findings — clear before P1
+
+Five items surfaced by the 2026-08-28 re-check. None are large; two get more expensive
+once providers carry real credentials.
+
+| # | Severity | Finding |
+|---|----------|---------|
+| **F1** | **Fix now** | **Lint gate is red.** Four `setState`-in-effect errors plus one missing-dependency warning — `AdminUsagePanel:260`, `HomeTryChat:173`, `MessageAudio:168`, `DeveloperConsole:64`, `ModelPicker:125` (warn). All predate P0; none are in new code. But v1.4.2 shipped “green lint gate” as an achievement and it has quietly stopped being true. |
+| **F2** | **Decide** | **Provider keys are encrypted with `SESSION_SECRET`** (`providers.ts:63`). Harmless today — the only provider is a LAN Ollama with no key. But the README tells operators to rotate `SESSION_SECRET` for company use, and once P1 adds a keyed provider, rotating it makes every stored key undecryptable. It fails loudly (`providers.ts:117`), which is right. Choose: a dedicated `PROVIDER_KEY_SECRET`, or document “re-enter provider keys after rotating”. **Decide before P1, not after.** |
+| **F3** | Soon | **Both P0 exit-criteria proofs are skipped by default.** `providers.integration.test.ts` needs `RUN_PROVIDER_INTEGRATION=1`; the four-minute job test needs `RUN_LONG_JOB_TEST=1`. Correctly gated — a 4-minute test does not belong in a 4-second suite — but it means the exit criteria are proven by tests nobody runs. Add a `test:integration` script and run it once per phase. |
+| **F4** | Soon | **`HomeTryChat.tsx` is now the biggest chat file** (949 lines) and duplicates composer, streaming and model-picker logic that P0.4 just extracted into shared hooks. Out of scope then, reasonably — but it drifts from its signed-in twin on every change. Fold it before P3/P4 add more surfaces. Scheduled as P6.4. |
+| **F5** | Minor | **`.env.example` did not move with the schema.** It still calls `SESSION_SECRET` only a cookie signing secret (no longer the whole truth) and `OLLAMA_BASE_URL` “the only LLM runtime for now” (now registry seed data). One comment edit. |
 
 ---
 
@@ -110,17 +140,17 @@ Pure enablement. Five of six items are prerequisites for two or more later phase
 **Exit:** a second provider can be added from Admin, a job can run for four minutes, and a
 tool can be registered in one file.
 
-### P1 — Any runtime · `v1.19` · 1–2 weeks · **Goal 1**
+### P1 — Any runtime · `v1.19` · **~1 week** (was 1–2) · **Goal 1** · `next`
 
-Cheap now because `vllm.ts` already translates OpenAI streaming chunks into the Ollama
-NDJSON shape the chat route expects.
+**Smaller than scoped.** The registry, encrypted credentials and the Admin CRUD panel all
+landed inside P0. What is left is adapter work plus operational controls.
 
 | # | Item | Detail |
 |---|------|--------|
-| 1.1 | Un-park vLLM | Flip `isVllmEnabled`, route through the registry, verify streaming translation against a live server. |
-| 1.2 | Generic OpenAI adapter | One adapter covers vLLM, LM Studio, llama.cpp server, TGI, LocalAI, and any hosted endpoint speaking the same protocol. Per-provider auth, model list, health ping. |
-| 1.3 | Admin → Providers | Add, test connection, enable, sync models. Each provider reports its own health beside its own model list. |
-| 1.4 | Routing & fallback | `provider:model` addressing, fallback chain when a provider is down, per-provider concurrency limits. |
+| 1.1 | Un-park vLLM | `isVllmEnabled()` still returns `false` (`llm/vllm.ts:18`) and the registry already routes around it. Flip it, then verify streaming translation against a live server. |
+| 1.2 | Generic OpenAI adapter | `ProviderKind` is still `"ollama" \| "vllm"` (`llm/types.ts:5`). Widening it to a generic OpenAI-compatible kind covers LM Studio, llama.cpp server, TGI and LocalAI in one adapter. |
+| 1.3 | Admin → Providers · **CRUD `done`** | Add / edit / enable / disable / delete already ship (`AdminProvidersPanel.tsx`, 326 lines). **Remaining:** test-connection, per-provider health, model sync from the panel. |
+| 1.4 | Routing & fallback | `provider:model` addressing already exists (`qualifyModelName` in `llm/index.ts`). **Remaining:** fallback chain when a provider is down, per-provider concurrency limits. |
 | 1.5 | Keep the LAN promise honest | Hosted providers possible but **off by default**, with an explicit warning at add-time that traffic leaves the building. The README claim stays true unless an admin deliberately changes it. |
 
 **Exit:** a model on a second machine appears in the picker and answers.
@@ -214,8 +244,9 @@ bolted onto a chat window is a worse product than five in a coherent one.
 | 6.1 | Task-first model picker | Ask what the user wants to *do*, then which model. The input-badge pill is already dense at 9 models and will not survive 20 across 7 kinds. |
 | 6.2 | Jobs tray | One global view of what is running, progress, cancel. Required the moment anything outlives a reply. |
 | 6.3 | Unified studio | Chat, images, transcription, documents behind one shell with a shared picker and history. |
-| 6.4 | Clear the standing backlog | Command palette, first-login onboarding, chat export, project archive — all already listed. Export is nearly free once 4b exists. |
-| 6.5 | Accessibility & mobile pass | One deliberate sweep over the new surfaces, translated to all three languages at the same time. |
+| 6.4 | Fold in the guest client | Retire the duplicated composer / streaming / picker logic in `HomeTryChat.tsx` onto the shared hooks and components from P0.4. See F4. |
+| 6.5 | Clear the standing backlog | Command palette, first-login onboarding, chat export, project archive — all already listed. Export is nearly free once 4b exists. |
+| 6.6 | Accessibility & mobile pass | One deliberate sweep over the new surfaces, translated to all three languages at the same time. |
 
 **Exit:** v2.0. A new employee understands the whole product without being told which page does what.
 
@@ -233,12 +264,15 @@ not a daily-driver feature. **If the roadmap must shed a phase, this is the one.
 
 ## 5. Why this order
 
-| Chain | Reason |
-|-------|--------|
-| `P0 → everything` | Five of six foundation items are prerequisites for 2+ later phases. Building them inside the first feature that needs them means building them crookedly, then rebuilding. |
-| `P0.6 → P3, P4b, P5` | Web search, document writing and image-from-chat are the same shape: the model asks, something runs, the result returns. One loop + three tool definitions, instead of three bespoke integrations. |
-| `P2a → P3, P4a` | Embeddings/reranking are the cheapest phase and raise the ceiling on both web results and file Q&A. Done afterwards, search gets built twice. |
-| `P0.3 → P2a, P4a, P5, P7` | The queue lets a render, transcription or 300-page ingest outlive an HTTP request. Every media phase is blocked on it. |
+Three of the four chains are now **spent** — the foundation they described is built. They
+are kept because they explain why the remaining phases are as cheap as they are.
+
+| Chain | Status | Reason |
+|-------|--------|--------|
+| `P0 → everything` | ✅ spent | Six items, all landed, none rebuilt. The bet was that building foundations inside the first feature that needs them produces crooked foundations. **P1 shrinking by a week is the payoff arriving early.** |
+| `P0.6 → P3, P4b, P5` | ✅ spent | One validated, bounded, guarded loop now exists with an empty registry. Web search, document writing and image-from-chat are each a tool definition rather than an integration. |
+| `P0.3 → P2a, P4a, P5, P7` | ✅ spent | The queue had the most hidden depth — leases, atomic claims, stale recovery, reconnectable progress. Discovering that inside an image feature would have been expensive. |
+| `P2a → P3, P4a` | ⏳ live | The one dependency still ahead. Embeddings/reranking remain the cheapest phase and raise the ceiling on both web results and file Q&A. Done afterwards, search gets built twice. |
 
 ---
 
@@ -266,14 +300,14 @@ Video (P7) needs the second machine outright.
 
 ## 7. Open decisions
 
-None of these block starting. Each is cheaper to answer now than mid-build.
+Re-dated after Phase 0. One is now urgent because P1 is next; the rest sit where they did.
 
 | # | Decision | Blocks |
 |---|----------|--------|
-| 1 | **Second GPU machine, or unload-and-swap on the one we have?** A second box makes image/video routine and costs money; swapping is free and pauses chat during renders. P1 makes either a settings change — but the answer cannot wait past P5. | P5, P7 |
-| 2 | **Self-hosted search or a commercial search API?** Self-hosted keeps every employee query inside the building and matches the README. A commercial API returns better results and sends each query to a third party. Policy call, not technical. | P3 |
-| 3 | **Are hosted models allowed at all, ever?** “No third-party cloud APIs” is currently a property of the *code*. After P1 it becomes a property of the *configuration*. If it must stay absolute, it gets enforced in the provider registry rather than left to admin discipline. | P1 |
-| 4 | **How large does the knowledge base actually get?** Under ~50k chunks, vectors in SQLite with brute-force cosine are fine and add no dependency. Well beyond that wants a real vector index. Changes P2a’s storage design and nothing else. | P2a |
+| 1 | **Are hosted models allowed at all, ever?** ⚠️ **Now urgent.** “No third-party cloud APIs” has already stopped being a property of the *code* — the registry accepts any provider id. After P1 it is purely a property of *configuration*. If it must stay absolute, say so and it gets enforced in the registry rather than left to admin discipline. | **P1 — next up** |
+| 2 | **How large does the knowledge base actually get?** Under ~50k chunks, vectors in SQLite with brute-force cosine are fine and add no dependency. Well beyond that wants a real vector index. Changes P2a’s storage design and nothing else. | P2a |
+| 3 | **Self-hosted search or a commercial search API?** Self-hosted keeps every employee query inside the building and matches the README. A commercial API returns better results and sends each query to a third party. Policy call, not technical. | P3 |
+| 4 | **Second GPU machine, or unload-and-swap on the one we have?** A second box makes image/video routine and costs money; swapping is free and pauses chat during renders. Still several phases away — and P0.1 already made either answer a configuration change rather than a code change. | P5, P7 |
 
 ---
 

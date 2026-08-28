@@ -1,6 +1,7 @@
 import Image from "next/image";
 import sinamLogo from "@/assets/sinam_logo.png";
 import type { useLocale } from "@/components/LocaleProvider";
+import { displayAccountName } from "@/lib/account-name";
 
 type Translate = ReturnType<typeof useLocale>["t"];
 
@@ -19,23 +20,23 @@ export const ChatEmptyState = ({
   onSelect,
   t,
 }: ChatEmptyStateProps) => (
-  <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 py-6 text-center sm:px-6">
+  <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-3 py-5 text-center sm:px-6 sm:py-6">
     <Image
       src={sinamLogo}
       alt={t("common.brand")}
       width={84}
       height={84}
-      className="soft-rise h-[84px] w-[84px] rounded-full shadow-[0_12px_40px_rgba(37,99,235,0.18)]"
+      className="soft-rise h-16 w-16 rounded-full shadow-[0_12px_40px_rgba(37,99,235,0.18)] sm:h-[84px] sm:w-[84px]"
       style={{ width: "auto", height: "auto" }}
       priority
     />
-    <p className="mt-5 text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
-      {t("chat.helloUser", { name: username })}
+    <p className="mt-4 max-w-full break-words text-2xl font-semibold tracking-tight text-[var(--text)] sm:mt-5 sm:text-3xl md:text-4xl">
+      {t("chat.helloUser", { name: displayAccountName(username) })}
     </p>
     <p className="mt-3 max-w-md text-[var(--text-muted)]">
       {t("chat.signedInSub")}
     </p>
-    <div className="mt-8 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className="mt-6 grid w-full grid-cols-1 gap-2 sm:mt-8 sm:grid-cols-2">
       {suggestions.map((item, index) => (
         <button
           key={item.title}

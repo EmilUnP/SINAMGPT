@@ -95,7 +95,7 @@ export const ThemeToggle = ({
             ref={menuRef}
             id={menuId}
             role="menu"
-            className="theme-toggle-menu fixed z-[200] min-w-[10rem] overflow-hidden rounded-xl p-1"
+            className="theme-toggle-menu fixed z-[200] max-w-[calc(100vw-1rem)] min-w-[10rem] overflow-hidden rounded-xl p-1"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             {options.map(({ id, label, icon: Icon }) => {

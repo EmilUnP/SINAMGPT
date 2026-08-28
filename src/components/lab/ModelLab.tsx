@@ -871,7 +871,7 @@ export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
         ]}
       />
 
-      <main className="relative z-10 mx-auto max-w-7xl space-y-5 px-4 py-6">
+      <main className="safe-x relative z-10 mx-auto max-w-7xl space-y-5 px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6">
         <AdminPanelCard>
           <div className="space-y-4 px-4 py-4">
             <p className="text-sm leading-relaxed text-[var(--admin-muted)]">

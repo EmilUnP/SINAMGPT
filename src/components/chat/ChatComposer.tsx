@@ -107,9 +107,9 @@ export const ChatComposer = ({
   onDrop,
   t,
 }: ChatComposerProps) => (
-  <div className="safe-bottom relative z-20 overflow-visible border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-3 py-3 backdrop-blur md:px-5">
+  <div className="safe-bottom relative z-20 overflow-visible border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 px-2 py-2 backdrop-blur sm:px-3 sm:py-3 md:px-5">
     <div
-      className={`composer-shell relative mx-auto flex max-w-3xl flex-col gap-2 rounded-[24px] border bg-[var(--composer-bg)] p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
+      className={`composer-shell relative mx-auto flex max-w-3xl flex-col gap-2 rounded-[20px] border bg-[var(--composer-bg)] p-1.5 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-[var(--ring)] sm:rounded-[24px] sm:p-2 ${
         isDraggingOver
           ? "border-sky-400 ring-4 ring-[var(--ring)]"
           : "border-[var(--border)]"
@@ -159,7 +159,7 @@ export const ChatComposer = ({
           })}
         />
       ) : null}
-      <div className="flex items-end gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap items-end gap-1.5 sm:flex-nowrap sm:gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -172,12 +172,14 @@ export const ChatComposer = ({
             onFiles(files);
           }}
         />
-        <ComposerToolsMenu
-          sections={toolSections}
-          disabled={isReady && (isSending || !model)}
-          ariaLabel={t("chat.toolsMenu")}
-          closeLabel={t("chat.closeTools")}
-        />
+        <div className="order-2 shrink-0 sm:order-1">
+          <ComposerToolsMenu
+            sections={toolSections}
+            disabled={isReady && (isSending || !model)}
+            ariaLabel={t("chat.toolsMenu")}
+            closeLabel={t("chat.closeTools")}
+          />
+        </div>
         <textarea
           ref={textareaRef}
           value={input}
@@ -192,7 +194,7 @@ export const ChatComposer = ({
                 ? t("chat.imagePlaceholder")
                 : t("chat.messagePlaceholder")
           }
-          className="max-h-40 min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:px-3 sm:text-[15px]"
+          className="order-1 max-h-40 min-h-[44px] w-full min-w-0 resize-none bg-transparent px-2 py-2.5 text-base text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:order-2 sm:w-auto sm:flex-1 sm:px-3 sm:text-[15px]"
         />
         <ModelPicker
           models={models}
@@ -207,31 +209,33 @@ export const ChatComposer = ({
             const key = fleetHintKey(option.name);
             return key ? t(key) : undefined;
           }}
-          className="shrink-0"
+          className="order-3 min-w-0 flex-1 sm:flex-none sm:shrink-0"
         />
         {canUseMic ? (
-          <ChatMicControls
-            isReady={isReady}
-            isSending={isSending}
-            isRecording={isRecording}
-            isProcessing={isProcessingAudio}
-            hasModel={Boolean(model)}
-            isPickerOpen={micPickerOpen}
-            devices={micDevices}
-            deviceId={micDeviceId}
-            currentLabel={currentMicLabel}
-            pickerRef={micPickerRef}
-            onToggle={onToggleMic}
-            onOpenPicker={onOpenMicPicker}
-            onSelect={onSelectMic}
-            t={t}
-          />
+          <div className="order-4 shrink-0">
+            <ChatMicControls
+              isReady={isReady}
+              isSending={isSending}
+              isRecording={isRecording}
+              isProcessing={isProcessingAudio}
+              hasModel={Boolean(model)}
+              isPickerOpen={micPickerOpen}
+              devices={micDevices}
+              deviceId={micDeviceId}
+              currentLabel={currentMicLabel}
+              pickerRef={micPickerRef}
+              onToggle={onToggleMic}
+              onOpenPicker={onOpenMicPicker}
+              onSelect={onSelectMic}
+              t={t}
+            />
+          </div>
         ) : null}
         {isSending ? (
           <button
             type="button"
             onClick={onStop}
-            className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
+            className="touch-target order-5 mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] transition hover:opacity-90 sm:h-10 sm:w-10"
             aria-label={t("chat.stopGenerating")}
           >
             <Square size={14} fill="currentColor" />
@@ -249,7 +253,7 @@ export const ChatComposer = ({
                   !isRecording) ||
                 !model)
             }
-            className="touch-target mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
+            className="touch-target order-5 mb-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)] transition hover:from-blue-500 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40 sm:h-10 sm:w-10"
             aria-label={t("chat.sendMessage")}
           >
             <SendHorizonal size={16} />

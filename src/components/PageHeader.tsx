@@ -44,12 +44,12 @@ export const PageHeader = ({
   return (
     <header className="page-chrome relative z-10 border-b border-[var(--admin-border)] bg-[var(--bg-elevated)]/90 backdrop-blur-md">
       <div
-        className={`mx-auto flex ${maxWidthClass} flex-wrap items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:py-4`}
+        className={`mx-auto flex ${maxWidthClass} flex-wrap items-center justify-between gap-2 py-2.5 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:gap-3 sm:py-4 sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))]`}
       >
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Link
             href={backHref}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)] sm:min-h-0"
             aria-label={backLabel}
           >
             <ArrowLeft size={16} />
@@ -88,7 +88,7 @@ export const PageHeader = ({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
           <LanguageToggle size="sm" />
           <ThemeToggle size="sm" />
           {links.map(({ href, label, icon: LinkIcon }) => (

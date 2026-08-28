@@ -96,7 +96,7 @@ export const ChatSidebarContainer = ({
             aria-label={t("chat.closeMenu")}
             onClick={() => setMobileSidebar(false)}
           />
-          <div className="relative z-10 h-full max-h-dvh shadow-2xl">
+          <div className="relative z-10 h-full max-h-dvh w-auto max-w-[calc(100vw-2rem)] shadow-2xl">
             {sidebar}
           </div>
         </div>

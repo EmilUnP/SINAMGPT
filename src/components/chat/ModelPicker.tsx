@@ -269,7 +269,7 @@ export const ModelPicker = ({
       tabIndex={-1}
       className={`menu-surface overflow-y-auto rounded-xl p-1 ${
         isComposer
-          ? "absolute bottom-full right-0 z-50 mb-2 min-w-[16rem] max-h-80"
+          ? "absolute bottom-full left-0 z-50 mb-2 max-h-80 min-w-[min(16rem,calc(100vw-2rem))] max-w-[min(20rem,calc(100vw-1.5rem))] sm:left-auto sm:right-0"
           : "fixed z-[200]"
       }`}
       style={

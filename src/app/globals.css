@@ -446,8 +446,8 @@ html[data-theme="dark"] ::selection {
 
 /* Compact pill inside the chat box — same height as + / mic / send. */
 .model-picker-trigger.in-composer {
-  width: auto;
-  max-width: 7.5rem;
+  width: 100%;
+  max-width: 11rem;
   margin-bottom: 0.125rem;
   border-color: transparent;
   background: color-mix(in srgb, var(--text) 8%, transparent);
@@ -461,6 +461,7 @@ html[data-theme="dark"] ::selection {
 
 @media (min-width: 640px) {
   .model-picker-trigger.in-composer {
+    width: auto;
     max-width: 11rem;
   }
 }

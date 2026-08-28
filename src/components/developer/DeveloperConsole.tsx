@@ -263,7 +263,7 @@ console.log(completion.choices[0].message.content);`;
   };
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg)] text-[var(--admin-fg)]">
+    <div className="relative min-h-dvh bg-[var(--bg)] text-[var(--admin-fg)]">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0"
@@ -291,7 +291,7 @@ console.log(completion.choices[0].message.content);`;
         }
       />
 
-      <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 py-6">
+      <main className="safe-x relative z-10 mx-auto max-w-6xl space-y-5 px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6">
         <AdminPanelCard>
           <div className="space-y-4 px-4 py-4">
             <p className="text-sm leading-relaxed text-[var(--admin-muted)]">

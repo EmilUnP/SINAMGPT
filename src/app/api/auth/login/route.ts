@@ -5,7 +5,7 @@ import { markActive, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  username: z.string().trim().min(1).max(64),
+  username: z.string().trim().min(1).max(254),
   password: z.string().min(1).max(128),
 });
 
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
     const ipLimit = takeRateLimit(`login:ip:${ip}`, 30, 15 * 60 * 1000);
     if (!ipLimit.ok) {
       return NextResponse.json(
-        { error: "Too many login attempts. Try again later." },
+        {
+          error: "Too many login attempts. Try again later.",
+          code: "rate_limited",
+        },
         {
           status: 429,
           headers: { "Retry-After": String(ipLimit.retryAfterSec) },
@@ -30,7 +33,10 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        {
+          error: "Username and password are required",
+          code: "username_password_required",
+        },
         { status: 400 },
       );
     }
@@ -43,7 +49,10 @@ export async function POST(request: Request) {
     );
     if (!userLimit.ok) {
       return NextResponse.json(
-        { error: "Too many login attempts. Try again later." },
+        {
+          error: "Too many login attempts. Try again later.",
+          code: "rate_limited",
+        },
         {
           status: 429,
           headers: { "Retry-After": String(userLimit.retryAfterSec) },
@@ -68,12 +77,18 @@ export async function POST(request: Request) {
 
     // Same response for missing / disabled / wrong password (no account probing)
     if (!user || user.is_active !== 1) {
-      return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status: 401 });
+      return NextResponse.json(
+        { error: GENERIC_AUTH_ERROR, code: "invalid_credentials" },
+        { status: 401 },
+      );
     }
 
     const ok = await verifyPassword(password, user.password_hash);
     if (!ok) {
-      return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status: 401 });
+      return NextResponse.json(
+        { error: GENERIC_AUTH_ERROR, code: "invalid_credentials" },
+        { status: 401 },
+      );
     }
 
     markActive(user.id);
@@ -88,6 +103,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("login error", error);
-    return NextResponse.json({ error: "Could not log in" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not log in", code: "login_failed" },
+      { status: 500 },
+    );
   }
 }
