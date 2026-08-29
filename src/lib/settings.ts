@@ -28,6 +28,10 @@ const KEY_TEMPERATURE = "chat_temperature";
 const KEY_NUM_PREDICT = "chat_num_predict";
 const KEY_TOP_P = "chat_top_p";
 
+const MODEL_REFRESH_TTL_MS = 60_000;
+let lastModelRefreshAt = 0;
+let modelRefreshInFlight: Promise<void> | null = null;
+
 const normalizeModelKind = (value: string | null): ModelKind =>
   value && isModelKind(value) ? value : "chat";
 
@@ -388,6 +392,7 @@ export const syncModelsFromProviders = async (
     }),
   );
 
+  lastModelRefreshAt = Date.now();
   return liveModels.map((m) => {
     const meta = metaMap.get(m.name);
     const storedName = meta?.display_name?.trim() ?? "";
@@ -520,27 +525,106 @@ export const modelSupportsAudio = (name: string): boolean => {
   return inferCapabilities(resolved).audio;
 };
 
-export const getEnabledModels = async (): Promise<{
-  models: PublicModel[];
-  defaultModel: string;
-}> => {
-  const all = await syncModelsFromProviders();
-  const enabled = all.filter((m) => m.is_enabled && m.kind === "chat");
-  const names = enabled.map((m) => m.name);
+const displayNameFor = (name: string, stored: string | null): string => {
+  const storedName = stored?.trim() ?? "";
+  const friendly = fleetDisplayName(name);
+  if (storedName && storedName !== name) return storedName;
+  return friendly || storedName || name;
+};
+
+export const listStoredModels = (): ManagedModel[] => {
+  const rows = getDb()
+    .prepare(
+      `SELECT name, is_enabled, display_name, backend, kind,
+              vision, tools, audio, tts, video, updated_at
+       FROM models`,
+    )
+    .all() as Array<{
+    name: string;
+    is_enabled: number;
+    display_name: string | null;
+    backend: string | null;
+    kind: string | null;
+    vision: number;
+    tools: number;
+    audio: number;
+    tts: number;
+    video: number;
+    updated_at: string;
+  }>;
+
+  return rows.map((row) => ({
+    name: row.name,
+    size: 0,
+    modified_at: row.updated_at,
+    backend: (row.backend?.trim() || "ollama") as LlmBackend,
+    kind: normalizeModelKind(row.kind),
+    is_enabled: row.is_enabled === 1,
+    display_name: displayNameFor(row.name, row.display_name),
+    vision: row.vision === 1,
+    tools: row.tools === 1,
+    audio: row.audio === 1,
+    tts: row.tts === 1,
+    video: row.video === 1,
+  }));
+};
+
+const toPublicModel = (model: ManagedModel): PublicModel => {
+  const { is_enabled: _ignored, ...rest } = model;
+  return {
+    ...rest,
+    vision: Boolean(model.vision),
+    tools: Boolean(model.tools),
+    audio: Boolean(model.audio),
+    tts: Boolean(model.tts),
+    video: Boolean(model.video),
+  };
+};
+
+const packEnabledModels = (
+  models: PublicModel[],
+): { models: PublicModel[]; defaultModel: string } => {
+  const names = models.map((model) => model.name);
   const preferred = getDefaultModelSetting();
   const defaultModel =
     preferred && names.includes(preferred)
       ? preferred
       : getDefaultModel(names);
-  return {
-    models: enabled.map(({ is_enabled: _ignored, ...rest }) => ({
-      ...rest,
-      vision: Boolean(rest.vision),
-      tools: Boolean(rest.tools),
-      audio: Boolean(rest.audio),
-      tts: Boolean(rest.tts),
-      video: Boolean(rest.video),
-    })),
-    defaultModel,
-  };
+  return { models, defaultModel };
+};
+
+const scheduleBackgroundModelRefresh = () => {
+  if (modelRefreshInFlight) return;
+  if (Date.now() - lastModelRefreshAt < MODEL_REFRESH_TTL_MS) return;
+  modelRefreshInFlight = syncModelsFromProviders()
+    .then(() => undefined)
+    .catch((error) => {
+      console.warn(
+        "[OwnGPT] Background model refresh failed:",
+        error instanceof Error ? error.message : error,
+      );
+    })
+    .finally(() => {
+      modelRefreshInFlight = null;
+    });
+};
+
+export const getEnabledModels = async (): Promise<{
+  models: PublicModel[];
+  defaultModel: string;
+}> => {
+  const stored = listStoredModels()
+    .filter((model) => model.is_enabled && model.kind === "chat")
+    .map(toPublicModel);
+  if (stored.length > 0) {
+    scheduleBackgroundModelRefresh();
+    return packEnabledModels(stored);
+  }
+
+  const all = await syncModelsFromProviders();
+  return packEnabledModels(
+    all
+      .filter((model) => model.is_enabled && model.kind === "chat")
+      .map(toPublicModel),
+  );
 };

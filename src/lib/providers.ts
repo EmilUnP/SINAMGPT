@@ -7,6 +7,7 @@ import {
 import { getDb } from "@/lib/db";
 import type { LlmProviderConfig, ProviderKind } from "@/lib/llm/types";
 import {
+  isCloudMetadataHostname,
   providerUrlIsRemote,
   REMOTE_PROVIDER_ACK_MESSAGE,
 } from "@/lib/provider-url";
@@ -167,14 +168,7 @@ export const normalizeProviderBaseUrl = (value: string): string => {
     throw new Error("Provider base URL must not include a query or fragment.");
   }
   const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    hostname === "169.254.169.254" ||
-    hostname === "metadata.google.internal" ||
-    hostname === "100.100.100.200" ||
-    hostname === "::ffff:a9fe:a9fe" ||
-    hostname === "fd00:ec2::254" ||
-    /^fe[89ab][0-9a-f]:/i.test(hostname)
-  ) {
+  if (isCloudMetadataHostname(hostname)) {
     throw new Error("Cloud metadata endpoints cannot be provider URLs.");
   }
   return url.toString().replace(/\/+$/, "");

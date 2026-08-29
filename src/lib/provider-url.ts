@@ -1,6 +1,40 @@
+const stripHostDecorators = (hostname: string): string =>
+  hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+
+/** Cloud instance-metadata hosts, including common encodings. */
+export const isCloudMetadataHostname = (hostname: string): boolean => {
+  const host = stripHostDecorators(hostname);
+  if (
+    host === "metadata.google.internal" ||
+    host.endsWith(".metadata.google.internal")
+  ) {
+    return true;
+  }
+  if (
+    host === "0:0:0:0:0:ffff:a9fe:a9fe" ||
+    host === "::ffff:a9fe:a9fe" ||
+    host === "a9fe:a9fe" ||
+    host === "fd00:ec2::254"
+  ) {
+    return true;
+  }
+  if (host.startsWith("::ffff:")) {
+    return isCloudMetadataHostname(host.slice("::ffff:".length));
+  }
+  if (/^fe[89ab][0-9a-f]:/i.test(host)) return true;
+
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!ipv4) return false;
+  const [a, b, c, d] = ipv4.slice(1).map(Number);
+  if ([a, b, c, d].some((octet) => octet > 255)) return false;
+  if (a === 169 && b === 254 && c === 169 && d === 254) return true;
+  if (a === 100 && b === 100 && c === 100 && d === 200) return true;
+  return false;
+};
+
 /** Hostnames that stay inside the building (loopback, RFC1918, link-local, ULA). */
 export const isPrivateOrLocalHostname = (hostname: string): boolean => {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const host = stripHostDecorators(hostname);
   if (
     host === "localhost" ||
     host.endsWith(".localhost") ||

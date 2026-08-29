@@ -11,7 +11,21 @@ import {
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "owngpt.db");
 
+/** Bump when ensureDatabaseSchema gains a new migration so HMR re-applies once. */
+const SCHEMA_GENERATION = 2;
+
 let db: Database.Database | null = null;
+let appliedSchemaGeneration = 0;
+
+const applyRuntimePragmas = (database: Database.Database) => {
+  database.pragma("busy_timeout = 5000");
+  database.pragma("journal_mode = WAL");
+  database.pragma("synchronous = NORMAL");
+  database.pragma("cache_size = -8000");
+  database.pragma("temp_store = MEMORY");
+  database.pragma("foreign_keys = ON");
+  database.pragma("wal_autocheckpoint = 1000");
+};
 
 const hasColumn = (database: Database.Database, table: string, column: string) => {
   const cols = database.prepare(`PRAGMA table_info(${table})`).all() as Array<{
@@ -23,7 +37,7 @@ const hasColumn = (database: Database.Database, table: string, column: string) =
 export const ensureDatabaseSchema = (database: Database.Database) => {
   database.exec(`
     PRAGMA journal_mode = WAL;
-    PRAGMA wal_autocheckpoint = 1;
+    PRAGMA wal_autocheckpoint = 1000;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS users (
@@ -539,19 +553,14 @@ export const getDb = (): Database.Database => {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     db = new Database(DB_PATH);
-    ensureDatabaseSchema(db);
-    ensureAdminUser(db);
-    try {
-      db.pragma("wal_checkpoint(TRUNCATE)");
-    } catch {
-      // another process may be reading the WAL
-    }
-    return db;
+    applyRuntimePragmas(db);
   }
 
-  // Re-run on cached connections too (idempotent). Next.js HMR can keep an
-  // older connection after new columns were added to ensureSchema.
-  ensureDatabaseSchema(db);
+  if (appliedSchemaGeneration !== SCHEMA_GENERATION) {
+    ensureDatabaseSchema(db);
+    ensureAdminUser(db);
+    appliedSchemaGeneration = SCHEMA_GENERATION;
+  }
   return db;
 };
 

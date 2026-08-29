@@ -10,6 +10,20 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.19.1] — 2026-08-30
+
+Hardening pass: safer provider URLs and proxy identity, plus a model picker that stays up when Ollama is briefly busy.
+
+### Security
+- **Provider metadata SSRF** — provider URLs now reject cloud metadata hosts through one hostname checker, including IPv4-mapped IPv6 encodings.
+- **Proxy IP spoofing** — `X-Forwarded-For` / `X-Real-IP` are ignored unless `TRUST_PROXY=1`.
+- **Browser hardening** — CSP, Cross-Origin-Opener-Policy, and Cross-Origin-Resource-Policy on every page.
+- **Example session secret** — production refuses to start if `SESSION_SECRET` is still the documented example value.
+
+### Changed
+- **Model picker stability** — chat, guest, and `/models` serve the last activated catalog from SQLite. Providers refresh in the background, so a slow or briefly down Ollama no longer empties the picker.
+- **SQLite under load** — busy timeout, WAL checkpointing, and a larger page cache; schema checks run once per process instead of on every query.
+
 ## [1.19.0] — 2026-08-28
 
 Any runtime: Ollama, vLLM, and OpenAI-compatible servers from Admin → Providers. LAN stays the default; hosted URLs need an explicit warning.
@@ -373,7 +387,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.0...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.1...HEAD
+[1.19.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.1...v1.19.0
 [1.18.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.17.0...v1.18.0

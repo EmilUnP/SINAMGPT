@@ -21,6 +21,9 @@ export type FeatureFlags = {
   toolCalling: boolean;
 };
 
+const FLAGS_TTL_MS = 2_000;
+let flagsCache: { at: number; value: FeatureFlags } | null = null;
+
 /** Off until an admin turns the surface on in Settings. */
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   developerApi: false,
@@ -33,13 +36,19 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
 };
 
 export const getFeatureFlags = (): FeatureFlags => {
+  if (flagsCache && Date.now() - flagsCache.at < FLAGS_TTL_MS) {
+    return flagsCache.value;
+  }
   const row = getDb()
     .prepare(`SELECT value FROM app_settings WHERE key = ?`)
     .get(SETTINGS_KEY) as { value: string } | undefined;
-  if (!row?.value) return { ...DEFAULT_FEATURE_FLAGS };
+  if (!row?.value) {
+    flagsCache = { at: Date.now(), value: { ...DEFAULT_FEATURE_FLAGS } };
+    return flagsCache.value;
+  }
   try {
     const parsed = JSON.parse(row.value) as Partial<FeatureFlags>;
-    return {
+    const value: FeatureFlags = {
       developerApi: parsed.developerApi === true,
       devLab: parsed.devLab === true,
       fileUpload: parsed.fileUpload === true,
@@ -48,14 +57,18 @@ export const getFeatureFlags = (): FeatureFlags => {
       jobQueue: parsed.jobQueue === true,
       toolCalling: parsed.toolCalling === true,
     };
+    flagsCache = { at: Date.now(), value };
+    return value;
   } catch {
-    return { ...DEFAULT_FEATURE_FLAGS };
+    flagsCache = { at: Date.now(), value: { ...DEFAULT_FEATURE_FLAGS } };
+    return flagsCache.value;
   }
 };
 
 export const setFeatureFlags = (
   next: Partial<FeatureFlags>,
 ): FeatureFlags => {
+  flagsCache = null;
   const merged: FeatureFlags = {
     ...getFeatureFlags(),
     ...next,

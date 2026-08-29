@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.19.0](./CHANGELOG.md#1190--2026-08-28)
+**Current version:** [1.19.1](./CHANGELOG.md#1191--2026-08-30)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -131,6 +131,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | `ADMIN_PASSWORD` | Required to seed the admin account (min 10 characters) |
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
 | `GUEST_MAX_MESSAGE_CHARS` | Max guest message length |
+| `TRUST_PROXY` | Set `1` only behind a reverse proxy you control; otherwise forwarded client IPs are ignored |
 
 Additional runtimes (Ollama, vLLM, LM Studio, llama.cpp, and other OpenAI-compatible servers) are managed in **Admin → Providers**. Extra runtimes stay off until an admin adds and enables a provider. Localhost and LAN addresses need no extra confirmation; a public or cloud URL requires an explicit “traffic may leave the building” acknowledgement. Provider API keys are encrypted with `PROVIDER_KEY_SECRET` (or `SESSION_SECRET` if that is unset) and are never returned by the Admin API.
 

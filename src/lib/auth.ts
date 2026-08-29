@@ -7,6 +7,7 @@ import { getDb, touchUserActivity } from "./db";
 
 const COOKIE_NAME = "owngpt_session";
 const SESSION_DAYS = 14;
+const EXAMPLE_SESSION_SECRET = "change-me-to-a-long-random-string";
 
 const USER_SELECT = `id, username, role, is_active, created_at, last_active_at`;
 
@@ -14,6 +15,14 @@ const getSecret = (): string => {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 16) {
     throw new Error("SESSION_SECRET must be set (min 16 chars) in .env.local");
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    secret === EXAMPLE_SESSION_SECRET
+  ) {
+    throw new Error(
+      "SESSION_SECRET is still the example value. Set a long random secret before production use.",
+    );
   }
   return secret;
 };

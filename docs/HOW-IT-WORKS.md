@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.19.0
+**Current product:** v1.19.1
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -70,6 +70,8 @@ You type a question (any language)  + optional image or short voice clip
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
 **Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
+
+**If Ollama is briefly busy or down:** the model picker still shows the last activated list. New pulls appear after Admin → Models refresh, or within about a minute in the background.
 
 **Foundation in v1.18:** long internal work can use a persistent single-process
 job queue, and future model tools have a validated, guarded runtime. Both are

@@ -7,14 +7,15 @@ This is a **separate track** from [ROADMAP.md](./ROADMAP.md). That file stays th
 record of what shipped release by release; this one is the multi-release arc those releases
 will come from. When a phase here ships, record it there as usual.
 
-Updated for **v1.19.0**, re-verified against the tree on **2026-08-28**.
+Updated for **v1.19.1**, re-verified against the tree on **2026-08-30**.
 Status key: `planned` · `in progress` · `done` · `deferred`.
 
 ---
 
-## 1. Audit — the board after Phase 0
+## 1. Audit — the board after P0 + P1
 
-Re-checked against the code, not the changelog. Three of the four ❌ rows are cleared.
+Re-checked against the code, not the changelog. **All four original ❌ rows are cleared**, and
+so is the lint gate that replaced them.
 
 | Layer | State today | Verdict |
 |-------|-------------|---------|
@@ -33,8 +34,10 @@ Re-checked against the code, not the changelog. Three of the four ❌ rows are c
 | Retrieval | Still keyword + IDF with the EN/AZ/RU gloss — no vectors yet | ⚠️ Scheduled — **P2a** |
 | Usage telemetry | Still chat-shaped; `jobs` covers job state but not usage reporting | ⚠️ Fold into **P5** |
 | Guardrails | Layered detectors; P0.6 added a guard pass over tool inputs **and** outputs | ⚠️ Extend with domain policy in **P3** |
-| Guest chat client | `HomeTryChat.tsx` is 949 lines — the P0.4 split covered the signed-in app only | ⚠️ Carry-forward — **P6.4** |
-| Lint gate | F1 setState-in-effect errors and ModelPicker warning | ✅ **Cleared** in P1 gate |
+| Guest chat client | `HomeTryChat.tsx` is 947 lines — the P0.4 split covered the signed-in app only | ⚠️ Carry-forward — **P6.4** |
+| Lint gate | `npm run lint` runs clean; `npm test` → 97 passing, tree clean | ✅ **Green** |
+| Tool runtime wiring | Loop is called from `chat/route.ts:276` behind a 3-way gate — **registry empty, so it has never executed** | ⚠️ **Prove it** — rank 1 |
+| Chat route | `api/chat/route.ts` is 1,069 lines; next two ranked phases both land in it | ⚠️ Split during P3 — **F7** |
 
 ---
 
@@ -79,15 +82,18 @@ A turn was one forward pass: `withSystemPrompt()` → `streamChat()` → done, w
 blocked by the absence of the runtime primitive that search, file writing and image
 generation share.
 
-P0.6 built that primitive: validated, bounded, guarded, traced, and shipping with an empty
-registry. What remains is a search provider and two tool definitions.
+P0.6 built that primitive **and wired it into the chat route** — validated, bounded, guarded,
+traced, gated. What remains is a search provider and two entries in `bootstrap.ts`.
+
+⚠️ Because the registry is empty, the first gate is always false and **the loop has never run
+in production.** Proving it is why search is now rank 1.
 
 ### Goal 4 — Files · **unchanged**
 
 Five accepted mime types: four image formats plus `audio/wav` (30 s cap). No extraction,
 no chunking, no generation, no editing. And retrieval is still keyword-only, so even
 perfect extraction would land in a search engine that cannot match a paraphrase — which is
-why P2a comes first.
+why **P2a still comes before P4a**, even though it no longer comes before P3.
 
 ---
 
@@ -97,32 +103,72 @@ Not features — conditions that make every later feature cheaper or more expens
 
 | # | Risk | Status |
 |---|------|--------|
-| **R1** | `ChatApp.tsx` is 2,477 lines | ✅ **Cleared** by P0.4 — now 350 lines. Partially recurs as `HomeTryChat.tsx` (949 lines), see F4. |
+| **R1** | `ChatApp.tsx` is 2,477 lines | ✅ **Cleared** by P0.4 — now 350 lines. Partially recurs as `HomeTryChat.tsx` (947 lines) and `api/chat/route.ts` (1,069 lines) — see F4, F7. |
 | **R2** | Long work has nowhere to run | ✅ **Cleared** by P0.3 — persistent jobs with leases, recovery, cancel and SSE progress. |
 | **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 97 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters, routing. |
 | **R4** | 32 GB cannot hold the whole roster | ⏳ **Open, unchanged.** Nothing in P0 loads a model. Chat + embed + STT + TTS fit; image gen does not. See §6. |
 
 ---
 
-## 3a. Findings — clear before P1
+## 3a. Findings
 
-Five items surfaced by the 2026-08-28 re-check. None are large; two get more expensive
-once providers carry real credentials.
+Four of the five from the 2026-08-28 pass are closed. Two new ones surfaced in the
+post-v1.19.0 re-check.
 
 | # | Severity | Finding |
 |---|----------|---------|
-| **F1** | **Fix now** | ✅ **Cleared.** Lint errors in `AdminUsagePanel`, `HomeTryChat`, `MessageAudio`, `DeveloperConsole`, and the `ModelPicker` warning are fixed. |
-| **F2** | **Decide** | ✅ **Decided.** Prefer `PROVIDER_KEY_SECRET`; fall back to `SESSION_SECRET` so existing installs keep working. Rotating `SESSION_SECRET` without a dedicated provider secret still invalidates stored keys — documented in `.env.example` and README. |
-| **F3** | Soon | ✅ **Cleared.** `npm run test:integration` runs the gated provider + long-job tests. |
-| **F4** | Soon | **`HomeTryChat.tsx` is now the biggest chat file** (949 lines) and duplicates composer, streaming and model-picker logic that P0.4 just extracted into shared hooks. Out of scope then, reasonably — but it drifts from its signed-in twin on every change. Fold it before P3/P4 add more surfaces. Scheduled as P6.4. |
-| **F5** | Minor | ✅ **Cleared.** `.env.example` documents `PROVIDER_KEY_SECRET` and that SQLite is the runtime list after first startup. |
+| **F1** | Fix now | ✅ **Cleared.** Lint runs clean. |
+| **F2** | Decide | ✅ **Decided.** `PROVIDER_KEY_SECRET` preferred, `SESSION_SECRET` as fallback; rotation caveat documented in `.env.example` and README. |
+| **F3** | Soon | ✅ **Cleared.** `npm run test:integration` runs the gated provider + long-job proofs. |
+| **F5** | Minor | ✅ **Cleared.** `.env.example` matches the schema again. |
+| **F4** | **Open** | **`HomeTryChat.tsx` is 947 lines** and still duplicates composer, streaming and model-picker logic that P0.4 extracted into shared hooks. Every phase in the queue widens the gap between it and the signed-in client. Scheduled as P6.4. |
+| **F6** | **New · fix inside P3** | **Registering the first tool will silently kill streaming.** When `shouldUseToolRuntime()` opens, `chat/route.ts:276` calls `completeToolChat` — a *non-streaming* completion — then emits the whole answer as one token event. The first tool-using turn goes from words-appearing-live to a blank pause and a wall of text; on a local 32B that pause looks broken. Stream the final answer after the last tool call and send tool steps as their own SSE events. The encoder already exists in `tools/sse.ts`. |
+| **F7** | **New · fold into P3** | **`api/chat/route.ts` is 1,069 lines** and is the integration point for the next two ranked phases — search steps, tool events, file context and citations all land in the same handler. This is R1 recurring one layer down. Split it during P3 while the diff is still small. |
 
 ---
 
 ## 4. The plan
 
-Semver per [VERSIONING.md](./VERSIONING.md). Effort assumes one developer; phases after P0
-can overlap. **Every phase ships behind a feature flag, default-off**, like the existing five.
+Semver per [VERSIONING.md](./VERSIONING.md). Effort assumes one developer.
+**Every phase ships behind a feature flag, default-off.**
+
+### Build order (re-ranked 2026-08-28, after v1.19.0)
+
+Phases are documented below in their original `P` numbering; **build them in this order**:
+
+| Rank | Phase | Ships | Effort | Move | Why here |
+|------|-------|-------|--------|------|----------|
+| **1** | **P3 — Internet search** | v1.20 | ~1 wk *(was 1.5)* | ⬆ **from 3rd** | Cheapest remaining phase, most visible to users, and **the only way to prove the tool runtime** — which has shipped twice without ever executing (see below). |
+| **2** | **P2a — Embeddings & rerank** | v1.21 | ~1.5 wk | ⬇ from 1st | Same work, better timing: upgrades company knowledge **and** the web snippets P3 just shipped, in one release. |
+| **3** | **P4a — Understand files** | v1.22 | ~2 wk | — hold | Your own `ROADMAP.md` has called this the biggest adoption gap since v1.17. Genuinely needs P2a underneath. |
+| **4** | **P2b — Speech** | v1.23 | ~1.5 wk *(was 2)* | ⬇ from 3rd | Cheaper now (Whisper/TTS speak the OpenAI protocol P1 already handles) — but it *improves* something that works, while search and files do not exist at all. |
+| **5** | **P4b — Generate files** | v1.24 | ~2 wk | — hold | Tool definitions on a loop P3 will have proven. |
+| **6** | **P5 — Image generation** | v1.25 | 2–3 wk | — hold | Every software prerequisite is in place. Blocked only on which GPU — see §6. |
+| **7** | **P6 — One product (v2.0)** | v2.0 | ~3 wk | — hold | Lighter than scoped: v1.18.1 already did the mobile pass and auth rework counted here. |
+| **8** | **P7 — Video** | — | ~2 wk | — defer | Unchanged. Still the phase to cut if anything must go. |
+
+**Why search moved to the front — the decisive finding.** The tool loop is not sitting in a
+folder waiting to be integrated. It is already called from `chat/route.ts:276`, gated on
+three conditions, with the trace persisted. Two releases have shipped through that code
+path with an empty registry, so the **first gate has always been false and the runtime has
+never executed once in production**:
+
+```ts
+// tools/gate.ts — first condition is always false today
+registeredTools.length > 0 &&
+  modelSupportsTools(model) &&
+  isFeatureEnabled("toolCalling")
+```
+
+A foundation already paid for whose shape is still unproven is exactly what to exercise
+next, and registering `web_search` is the cheapest way to do it.
+
+**Why the old ordering is safe to change.** The original argument was *“P2a → P3, P4a: build
+search after reranking or you build it twice.”* That holds for **P4a**, which genuinely needs
+chunking and vectors. It is weaker for **P3**: reranking improves the *ordering* of search
+snippets, it does not make search work. Shipping search first and folding the old P3.4 into
+P2a costs one small follow-up, not a rebuild — and delivers a working feature ~1.5 weeks
+earlier.
 
 ### P0 — Open the seams · `v1.18` · 3–4 weeks · nothing user-visible · `done`
 
@@ -155,7 +201,7 @@ landed inside P0. What is left is adapter work plus operational controls.
 
 **Exit:** a model on a second machine appears in the picker and answers.
 
-### P2a — Embeddings & reranking · `v1.20` · ~1.5 weeks · **Goal 2**
+### P2a — Embeddings & reranking · **RANK 2** · `v1.21` · ~1.5 weeks · **Goal 2**
 
 **Highest return in the plan.** Cheapest phase, and it upgrades retrieval — which both
 web search and file understanding depend on.
@@ -165,13 +211,13 @@ web search and file understanding depend on.
 | 2a.1 | Embedding provider | Ollama’s embed endpoint = zero install; a dedicated inference server is faster under load. Model: **`bge-m3`** — genuinely multilingual, which an EN/AZ/RU product needs and English-only embedders cannot fake. |
 | 2a.2 | Chunk store | `chunks` table (doc_id, ord, text, vector BLOB, token_count). Brute-force cosine is fine to ~50k chunks on this hardware; `sqlite-vec` is the upgrade path. |
 | 2a.3 | Hybrid retrieval | **Keep the existing keyword scorer** — it catches exact product names vectors miss. Fuse keyword + vector ranks with RRF. |
-| 2a.4 | Reranker | `bge-reranker-v2-m3` over top-30 → final 4. This is what makes citations *correct*, not merely present. |
+| 2a.4 | Reranker, applied **twice** | `bge-reranker-v2-m3` over top-30 → final 4, across **knowledge hits and the web snippets from P3**. This is the old P3.4 landing here, and what makes citations *correct* rather than merely present. |
 | 2a.5 | Backfill job | Existing knowledge docs chunk and embed through the P0 queue, with progress in Admin. |
 | 2a.6 | Search quality panel | Admin sees which retriever fired, the scores, and ordering before/after rerank. |
 
 **Exit:** a Russian question finds an Azerbaijani note *by meaning*, not by glossed keywords.
 
-### P2b — Speech, done properly · `v1.21` · ~2 weeks · **Goal 2**
+### P2b — Speech, done properly · **RANK 4** · `v1.23` · **~1.5 weeks** · **Goal 2**
 
 This phase **removes** code: the WAV-through-`images[]` trick and `AUDIO_SYSTEM` both
 disappear once transcription is its own model.
@@ -186,23 +232,26 @@ disappear once transcription is its own model.
 **Exit:** a five-minute recording transcribes on a text-only model, and Listen no longer
 depends on the visitor’s browser.
 
-### P3 — Internet search · `v1.22` · ~1.5 weeks · **Goal 3**
+### P3 — Internet search · **RANK 1 · next** · `v1.20` · **~1 week** · **Goal 3**
 
-Cheap because P0.6 already happened: two tool definitions plus a safety policy, not an
-integration. Citations reuse `messages.sources` and the existing “From: …” component.
+Cheap because P0.6 already happened *and is already wired into the chat route*: a search
+provider plus two entries in `bootstrap.ts`, not an integration. Citations reuse
+`messages.sources` and the existing “From: …” component.
 
 | # | Item | Detail |
 |---|------|--------|
 | 3.1 | Search provider | SearXNG self-hosted fits the LAN posture — no key, no per-query cost, no third party sees employee queries. Keyed APIs stay an option for result quality. |
-| 3.2 | Two tools | `web_search(query)` → ranked results. `web_fetch(url)` → readable extracted text with a hard size cap. |
-| 3.3 | **Treat fetched pages as hostile** | A page the model reads is **data, never instructions**. Delimit it, run the existing guardrail detectors over it, never let fetched text trigger another tool call unchecked, keep a domain allow/deny list in Admin. The one place where skipping the work has a real security cost. |
-| 3.4 | Reranked results | Feed snippets through the P2a reranker before they reach the model. Fewer, better sources beat ten mediocre ones. |
-| 3.5 | Visible reasoning | “Searching…” step in the stream, source chips under the answer, expandable “what I read” panel. |
+| 3.2 | Two tools · **runtime ready** | `web_search(query)` → ranked results. `web_fetch(url)` → readable extracted text with a hard size cap. Added to `bootstrap.ts`; schema validation, iteration cap and timeouts are already enforced by the registry. |
+| 3.3 | **Fix the streaming path first** | See **F6**. The tool branch is non-streaming today. Stream the final answer after the last tool call and emit tool steps as their own SSE events (`tools/sse.ts`) **before** anything user-facing turns on. |
+| 3.4 | **Treat fetched pages as hostile** | A page the model reads is **data, never instructions**. The P0.6 output guard is the hook — add a domain allow/deny list in Admin and make sure fetched text cannot trigger another tool call unchecked. The one place where skipping the work has a real security cost. |
+| 3.5 | Visible reasoning · **surface ready** | “Searching…” step in the stream, source chips under the answer, expandable “what I read” panel. |
 | 3.6 | Admin controls | On/off, provider, result count, fetch size cap, domain policy, per-user daily quota. |
+| 3.7 | **Split the chat route** | See **F7**. 1,069 lines, and the next two ranked phases both land in it. Do it here while the diff is still small. |
+| ~~3.8~~ | ~~Reranked results~~ | **Moved to P2a.4** — reranking improves ordering, it does not make search work. |
 
-**Exit:** a question about this week’s news is answered with links a manager can click and verify.
+**Exit:** a question about this week’s news is answered with clickable sources, **streaming the whole time**.
 
-### P4 — Files in, files out · `v1.23`–`v1.24` · ~4 weeks · **Goal 4**
+### P4 — Files in, files out · **RANK 3 (4a) + RANK 5 (4b)** · `v1.22`–`v1.24` · ~4 weeks · **Goal 4**
 
 Two releases. Reading and writing documents are different problems with different failure
 modes, and reading is worth shipping alone — it is already candidate #1 in `ROADMAP.md`.
@@ -219,7 +268,7 @@ modes, and reading is worth shipping alone — it is already candidate #1 in `RO
 
 **Exit:** “summarise this contract and give me the changes as a Word file” works end to end.
 
-### P5 — Image generation & editing · `v1.25` · 2–3 weeks · **Goal 2**
+### P5 — Image generation & editing · **RANK 6** · `v1.25` · 2–3 weeks · **Goal 2**
 
 Deliberately late — not because it is hard, but because it is the first phase gated on a
 **hardware** decision rather than on code (see §6).
@@ -234,7 +283,7 @@ Deliberately late — not because it is hard, but because it is the first phase 
 
 **Exit:** an image is generated from chat, refined once, and saved to a project.
 
-### P6 — Make it feel like one product · `v2.0` · ~3 weeks · **Goal 2**
+### P6 — Make it feel like one product · **RANK 7** · `v2.0` · ~3 weeks · **Goal 2**
 
 The *“in a clean way, improved UI/UX”* half of goal 2, as its own release. Six capabilities
 bolted onto a chat window is a worse product than five in a coherent one.
@@ -250,7 +299,7 @@ bolted onto a chat window is a worse product than five in a coherent one.
 
 **Exit:** v2.0. A new employee understands the whole product without being told which page does what.
 
-### P7 — Video generation · `deferred` · ~2 weeks · **Goal 2**
+### P7 — Video generation · **RANK 8 · deferred** · ~2 weeks · **Goal 2**
 
 Same ComfyUI provider as P5, so the code is a small increment. The **economics** are the
 problem: on one card, a few seconds of video is minutes of exclusive GPU time and the
@@ -272,7 +321,9 @@ are kept because they explain why the remaining phases are as cheap as they are.
 | `P0 → everything` | ✅ spent | Six items, all landed, none rebuilt. The bet was that building foundations inside the first feature that needs them produces crooked foundations. **P1 shrinking by a week is the payoff arriving early.** |
 | `P0.6 → P3, P4b, P5` | ✅ spent | One validated, bounded, guarded loop now exists with an empty registry. Web search, document writing and image-from-chat are each a tool definition rather than an integration. |
 | `P0.3 → P2a, P4a, P5, P7` | ✅ spent | The queue had the most hidden depth — leases, atomic claims, stale recovery, reconnectable progress. Discovering that inside an image feature would have been expensive. |
-| `P2a → P3, P4a` | ⏳ live | The one dependency still ahead. Embeddings/reranking remain the cheapest phase and raise the ceiling on both web results and file Q&A. Done afterwards, search gets built twice. |
+| `P2a → P4a` | ⏳ live | **Narrowed.** File Q&A genuinely needs chunking and vectors — extraction without them lands documents in a keyword engine that cannot match a paraphrase. This half of the chain still holds. |
+| ~~`P2a → P3`~~ | ✂️ **cut** | **Retired on 2026-08-28.** Reranking improves the *ordering* of search snippets; it does not make search work. Treating it as a hard prerequisite delayed a working feature by ~1.5 weeks for a quality gain that P2a delivers one release later anyway (now P2a.4). |
+| `P3 → P4b` | ⏳ **new** | Search is now the proving ground for the tool loop. Registering document-writing tools on a runtime that has never executed is the weaker ordering — after P3, it never has to happen. |
 
 ---
 
@@ -300,14 +351,14 @@ Video (P7) needs the second machine outright.
 
 ## 7. Open decisions
 
-Re-dated after Phase 0. One is now urgent because P1 is next; the rest sit where they did.
+Re-dated after the re-rank. One is now blocking, one is closed, two sit where they were.
 
 | # | Decision | Blocks |
 |---|----------|--------|
-| 1 | **Are hosted models allowed at all, ever?** ✅ **LAN by default.** Public/cloud URLs are allowed only after the admin checks “traffic may leave the building.” Localhost and RFC1918 stay quiet. | **P1** |
-| 2 | **How large does the knowledge base actually get?** Under ~50k chunks, vectors in SQLite with brute-force cosine are fine and add no dependency. Well beyond that wants a real vector index. Changes P2a’s storage design and nothing else. | P2a |
-| 3 | **Self-hosted search or a commercial search API?** Self-hosted keeps every employee query inside the building and matches the README. A commercial API returns better results and sends each query to a third party. Policy call, not technical. | P3 |
-| 4 | **Second GPU machine, or unload-and-swap on the one we have?** A second box makes image/video routine and costs money; swapping is free and pauses chat during renders. Still several phases away — and P0.1 already made either answer a configuration change rather than a code change. | P5, P7 |
+| 1 | ⚠️ **Self-hosted search, or a commercial search API?** **Now blocking** — search is rank 1. Self-hosted (SearXNG) keeps every employee query inside the building and matches the README. A commercial API returns better results and sends each query to a third party. A policy call, not a technical one, and it wants an answer this week. | **Rank 1 — next** |
+| 2 | **How large does the knowledge base actually get?** Under ~50k chunks, vectors in SQLite with brute-force cosine are fine and add no dependency. Well beyond that wants a real vector index. Changes P2a’s storage design and nothing else. | Rank 2 |
+| 3 | **Second GPU machine, or unload-and-swap on the one we have?** A second box makes image/video routine and costs money; swapping is free and pauses chat during renders. Four ranks away — and P1 already made either answer a form in Admin, complete with a fallback provider and a concurrency limit. | Rank 6, rank 8 |
+| — | ✅ **Are hosted models allowed at all, ever?** **Closed in v1.19.0** — settled in code rather than in a meeting. Hosted endpoints work, but a remote URL requires an explicit “traffic may leave the building” acknowledgement (`provider-url.ts`); localhost and RFC1918 stay quiet. Possible, deliberate, and visible in the audit trail. | *closed* |
 
 ---
 

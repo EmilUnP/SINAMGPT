@@ -9,18 +9,18 @@ For the **multi-release expansion arc** — more runtimes than Ollama, image / s
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.19.0](../CHANGELOG.md#1190--2026-08-28) (see [README](../README.md)).
+**Current release:** [v1.19.1](../CHANGELOG.md#1191--2026-08-30) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.19.0**):
+What operators and users can rely on in the current tree (**v1.19.1**):
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
-| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) as a voice-message bubble, and **Listen** on replies when the selected model has Audio or Speak (TTS). Slow models keep the stream alive until the first token. No Fast/Smart toggle — pick a model in the composer |
+| **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. The picker uses the last activated catalog if a provider is briefly down. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) as a voice-message bubble, and **Listen** on replies when the selected model has Audio or Speak (TTS). Slow models keep the stream alive until the first token. No Fast/Smart toggle — pick a model in the composer |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
@@ -38,7 +38,8 @@ What operators and users can rely on in the current tree (**v1.19.0**):
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| P2a | **Embeddings & reranking** | `planned` | Hybrid keyword + vector retrieval — see [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md) |
+| P3 | **Internet search** | `planned` | Re-ranked to first on 2026-08-28: cheapest remaining phase, and the only thing that proves the tool runtime — which is wired into the chat route but has never executed. See [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md) §4 |
+| P2a | **Embeddings & reranking** | `planned` | Now second. Hybrid keyword + vector retrieval, plus reranking over both knowledge hits and P3’s web snippets |
 
 ### Candidates (suggested order)
 
@@ -69,6 +70,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.19.1 — Hardening (2026-08-30)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Model picker from SQLite | `done` | Last activated catalog stays visible if a provider is briefly down |
+| Proxy IP trust | `done` | Forwarded client IPs used only when `TRUST_PROXY=1` |
+| Browser + provider hardening | `done` | CSP/COOP/CORP headers; metadata URL block; example `SESSION_SECRET` rejected in production |
 
 ### v1.19.0 — Any runtime (2026-08-28)
 
