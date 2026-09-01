@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { demoSleepHandler } from "./demo-sleep";
+import { demoSleepHandler } from "@/lib/jobs/handlers/demo-sleep";
 
 afterEach(() => {
   vi.useRealTimers();

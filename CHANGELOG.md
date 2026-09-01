@@ -10,6 +10,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+### Changed
+- **Tests** — unit and gated integration tests live in `tests/` instead of next to source files.
+
 ## [1.19.2] — 2026-09-01
 
 Employees can reset a forgotten password on the next screen. No email is sent yet.

@@ -4,10 +4,10 @@ import {
   persistModelChoice,
   readStoredMic,
   readStoredModel,
-} from "./chat-storage";
-import { messageAudioItems, messageImageItems } from "./message-attachments";
+} from "@/components/chat/chat-storage";
+import { messageAudioItems, messageImageItems } from "@/components/chat/message-attachments";
 import { parseSseChunk } from "@/lib/parse-sse-chunk";
-import type { UiMessage } from "./chat-types";
+import type { UiMessage } from "@/components/chat/chat-types";
 
 describe("parseSseChunk", () => {
   it("parses named and multiline data events", () => {

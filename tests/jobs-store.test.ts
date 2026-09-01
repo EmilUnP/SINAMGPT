@@ -6,7 +6,7 @@ import {
   getJob,
   recoverStaleJobs,
   requestJobCancellation,
-} from "./store";
+} from "@/lib/jobs/store";
 
 let database: Database.Database;
 

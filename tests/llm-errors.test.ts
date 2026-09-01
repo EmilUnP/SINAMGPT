@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isUnreachableError } from "./errors";
+import { isUnreachableError } from "@/lib/llm/errors";
 
 describe("isUnreachableError", () => {
   it("treats fetch failures as unreachable", () => {

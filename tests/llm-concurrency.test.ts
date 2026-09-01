@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   resetProviderConcurrencyForTests,
   withProviderConcurrency,
-} from "./concurrency";
+} from "@/lib/llm/concurrency";
 
 describe("provider concurrency", () => {
   afterEach(() => {

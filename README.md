@@ -151,6 +151,16 @@ The job and tool-calling feature flags are off by default.
 - How it works (plain language): [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md)
 - Product direction: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
+## Tests
+
+Unit tests are in `tests/`. They do not need Ollama or the app database:
+
+```bash
+npm test
+```
+
+Gated provider and long-job proofs: `npm run test:integration`.
+
 ## Deep chat test
 
 With the app running (`npm run dev`) and at least one model available:

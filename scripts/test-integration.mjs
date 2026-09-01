@@ -8,8 +8,8 @@ const child = spawn(
   [
     "vitest",
     "run",
-    "src/lib/providers.integration.test.ts",
-    "src/lib/jobs/handlers/demo-sleep.test.ts",
+    "tests/providers.integration.test.ts",
+    "tests/demo-sleep.test.ts",
   ],
   {
     stdio: "inherit",

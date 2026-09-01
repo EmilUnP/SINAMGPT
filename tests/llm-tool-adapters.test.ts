@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { completeOllamaToolChat } from "./ollama";
-import { completeVllmToolChat } from "./vllm";
-import type { LlmProviderConfig, LlmToolDefinition } from "./types";
+import { completeOllamaToolChat } from "@/lib/llm/ollama";
+import { completeVllmToolChat } from "@/lib/llm/vllm";
+import type { LlmProviderConfig, LlmToolDefinition } from "@/lib/llm/types";
 
 const ollama: LlmProviderConfig = {
   id: "ollama",
