@@ -29,8 +29,7 @@ const CODE_KEYS: Record<string, MessageKey> = {
   username_email: "auth.usernameEmail",
   user_not_found: "auth.forgotUserNotFound",
   reset_no_email: "auth.forgotNoEmail",
-  mail_not_configured: "auth.forgotMailUnavailable",
-  mail_send_failed: "auth.forgotSendFailed",
+  reset_failed: "auth.forgotSendFailed",
 };
 
 const USERNAME_CODES = new Set([
@@ -43,6 +42,19 @@ const USERNAME_CODES = new Set([
   "reset_no_email",
 ]);
 
+const isSafeResetUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return (
+      parsed.origin === window.location.origin &&
+      parsed.pathname === "/reset-password" &&
+      Boolean(parsed.searchParams.get("token"))
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const ForgotPasswordForm = () => {
   const t = useTranslations();
   const usernameErrorId = useId();
@@ -52,7 +64,7 @@ export const ForgotPasswordForm = () => {
   const [usernameError, setUsernameError] = useState("");
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [resetUrl, setResetUrl] = useState("");
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -75,7 +87,11 @@ export const ForgotPasswordForm = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
-      const data = (await res.json()) as { error?: string; code?: string };
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        resetUrl?: string;
+      };
       if (!res.ok) {
         const message = data.code
           ? t(CODE_KEYS[data.code] || "auth.somethingWrong")
@@ -87,13 +103,19 @@ export const ForgotPasswordForm = () => {
         setFormError(message);
         return;
       }
-      setSent(true);
+      if (!data.resetUrl || !isSafeResetUrl(data.resetUrl)) {
+        setFormError(t("auth.forgotSendFailed"));
+        return;
+      }
+      setResetUrl(data.resetUrl);
     } catch {
       setFormError(t("auth.networkError"));
     } finally {
       setIsLoading(false);
     }
   };
+
+  const sent = Boolean(resetUrl);
 
   return (
     <AuthChrome
@@ -106,8 +128,14 @@ export const ForgotPasswordForm = () => {
           style={{ boxShadow: "var(--home-card-shadow)" }}
         >
           <Link
+            href={resetUrl}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-sky-400"
+          >
+            {t("auth.forgotOpenReset")}
+          </Link>
+          <Link
             href="/login"
-            className="text-sm text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
+            className="mt-5 inline-block text-sm text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
           >
             {t("auth.backToSignIn")}
           </Link>

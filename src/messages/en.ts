@@ -99,21 +99,20 @@ export const en = {
     forgotPassword: "Forgot password?",
     forgotTitle: "Forgot your password?",
     forgotSubtitle:
-      "Enter the username or email for your account. If it uses an email, we will send a reset link.",
+      "Enter the username or email for your account. If it uses an email, the next screen will show a reset link.",
     forgotHint:
-      "Reset mail only works for accounts registered with an email. Username-only accounts need an admin.",
-    forgotSubmit: "Send reset link",
-    forgotSending: "Sending…",
-    forgotSentTitle: "Check your inbox",
+      "This only works for accounts registered with an email. Username-only accounts need an admin.",
+    forgotSubmit: "Get reset link",
+    forgotSending: "Working…",
+    forgotSentTitle: "Reset link is ready",
     forgotSent:
-      "We sent a reset link to that email. It expires in one hour. Check spam if you do not see it.",
+      "Open the button below to choose a new password. The link expires in one hour.",
+    forgotOpenReset: "Choose a new password",
     forgotUserNotFound:
       "No account matches that username or email. Please check what you entered.",
     forgotNoEmail:
-      "This account has no email, so we cannot send a reset link. Ask an admin to set a new password.",
-    forgotMailUnavailable:
-      "Password reset is not set up on this server yet. Ask an admin.",
-    forgotSendFailed: "We couldn’t send the email. Please try again.",
+      "This account has no email, so we cannot create a reset link. Ask an admin to set a new password.",
+    forgotSendFailed: "We couldn’t create a reset link. Please try again.",
     tooManyReset:
       "Too many reset attempts. Please wait a few minutes and try again.",
     resetTitle: "Choose a new password",

@@ -1,6 +1,5 @@
 import Database from "better-sqlite3";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MailMessage } from "@/lib/mail";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   consumeResetToken,
   createResetToken,
@@ -68,40 +67,27 @@ describe("password reset tokens", () => {
 });
 
 describe("requestPasswordReset", () => {
-  it("reports missing, username-only, and email accounts separately", async () => {
-    const send = vi.fn<(message: MailMessage) => Promise<void>>(
-      async () => undefined,
-    );
-
+  it("reports missing, username-only, and email accounts separately", () => {
     expect(
-      await requestPasswordReset("emil", "http://localhost:3055", {
-        db: database,
-        send,
-      }),
+      requestPasswordReset("emil", "http://localhost:3055", { db: database }),
     ).toEqual({ status: "no_email" });
     expect(
-      await requestPasswordReset("missing@company.com", "http://localhost:3055", {
+      requestPasswordReset("missing@company.com", "http://localhost:3055", {
         db: database,
-        send,
       }),
     ).toEqual({ status: "not_found" });
     expect(
-      await requestPasswordReset("off@company.com", "http://localhost:3055", {
+      requestPasswordReset("off@company.com", "http://localhost:3055", {
         db: database,
-        send,
       }),
     ).toEqual({ status: "not_found" });
-    expect(send).not.toHaveBeenCalled();
 
-    expect(
-      await requestPasswordReset("you@company.com", "http://localhost:3055", {
-        db: database,
-        send,
-      }),
-    ).toEqual({ status: "sent" });
-    expect(send).toHaveBeenCalledOnce();
-    const payload = send.mock.calls[0][0];
-    expect(payload.to).toBe("you@company.com");
-    expect(payload.text).toContain("http://localhost:3055/reset-password?token=");
+    const result = requestPasswordReset("you@company.com", "http://localhost:3055", {
+      db: database,
+    });
+    expect(result).toMatchObject({ status: "ready" });
+    if (result.status === "ready") {
+      expect(result.resetUrl).toContain("http://localhost:3055/reset-password?token=");
+    }
   });
 });

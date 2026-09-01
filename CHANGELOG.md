@@ -12,10 +12,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [1.19.2] — 2026-09-01
 
-Employees can reset a forgotten password by email.
+Employees can reset a forgotten password on the next screen. No email is sent yet.
 
 ### Added
-- **Forgot password** — “Forgot password?” on sign-in. If the account exists and is an email, Resend sends a one-hour reset link (`RESEND_API_KEY`, optional `MAIL_FROM` / `APP_URL`). Unknown names show a check-the-username message. Username-only accounts still need an admin.
+- **Forgot password** — “Forgot password?” on sign-in. If the account exists and uses an email, the next screen shows a one-hour **Choose a new password** button. Unknown names show a check-the-username message. Username-only accounts still need an admin.
 
 ## [1.19.1] — 2026-08-30
 

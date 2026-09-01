@@ -5,9 +5,6 @@ import {
   type AccountNameIssue,
 } from "@/lib/account-name";
 import { getDb } from "@/lib/db";
-import { sendMail, type MailMessage } from "@/lib/mail";
-
-export const RESET_TOKEN_TTL_HOURS = 1;
 
 type ResetUser = {
   id: string;
@@ -59,42 +56,17 @@ export const consumeResetToken = (
   return row.user_id;
 };
 
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-
-const resetMail = (resetUrl: string): Omit<MailMessage, "to"> => ({
-  subject: "Reset your SINAMGPT password",
-  text: [
-    "Reset your SINAMGPT password:",
-    resetUrl,
-    "",
-    `This link expires in ${RESET_TOKEN_TTL_HOURS} hour. If you did not request it, you can ignore this email.`,
-  ].join("\n"),
-  html: [
-    "<p>Reset your SINAMGPT password:</p>",
-    `<p><a href="${escapeHtml(resetUrl)}">Choose a new password</a></p>`,
-    `<p>This link expires in ${RESET_TOKEN_TTL_HOURS} hour. If you did not request it, you can ignore this email.</p>`,
-  ].join(""),
-});
-
 export type PasswordResetRequestResult =
-  | { status: "sent" }
+  | { status: "ready"; resetUrl: string }
   | { status: "not_found" }
   | { status: "no_email" }
   | { status: "invalid"; issue: AccountNameIssue };
 
-export const requestPasswordReset = async (
+export const requestPasswordReset = (
   identifier: string,
   origin: string,
-  options?: {
-    db?: Database.Database;
-    send?: typeof sendMail;
-  },
-): Promise<PasswordResetRequestResult> => {
+  options?: { db?: Database.Database },
+): PasswordResetRequestResult => {
   const account = parseAccountName(identifier);
   if (!account.ok) return { status: "invalid", issue: account.issue };
 
@@ -116,11 +88,5 @@ export const requestPasswordReset = async (
 
   const token = createResetToken(user.id, db);
   const resetUrl = `${origin}/reset-password?token=${encodeURIComponent(token)}`;
-  if (process.env.NODE_ENV !== "production") {
-    console.info(`[password-reset] link: ${resetUrl}`);
-  }
-
-  const send = options?.send ?? sendMail;
-  await send({ to: user.username, ...resetMail(resetUrl) });
-  return { status: "sent" };
+  return { status: "ready", resetUrl };
 };

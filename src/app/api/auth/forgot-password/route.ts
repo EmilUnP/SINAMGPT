@@ -5,7 +5,6 @@ import {
   type AccountNameIssue,
 } from "@/lib/account-name";
 import { resolveAppOrigin } from "@/lib/app-url";
-import { isMailConfigured } from "@/lib/mail";
 import { requestPasswordReset } from "@/lib/password-reset";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 
@@ -41,16 +40,6 @@ const ISSUE_RESPONSE: Record<
 
 export async function POST(request: Request) {
   try {
-    if (!isMailConfigured()) {
-      return NextResponse.json(
-        {
-          error: "Password reset is not configured on this server.",
-          code: "mail_not_configured",
-        },
-        { status: 503 },
-      );
-    }
-
     const ip = clientIp(request);
     const ipLimit = takeRateLimit(`forgot:ip:${ip}`, 8, 60 * 60 * 1000);
     if (!ipLimit.ok) {
@@ -94,52 +83,41 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      const result = await requestPasswordReset(
-        username,
-        resolveAppOrigin(request),
-      );
+    const result = requestPasswordReset(username, resolveAppOrigin(request));
 
-      if (result.status === "invalid") {
-        return NextResponse.json(ISSUE_RESPONSE[result.issue], { status: 400 });
-      }
+    if (result.status === "invalid") {
+      return NextResponse.json(ISSUE_RESPONSE[result.issue], { status: 400 });
+    }
 
-      if (result.status === "not_found") {
-        return NextResponse.json(
-          {
-            error: "No account matches that username or email.",
-            code: "user_not_found",
-          },
-          { status: 404 },
-        );
-      }
-
-      if (result.status === "no_email") {
-        return NextResponse.json(
-          {
-            error:
-              "This account has no email. Ask an admin to reset the password.",
-            code: "reset_no_email",
-          },
-          { status: 400 },
-        );
-      }
-    } catch (error) {
-      console.error("forgot-password send error", error);
+    if (result.status === "not_found") {
       return NextResponse.json(
         {
-          error: "Could not send the reset email",
-          code: "mail_send_failed",
+          error: "No account matches that username or email.",
+          code: "user_not_found",
         },
-        { status: 502 },
+        { status: 404 },
       );
     }
 
-    return NextResponse.json({ ok: true });
+    if (result.status === "no_email") {
+      return NextResponse.json(
+        {
+          error:
+            "This account has no email. Ask an admin to reset the password.",
+          code: "reset_no_email",
+        },
+        { status: 400 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      resetUrl: result.resetUrl,
+    });
   } catch (error) {
     console.error("forgot-password error", error);
     return NextResponse.json(
-      { error: "Could not send the reset email", code: "mail_send_failed" },
+      { error: "Could not create the reset link", code: "reset_failed" },
       { status: 500 },
     );
   }

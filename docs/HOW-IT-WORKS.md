@@ -30,7 +30,7 @@ Three promises:
 | Person | What they do |
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
-| **Employee** | Signs in with a username or work email. Forgot password sends a reset link if the account is an email. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
+| **Employee** | Signs in with a username or work email. Forgot password shows a reset button on the next screen if the account is an email (no mail is sent yet). Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
 | **Admin** | Turns models on, manages providers (Ollama, vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt), and can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
@@ -127,10 +127,10 @@ Everything is on the company PC (or the LAN host):
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
 | Models | Ollama on that machine by default (`gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`). Extra runtimes are added in Admin → Providers |
-| Passwords | Hashed (not stored as plain text). **Forgot password** stores a one-hour token in SQLite and, if Resend is configured, sends the link through that mail service |
+| Passwords | Hashed (not stored as plain text). **Forgot password** stores a one-hour token in SQLite and shows the reset button on the next screen (email comes later) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 
-Chats stay on the company PC. Reset emails leave through Resend until company mail is wired in. Backup = copy the `data/` folder (and keep Ollama models separately). There is no one-click backup button yet.
+Chats stay on the company PC. Forgot-password links stay in the browser for now (no mail service). Backup = copy the `data/` folder (and keep Ollama models separately). There is no one-click backup button yet.
 
 ---
 

@@ -104,21 +104,20 @@ export const az: Messages = {
     forgotPassword: "Şifrəni unutmusunuz?",
     forgotTitle: "Şifrəni unutmusunuz?",
     forgotSubtitle:
-      "Hesabınızın istifadəçi adı və ya e-poçtunu yazın. E-poçtdursa, sıfırlama linki göndərəcəyik.",
+      "Hesabınızın istifadəçi adı və ya e-poçtunu yazın. E-poçtdursa, növbəti ekranda sıfırlama linki görünəcək.",
     forgotHint:
-      "Sıfırlama məktubu yalnız e-poçtla qeydiyyatdan keçən hesablara gedir. Yalnız istifadəçi adı olanlar adminə müraciət etməlidir.",
-    forgotSubmit: "Sıfırlama linki göndər",
-    forgotSending: "Göndərilir…",
-    forgotSentTitle: "Poçt qutunuza baxın",
+      "Bu yalnız e-poçtla qeydiyyatdan keçən hesablara aiddir. Yalnız istifadəçi adı olanlar adminə müraciət etməlidir.",
+    forgotSubmit: "Sıfırlama linki al",
+    forgotSending: "Hazırlanır…",
+    forgotSentTitle: "Sıfırlama linki hazırdır",
     forgotSent:
-      "Sıfırlama linkini həmin e-poçta göndərdik. Bir saat ərzində etibarlıdır. Görmürsünüzsə, spam qovluğuna baxın.",
+      "Yeni şifrə seçmək üçün aşağıdakı düyməni açın. Link bir saat ərzində etibarlıdır.",
+    forgotOpenReset: "Yeni şifrə seçin",
     forgotUserNotFound:
       "Bu istifadəçi adı və ya e-poçt sistemdə yoxdur. Daxil etdiyinizi yoxlayın.",
     forgotNoEmail:
-      "Bu hesabın e-poçtu yoxdur, ona görə link göndərə bilmərik. Yeni şifrə üçün adminə müraciət edin.",
-    forgotMailUnavailable:
-      "Bu serverdə şifrə sıfırlama hələ qurulmayıb. Admindən soruşun.",
-    forgotSendFailed: "Məktubu göndərmək mümkün olmadı. Yenidən cəhd edin.",
+      "Bu hesabın e-poçtu yoxdur, ona görə link yarada bilmərik. Yeni şifrə üçün adminə müraciət edin.",
+    forgotSendFailed: "Sıfırlama linki yaratmaq mümkün olmadı. Yenidən cəhd edin.",
     tooManyReset:
       "Həddindən artıq sıfırlama cəhdi. Bir neçə dəqiqə gözləyib yenidən cəhd edin.",
     resetTitle: "Yeni şifrə seçin",

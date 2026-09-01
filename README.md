@@ -19,7 +19,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Local models** via [Ollama](https://ollama.com) by default — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`. Extra runtimes (vLLM, LM Studio, llama.cpp, other OpenAI-compatible servers) from **Admin → Providers**
 - **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
 - **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Llama 4 / Qwen no
-- **Login / register** with a username or work email (accounts stored locally). **Forgot password?** sends a reset email when Resend is configured
+- **Login / register** with a username or work email (accounts stored locally). **Forgot password?** shows a reset button on the next screen (no email yet)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
 - **Models guide** (`/models`) — public catalog of activated models (inputs, when to use, one caveat). Open it from home, the chat header, or the sidebar.
@@ -132,9 +132,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
 | `GUEST_MAX_MESSAGE_CHARS` | Max guest message length |
 | `TRUST_PROXY` | Set `1` only behind a reverse proxy you control; otherwise forwarded client IPs are ignored |
-| `RESEND_API_KEY` | Optional. Enables **Forgot password** mail via [Resend](https://resend.com) |
-| `MAIL_FROM` | Optional sender, default `SINAMGPT <onboarding@resend.dev>` (Resend test address) |
-| `APP_URL` | Public origin used in reset links, e.g. `http://localhost:3055` |
+| `APP_URL` | Optional public origin used in reset links, e.g. `http://localhost:3055` |
 
 Additional runtimes (Ollama, vLLM, LM Studio, llama.cpp, and other OpenAI-compatible servers) are managed in **Admin → Providers**. Extra runtimes stay off until an admin adds and enables a provider. Localhost and LAN addresses need no extra confirmation; a public or cloud URL requires an explicit “traffic may leave the building” acknowledgement. Provider API keys are encrypted with `PROVIDER_KEY_SECRET` (or `SESSION_SECRET` if that is unset) and are never returned by the Admin API.
 
