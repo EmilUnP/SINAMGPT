@@ -12,6 +12,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 - **Tests** — unit and gated integration tests live in `tests/` instead of next to source files.
+- **`npm run test:smoke`** — hits a running app for pages, sign-in, forgot-password, and a ping of every configured provider (Ollama / vLLM / OpenAI-compatible). Chat is optional.
 
 ## [1.19.2] — 2026-09-01
 

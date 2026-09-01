@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "node scripts/test-integration.mjs",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:tiny": "node scripts/tiny-model-check.mjs",
     "test:chat": "node scripts/deep-chat-test.mjs"
   },
   "dependencies": {

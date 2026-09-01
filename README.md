@@ -161,6 +161,21 @@ npm test
 
 Gated provider and long-job proofs: `npm run test:integration`.
 
+With the app running, a simple end-to-end check (pages, login, forgot-password, every provider ping — Ollama is optional):
+
+```bash
+npm run test:smoke
+```
+
+To prove a **new** tiny model through the vLLM provider (not Ollama), keep `start.bat` running, then:
+
+```bash
+start-vllm.bat
+npm run test:tiny
+```
+
+That downloads `HuggingFaceTB/SmolLM2-135M-Instruct` and registers Admin → Providers → `vllm` at `http://127.0.0.1:8000`. Official vLLM does not install on this Windows PC; the bat file serves the same `/v1` API SINAMGPT uses for vLLM.
+
 ## Deep chat test
 
 With the app running (`npm run dev`) and at least one model available:
