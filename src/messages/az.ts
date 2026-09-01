@@ -101,6 +101,38 @@ export const az: Messages = {
     usernameTaken:
       "Bu istifadəçi adı və ya e-poçt artıq qeydiyyatdadır. Daxil olmağa cəhd edin.",
     couldNotCreate: "Hesab yaratmaq mümkün olmadı. Yenidən cəhd edin.",
+    forgotPassword: "Şifrəni unutmusunuz?",
+    forgotTitle: "Şifrəni unutmusunuz?",
+    forgotSubtitle:
+      "Hesabınızın istifadəçi adı və ya e-poçtunu yazın. E-poçtdursa, sıfırlama linki göndərəcəyik.",
+    forgotHint:
+      "Sıfırlama məktubu yalnız e-poçtla qeydiyyatdan keçən hesablara gedir. Yalnız istifadəçi adı olanlar adminə müraciət etməlidir.",
+    forgotSubmit: "Sıfırlama linki göndər",
+    forgotSending: "Göndərilir…",
+    forgotSentTitle: "Poçt qutunuza baxın",
+    forgotSent:
+      "Sıfırlama linkini həmin e-poçta göndərdik. Bir saat ərzində etibarlıdır. Görmürsünüzsə, spam qovluğuna baxın.",
+    forgotUserNotFound:
+      "Bu istifadəçi adı və ya e-poçt sistemdə yoxdur. Daxil etdiyinizi yoxlayın.",
+    forgotNoEmail:
+      "Bu hesabın e-poçtu yoxdur, ona görə link göndərə bilmərik. Yeni şifrə üçün adminə müraciət edin.",
+    forgotMailUnavailable:
+      "Bu serverdə şifrə sıfırlama hələ qurulmayıb. Admindən soruşun.",
+    forgotSendFailed: "Məktubu göndərmək mümkün olmadı. Yenidən cəhd edin.",
+    tooManyReset:
+      "Həddindən artıq sıfırlama cəhdi. Bir neçə dəqiqə gözləyib yenidən cəhd edin.",
+    resetTitle: "Yeni şifrə seçin",
+    resetSubtitle: "SINAMGPT hesabınız üçün yeni şifrə yazın.",
+    resetSubmit: "Şifrəni yenilə",
+    resetUpdating: "Yenilənir…",
+    resetSuccess: "Şifrəniz yeniləndi. İndi daxil ola bilərsiniz.",
+    resetInvalid:
+      "Bu sıfırlama linki etibarsızdır və ya vaxtı bitib. Yenisini istəyin.",
+    resetMismatch: "Şifrələr eyni deyil.",
+    confirmPassword: "Şifrəni təsdiqləyin",
+    newPassword: "Yeni şifrə",
+    couldNotReset: "Şifrəni yeniləmək mümkün olmadı. Yenidən cəhd edin.",
+    backToSignIn: "Girişə qayıt",
   },
   home: {
     tagline: "Yerli şirkət AI-sı",

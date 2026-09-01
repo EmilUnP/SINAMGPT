@@ -7,11 +7,11 @@ This is a **separate track** from [ROADMAP.md](./ROADMAP.md). That file stays th
 record of what shipped release by release; this one is the multi-release arc those releases
 will come from. When a phase here ships, record it there as usual.
 
-Updated for **v1.19.1**, re-verified against the tree on **2026-08-30**.
+Updated for **v1.19.2**, re-verified against the tree on **2026-09-01**.
 Status key: `planned` · `in progress` · `done` · `deferred`.
 
-> **This plan only ever had feature phases.** Two releases (v1.18.1, v1.19.1) have now shipped
-> mobile, auth, security and performance work with no slot here. §1a fixes that: hardening is a
+> **This plan only ever had feature phases.** Releases such as v1.18.1, v1.19.1, and **v1.19.2**
+> have shipped mobile, auth, security and mail work with no slot here. §1a fixes that: hardening is a
 > **lane**, not a phase, and each remaining phase now carries its own security line.
 
 ---
@@ -59,6 +59,7 @@ because it needs to; the plan just never described it.
 
 | Release | Work | Why it belongs here, not only in the changelog |
 |---------|------|------------------------------------------------|
+| **v1.19.2** (2026-09-01) | Forgot password via Resend · unknown-account message · reset tokens in SQLite | Auth mail leaves the building; chats still do not. Same off-plan pattern as v1.18.1. Tests 110 → 120. |
 | **v1.19.1** (2026-08-30) | Provider metadata SSRF block · `TRUST_PROXY` for forwarded IPs · CSP/COOP/CORP on every page · production refuses the example `SESSION_SECRET` · SQLite busy-timeout, cache and once-per-process schema check · model picker served from SQLite | **Two of these sit on the critical path of the next two ranked phases.** 3 new test files, 97 → 110 tests. |
 | **v1.18.1** (2026-08-28) | Username-or-email sign-in · field-level auth validation (EN/AZ/RU) · mobile pass over login, register, chat, Models, Developer, Lab | This was counted **inside P6**. Doing it early takes real weight out of the v2.0 release. |
 

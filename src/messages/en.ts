@@ -96,6 +96,37 @@ export const en = {
     usernameTaken:
       "This username or email is already registered. Try signing in instead.",
     couldNotCreate: "We couldn’t create your account. Please try again.",
+    forgotPassword: "Forgot password?",
+    forgotTitle: "Forgot your password?",
+    forgotSubtitle:
+      "Enter the username or email for your account. If it uses an email, we will send a reset link.",
+    forgotHint:
+      "Reset mail only works for accounts registered with an email. Username-only accounts need an admin.",
+    forgotSubmit: "Send reset link",
+    forgotSending: "Sending…",
+    forgotSentTitle: "Check your inbox",
+    forgotSent:
+      "We sent a reset link to that email. It expires in one hour. Check spam if you do not see it.",
+    forgotUserNotFound:
+      "No account matches that username or email. Please check what you entered.",
+    forgotNoEmail:
+      "This account has no email, so we cannot send a reset link. Ask an admin to set a new password.",
+    forgotMailUnavailable:
+      "Password reset is not set up on this server yet. Ask an admin.",
+    forgotSendFailed: "We couldn’t send the email. Please try again.",
+    tooManyReset:
+      "Too many reset attempts. Please wait a few minutes and try again.",
+    resetTitle: "Choose a new password",
+    resetSubtitle: "Pick a new password for your SINAMGPT account.",
+    resetSubmit: "Update password",
+    resetUpdating: "Updating…",
+    resetSuccess: "Your password was updated. You can sign in now.",
+    resetInvalid: "This reset link is invalid or has expired. Request a new one.",
+    resetMismatch: "Those passwords do not match.",
+    confirmPassword: "Confirm password",
+    newPassword: "New password",
+    couldNotReset: "We couldn’t update your password. Please try again.",
+    backToSignIn: "Back to sign in",
   },
   home: {
     tagline: "Local company AI",

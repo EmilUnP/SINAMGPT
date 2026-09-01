@@ -94,7 +94,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/login" || pathname === "/register") {
+  if (pathname === "/login" || pathname === "/register" || pathname === "/forgot-password" || pathname === "/reset-password") {
     if (session) {
       const url = request.nextUrl.clone();
       url.pathname = "/chat";
@@ -117,5 +117,7 @@ export const config = {
     "/devlab/:path*",
     "/login",
     "/register",
+    "/forgot-password",
+    "/reset-password",
   ],
 };

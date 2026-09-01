@@ -10,6 +10,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.19.2] — 2026-09-01
+
+Employees can reset a forgotten password by email.
+
+### Added
+- **Forgot password** — “Forgot password?” on sign-in. If the account exists and is an email, Resend sends a one-hour reset link (`RESEND_API_KEY`, optional `MAIL_FROM` / `APP_URL`). Unknown names show a check-the-username message. Username-only accounts still need an admin.
+
 ## [1.19.1] — 2026-08-30
 
 Hardening pass: safer provider URLs and proxy identity, plus a model picker that stays up when Ollama is briefly busy.
@@ -387,7 +394,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.1...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.2...HEAD
+[1.19.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.1...v1.19.2
 [1.19.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.1...v1.19.0
 [1.18.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.0...v1.18.1

@@ -12,7 +12,7 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "owngpt.db");
 
 /** Bump when ensureDatabaseSchema gains a new migration so HMR re-applies once. */
-const SCHEMA_GENERATION = 2;
+const SCHEMA_GENERATION = 3;
 
 let db: Database.Database | null = null;
 let appliedSchemaGeneration = 0;
@@ -293,6 +293,19 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_jobs_queued
       ON jobs(status, created_at ASC)
       WHERE status = 'queued';
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_password_reset_user
+      ON password_reset_tokens(user_id, created_at DESC);
   `);
 
   // Seed defaults once (admin can change later in Admin → Settings / Guardrails)

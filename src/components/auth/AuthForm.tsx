@@ -342,12 +342,22 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           </div>
 
           <div className="mt-4">
-            <label
-              htmlFor="auth-password"
-              className="block text-sm font-medium text-[var(--home-fg)]/80"
-            >
-              {t("auth.password")}
-            </label>
+            <div className="flex items-baseline justify-between gap-3">
+              <label
+                htmlFor="auth-password"
+                className="block text-sm font-medium text-[var(--home-fg)]/80"
+              >
+                {t("auth.password")}
+              </label>
+              {isLogin ? (
+                <Link
+                  href="/forgot-password"
+                  className="shrink-0 text-sm text-[var(--accent)] underline decoration-[var(--accent)]/30 underline-offset-4 hover:opacity-90"
+                >
+                  {t("auth.forgotPassword")}
+                </Link>
+              ) : null}
+            </div>
             <input
               id="auth-password"
               type="password"
