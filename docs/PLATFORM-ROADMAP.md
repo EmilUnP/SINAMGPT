@@ -10,6 +10,10 @@ will come from. When a phase here ships, record it there as usual.
 Updated for **v1.19.1**, re-verified against the tree on **2026-08-30**.
 Status key: `planned` · `in progress` · `done` · `deferred`.
 
+> **This plan only ever had feature phases.** Two releases (v1.18.1, v1.19.1) have now shipped
+> mobile, auth, security and performance work with no slot here. §1a fixes that: hardening is a
+> **lane**, not a phase, and each remaining phase now carries its own security line.
+
 ---
 
 ## 1. Audit — the board after P0 + P1
@@ -22,7 +26,7 @@ so is the lint gate that replaced them.
 | Provider layer | SQLite registry, AES-256-GCM keys, free-text provider ids, Admin CRUD | ✅ **Seam open** *(was: welded shut)* |
 | Long work | Persistent jobs, atomic claims, leases, recovery, cancel, SSE progress | ✅ **Solved** *(was: missing entirely)* |
 | Tool calling | Validated, bounded, guarded loop — zero tools registered by design | ✅ **Ready** *(was: missing entirely)* |
-| Unit tests | 97 passing across 16 files, no Ollama or app DB needed | ✅ **Established** *(was: missing entirely)* |
+| Unit tests | **110 passing across 19 files**, no Ollama or app DB needed | ✅ **Established** *(was: missing entirely)* |
 | Model catalog | `models.kind` constrains all seven task types | ✅ **Task dimension added** |
 | Chat client | 350-line orchestrator, 6 hooks, ~20 components | ✅ **Ready for new surfaces** |
 | Auth & roles | Local accounts, bcrypt, signed cookie, middleware role gate, rate limits | ✅ Reuse as-is |
@@ -35,9 +39,61 @@ so is the lint gate that replaced them.
 | Usage telemetry | Still chat-shaped; `jobs` covers job state but not usage reporting | ⚠️ Fold into **P5** |
 | Guardrails | Layered detectors; P0.6 added a guard pass over tool inputs **and** outputs | ⚠️ Extend with domain policy in **P3** |
 | Guest chat client | `HomeTryChat.tsx` is 947 lines — the P0.4 split covered the signed-in app only | ⚠️ Carry-forward — **P6.4** |
-| Lint gate | `npm run lint` runs clean; `npm test` → 97 passing, tree clean | ✅ **Green** |
+| Lint gate | `npm run lint` runs clean; `npm test` → 110 passing, tree clean | ✅ **Green** |
+| Browser hardening | CSP · COOP · CORP · nosniff · frame-ancestors none, on every page | ✅ **Added in v1.19.1** |
+| SSRF defence | `provider-url.ts` blocks cloud metadata hosts incl. IPv4-mapped IPv6 | ✅ **Added — reusable by P3** |
+| Proxy identity | `X-Forwarded-For` ignored unless `TRUST_PROXY=1` | ✅ **Added — makes P3 quotas real** |
+| SQLite under load | busy_timeout, WAL checkpointing, larger cache, schema checked once per process | ✅ **Tuned in v1.19.1** |
 | Tool runtime wiring | Loop is called from `chat/route.ts:276` behind a 3-way gate — **registry empty, so it has never executed** | ⚠️ **Prove it** — rank 1 |
 | Chat route | `api/chat/route.ts` is 1,069 lines; next two ranked phases both land in it | ⚠️ Split during P3 — **F7** |
+
+---
+
+## 1a. The missing lane — hardening
+
+Two releases have shipped that this roadmap had no slot for. The pattern is older than the
+plan: **v1.2.0 Hardening · v1.14.1 Hardening · v1.19.1 Hardening**. The work keeps happening
+because it needs to; the plan just never described it.
+
+### What shipped off-plan
+
+| Release | Work | Why it belongs here, not only in the changelog |
+|---------|------|------------------------------------------------|
+| **v1.19.1** (2026-08-30) | Provider metadata SSRF block · `TRUST_PROXY` for forwarded IPs · CSP/COOP/CORP on every page · production refuses the example `SESSION_SECRET` · SQLite busy-timeout, cache and once-per-process schema check · model picker served from SQLite | **Two of these sit on the critical path of the next two ranked phases.** 3 new test files, 97 → 110 tests. |
+| **v1.18.1** (2026-08-28) | Username-or-email sign-in · field-level auth validation (EN/AZ/RU) · mobile pass over login, register, chat, Models, Developer, Lab | This was counted **inside P6**. Doing it early takes real weight out of the v2.0 release. |
+
+### The structural fix
+
+**Hardening is a lane, not a phase.** Adding a "P8 — Security" would be worse than useless:
+every remaining phase *creates* its own attack surface, and that surface is cheapest to
+handle inside the phase that creates it, not in a cleanup release afterwards.
+
+- **P3** fetches remote pages a *model* chose → SSRF, prompt injection, quota abuse
+- **P4a** parses untrusted binaries → zip bombs, XXE, formula injection, parser DoS
+- **P5** serves bytes a provider returned → CSP, content-type confidence, storage limits
+
+Each phase table below now carries that line explicitly, and the effort estimates include it.
+
+### Three payoffs already banked
+
+1. **`provider-url.ts` is what P3 needs on day one — with the policy inverted.**
+   `isCloudMetadataHostname()` and `isPrivateOrLocalHostname()` are exported and tested. But
+   the direction reverses: for an admin adding a provider, a LAN address is the *expected*
+   case and a public URL needs an acknowledgement. For `web_fetch`, a **model-supplied LAN
+   address is the attack** and a public URL is normal. Same primitives, opposite defaults —
+   and getting that inversion wrong turns the search tool into an internal port scanner.
+2. **`TRUST_PROXY` makes P3.7's per-user search quota enforceable.** A quota keyed on a
+   spoofable header is not a quota.
+3. **Schema-check-once removes per-query overhead from every read** — which matters most for
+   P2a, the phase that will do thousands of chunk lookups per answer.
+
+### One new finding — see F8
+
+The v1.19.1 header set is solid and `connect-src 'self'` is exactly right for a LAN product.
+Two things to know before P5: generated images must be served from your own origin or
+`img-src` blocks them (that constraint points the right way — serve them yourself), and
+`script-src` still carries `'unsafe-eval'`; worth checking whether the production build
+actually needs it.
 
 ---
 
@@ -105,15 +161,15 @@ Not features — conditions that make every later feature cheaper or more expens
 |---|------|--------|
 | **R1** | `ChatApp.tsx` is 2,477 lines | ✅ **Cleared** by P0.4 — now 350 lines. Partially recurs as `HomeTryChat.tsx` (947 lines) and `api/chat/route.ts` (1,069 lines) — see F4, F7. |
 | **R2** | Long work has nowhere to run | ✅ **Cleared** by P0.3 — persistent jobs with leases, recovery, cancel and SSE progress. |
-| **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 97 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters, routing. |
+| **R3** | Nothing pure is under test | ✅ **Cleared** by P0.5 — 110 tests over capabilities, multilang, knowledge, guardrails, providers, jobs, chat helpers, tool adapters, routing. |
 | **R4** | 32 GB cannot hold the whole roster | ⏳ **Open, unchanged.** Nothing in P0 loads a model. Chat + embed + STT + TTS fit; image gen does not. See §6. |
 
 ---
 
 ## 3a. Findings
 
-Four of the five from the 2026-08-28 pass are closed. Two new ones surfaced in the
-post-v1.19.0 re-check.
+F1, F2, F3, F5 are closed. **F4, F6 and F7 carry over unchanged** — v1.19.1 touched neither
+the chat route nor the tool path. F8 comes out of the hardening work itself.
 
 | # | Severity | Finding |
 |---|----------|---------|
@@ -123,6 +179,7 @@ post-v1.19.0 re-check.
 | **F5** | Minor | ✅ **Cleared.** `.env.example` matches the schema again. |
 | **F4** | **Open** | **`HomeTryChat.tsx` is 947 lines** and still duplicates composer, streaming and model-picker logic that P0.4 extracted into shared hooks. Every phase in the queue widens the gap between it and the signed-in client. Scheduled as P6.4. |
 | **F6** | **New · fix inside P3** | **Registering the first tool will silently kill streaming.** When `shouldUseToolRuntime()` opens, `chat/route.ts:276` calls `completeToolChat` — a *non-streaming* completion — then emits the whole answer as one token event. The first tool-using turn goes from words-appearing-live to a blank pause and a wall of text; on a local 32B that pause looks broken. Stream the final answer after the last tool call and send tool steps as their own SSE events. The encoder already exists in `tools/sse.ts`. |
+| **F8** | **New · revisit at P5** | **The new CSP needs one deliberate revisit.** `img-src 'self' data: blob:` means generated images must be served from your own origin, not linked from the provider — serving them yourself is the better design anyway, so this constraint points the right way. Separately, `script-src` still carries `'unsafe-eval'`; worth checking whether the production build actually needs it, since dropping it is the single biggest tightening available in that header. |
 | **F7** | **New · fold into P3** | **`api/chat/route.ts` is 1,069 lines** and is the integration point for the next two ranked phases — search steps, tool events, file context and citations all land in the same handler. This is R1 recurring one layer down. Split it during P3 while the diff is still small. |
 
 ---
@@ -243,11 +300,12 @@ provider plus two entries in `bootstrap.ts`, not an integration. Citations reuse
 | 3.1 | Search provider | SearXNG self-hosted fits the LAN posture — no key, no per-query cost, no third party sees employee queries. Keyed APIs stay an option for result quality. |
 | 3.2 | Two tools · **runtime ready** | `web_search(query)` → ranked results. `web_fetch(url)` → readable extracted text with a hard size cap. Added to `bootstrap.ts`; schema validation, iteration cap and timeouts are already enforced by the registry. |
 | 3.3 | **Fix the streaming path first** | See **F6**. The tool branch is non-streaming today. Stream the final answer after the last tool call and emit tool steps as their own SSE events (`tools/sse.ts`) **before** anything user-facing turns on. |
-| 3.4 | **Treat fetched pages as hostile** | A page the model reads is **data, never instructions**. The P0.6 output guard is the hook — add a domain allow/deny list in Admin and make sure fetched text cannot trigger another tool call unchecked. The one place where skipping the work has a real security cost. |
-| 3.5 | Visible reasoning · **surface ready** | “Searching…” step in the stream, source chips under the answer, expandable “what I read” panel. |
-| 3.6 | Admin controls | On/off, provider, result count, fetch size cap, domain policy, per-user daily quota. |
-| 3.7 | **Split the chat route** | See **F7**. 1,069 lines, and the next two ranked phases both land in it. Do it here while the diff is still small. |
-| ~~3.8~~ | ~~Reranked results~~ | **Moved to P2a.4** — reranking improves ordering, it does not make search work. |
+| 3.4 | **Block the model from fetching your LAN** · **helpers ready** | Reuse `isCloudMetadataHostname` and `isPrivateOrLocalHostname` from v1.19.1 — but **invert the policy**. For a provider, LAN is expected; for `web_fetch`, a model-supplied LAN address is the attack. Get this backwards and the search tool is an internal port scanner. |
+| 3.5 | **Treat fetched pages as hostile** | A page the model reads is **data, never instructions**. The P0.6 output guard is the hook — add a domain allow/deny list in Admin and make sure fetched text cannot trigger another tool call unchecked. |
+| 3.6 | Visible reasoning · **surface ready** | “Searching…” step in the stream, source chips under the answer, expandable “what I read” panel. |
+| 3.7 | Admin controls · **quota enforceable** | On/off, provider, result count, fetch size cap, domain policy, per-user daily quota — which v1.19.1's `TRUST_PROXY` made actually enforceable. |
+| 3.8 | **Split the chat route** | See **F7**. 1,069 lines, and the next two ranked phases both land in it. Do it here while the diff is still small. |
+| ~~3.9~~ | ~~Reranked results~~ | **Moved to P2a.4** — reranking improves ordering, it does not make search work. |
 
 **Exit:** a question about this week’s news is answered with clickable sources, **streaming the whole time**.
 
@@ -262,6 +320,7 @@ modes, and reading is worth shipping alone — it is already candidate #1 in `RO
 | 4a.2 | Extraction in the queue | Text from PDF/DOCX, cells from sheets, OCR fallback for scanned pages. Never inside the request. |
 | 4a.3 | Two destinations, one choice | On upload the user picks **this chat only** or **add to company knowledge** (chunk + embed). That single decision is the whole feature’s UX. |
 | 4a.4 | Cite the page | Answers point at *page 12* or *sheet “Q3”*, not just the filename. |
+| 4a.5 | **Parse untrusted binaries defensively** | Every parser here is attack surface: zip-bomb caps on DOCX/XLSX, no external entity resolution, no formula evaluation, and extraction confined to the job worker so a malicious file cannot take a request thread with it. This is the **hardening lane** line for this phase — see §1a. |
 | 4b.1 | Document tools | Create/edit Word, Excel, PowerPoint, PDF as registered tools, so the model can produce a file mid-conversation. |
 | 4b.2 | **Edit by patch, not rewrite** | Extract → model emits a structured change → apply → keep the original as a version. A blind regeneration silently loses formatting and content nobody asked to change. |
 | 4b.3 | Delivery | Download, re-attach to chat, or save into a project — with versions visible. |
@@ -278,7 +337,7 @@ Deliberately late — not because it is hard, but because it is the first phase 
 | 5.1 | One provider, many jobs | ComfyUI covers txt2img, img2img, inpainting, upscaling and control models through different workflows — one integration instead of four. |
 | 5.2 | Model set | A fast model for drafts, a quality model for finals, plus an upscaler. Same Activate gate as chat models. |
 | 5.3 | Two entry points | A registered **tool** so chat can generate in context, and a dedicated studio page for direct control of size, seed, steps. |
-| 5.4 | Generated media as first-class | New attachment type, gallery view, visible parameters, re-run with edits, save to project. |
+| 5.4 | Generated media as first-class | New attachment type, gallery view, visible parameters, re-run with edits, save to project. **Serve the bytes from your own origin** — see **F8**; the v1.19.1 CSP will not load them from the provider. This is the **hardening lane** line for this phase. |
 | 5.5 | VRAM scheduling | A render waits for the chat model to unload rather than racing it. The OOM path is already handled in `formatOllamaError` — this stops it being reached. |
 
 **Exit:** an image is generated from chat, refined once, and saved to a project.
@@ -364,6 +423,10 @@ Re-dated after the re-rank. One is now blocking, one is closed, two sit where th
 
 ## How to use this doc
 
+0. **Hardening releases** — a `.1` release that is pure security/performance does **not** need
+   a phase here. Record it in `CHANGELOG.md` and `ROADMAP.md` as usual, then add a row to
+   §1a **only if** it changes what a later phase has to build. That is the whole point of
+   §1a: the lane is visible, but it does not fight the phase numbering.
 1. **Starting a phase** — mark it `in progress` here, and move its headline item into
    **Next active track** in [ROADMAP.md](./ROADMAP.md).
 2. **Shipping a phase** — mark `done` here, add a `CHANGELOG.md` entry, and record the
