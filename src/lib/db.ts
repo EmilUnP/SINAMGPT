@@ -338,10 +338,30 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       enabled: true,
       maxKeysPerUser: 5,
       maxRequestsPerMinute: 30,
-      maxChars: 16000,
+      maxChars: 32000,
       corsOrigins: [],
     }),
   );
+  // One-time: raise Developer API prompt cap 16k → 32k when still on old default
+  {
+    const row = database
+      .prepare(`SELECT value FROM app_settings WHERE key = ?`)
+      .get("api_gateway") as { value: string } | undefined;
+    if (row?.value) {
+      try {
+        const parsed = JSON.parse(row.value) as { maxChars?: number };
+        if (Number(parsed.maxChars) === 16000) {
+          database
+            .prepare(
+              `UPDATE app_settings SET value = ? WHERE key = 'api_gateway'`,
+            )
+            .run(JSON.stringify({ ...parsed, maxChars: 32000 }));
+        }
+      } catch {
+        /* ignore bad JSON */
+      }
+    }
+  }
   insertSettingIfMissing(
     "feature_flags",
     JSON.stringify({

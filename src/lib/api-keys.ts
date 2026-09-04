@@ -47,7 +47,7 @@ export const DEFAULT_API_GATEWAY: ApiGatewaySettings = {
   enabled: true,
   maxKeysPerUser: 5,
   maxRequestsPerMinute: 30,
-  maxChars: 16000,
+  maxChars: 32000,
   corsOrigins: [],
 };
 
@@ -102,7 +102,7 @@ export const getApiGatewaySettings = (): ApiGatewaySettings => {
       ),
       maxChars: Math.max(
         500,
-        Math.min(32000, Number(parsed.maxChars) || 16000),
+        Math.min(32000, Number(parsed.maxChars) || 32000),
       ),
       corsOrigins: origins,
     };

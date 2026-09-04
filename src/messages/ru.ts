@@ -151,7 +151,7 @@ export const ru: Messages = {
     newTry: "Новая попытка",
     placeholderDisabled: "Гостевой чат отключён — войдите…",
     placeholderLimit: "Войдите, чтобы продолжить чат…",
-    placeholderAsk: "Спросите SINAMGPT что угодно…",
+    placeholderAsk: "Спросите что угодно...",
     stop: "Стоп",
     send: "Отправить",
     footerHint:

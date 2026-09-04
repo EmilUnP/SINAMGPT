@@ -144,7 +144,7 @@ export const en = {
     newTry: "New try",
     placeholderDisabled: "Guest chat disabled — sign in…",
     placeholderLimit: "Sign in to keep chatting…",
-    placeholderAsk: "Ask SINAMGPT anything…",
+    placeholderAsk: "Ask anything...",
     stop: "Stop",
     send: "Send",
     footerHint:

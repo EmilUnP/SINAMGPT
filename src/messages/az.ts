@@ -152,7 +152,7 @@ export const az: Messages = {
     newTry: "Yeni cəhd",
     placeholderDisabled: "Qonaq söhbəti deaktivdir — daxil olun…",
     placeholderLimit: "Söhbəti davam etmək üçün daxil olun…",
-    placeholderAsk: "SINAMGPT-yə istənilən sualı verin…",
+    placeholderAsk: "Sual verin...",
     stop: "Dayandır",
     send: "Göndər",
     footerHint:
