@@ -270,6 +270,7 @@ html[data-theme="dark"] ::selection {
   margin: 0.75em 0;
   padding: 0.9rem 1rem;
   overflow-x: auto;
+  touch-action: pan-x pan-y;
   border-radius: 0.75rem;
   background: #0f1218;
   color: #e8edf5;
@@ -780,7 +781,7 @@ html:not([data-theme="dark"]) .suggestion-tile:hover:not(:disabled) {
 }
 
 .animate-fade-up {
-  animation: fade-up 0.28s ease-out both;
+  animation: fade-up 0.28s ease-out;
 }
 
 @keyframes pulse-dot {
@@ -1056,8 +1057,8 @@ html:not([data-theme="dark"]) .ambient-grid {
 .chat-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  overflow-anchor: none;
 }
 
 .chat-scroll::-webkit-scrollbar {

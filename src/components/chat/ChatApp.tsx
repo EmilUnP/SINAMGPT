@@ -47,7 +47,6 @@ export const ChatApp = ({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -150,10 +149,6 @@ export const ChatApp = ({
     setIsLoadingList,
     t,
   ]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversations.messages]);
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
@@ -262,7 +257,7 @@ export const ChatApp = ({
   };
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[var(--bg)]">
+    <div className="flex h-dvh max-h-dvh overflow-hidden bg-[var(--bg)]">
       <ChatSidebarContainer
         user={user}
         locale={locale}
@@ -278,7 +273,7 @@ export const ChatApp = ({
         onOpenConversation={(id) => void handleOpenConversation(id)}
         onLogout={() => void handleLogout()}
       />
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <ChatHeader
           activeConversation={conversations.activeConversation}
           activeProjectName={projects.activeProjectName}
@@ -323,7 +318,6 @@ export const ChatApp = ({
           canListen={canListen}
           locale={locale}
           t={t}
-          bottomRef={bottomRef}
           conversations={conversations}
           modelState={modelState}
           stream={stream}

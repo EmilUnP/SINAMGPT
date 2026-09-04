@@ -45,6 +45,7 @@ import { MAX_GUEST_IMAGES } from "@/lib/media/limits";
 import { parseSseChunk } from "@/lib/parse-sse-chunk";
 import { autoResizeTextarea, formatChatTime, withComposerStarter } from "@/lib/ui";
 import { useIsMounted } from "@/hooks/use-mounted";
+import { useStickToBottomScroll } from "./hooks/useStickToBottomScroll";
 import type { KnowledgeCitation } from "@/lib/types";
 
 type ChatTurn = {
@@ -90,7 +91,6 @@ export const HomeTryChat = ({
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const ready = useIsMounted();
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -152,9 +152,10 @@ export const HomeTryChat = ({
     void load();
   }, [t]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const { scrollerRef, scrollerProps } = useStickToBottomScroll(
+    messages.length,
+    messages.at(-1)?.content ?? "",
+  );
 
   useEffect(() => {
     autoResizeTextarea(textareaRef.current);
@@ -488,10 +489,10 @@ export const HomeTryChat = ({
   ]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
+    <div className="relative flex h-dvh max-h-dvh flex-col overflow-hidden text-[var(--home-fg)]">
       <AnimatedBackground />
 
-      <header className="page-chrome safe-x relative z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
+      <header className="page-chrome safe-x relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
         <div className="flex min-w-0 items-center gap-3">
           <Image
             src={sinamLogo}
@@ -536,7 +537,7 @@ export const HomeTryChat = ({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-8">
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-1 pb-4 text-center">
             <div className="hero-copy">
@@ -645,8 +646,13 @@ export const HomeTryChat = ({
             ) : null}
           </div>
         ) : (
-          <div className="chat-scroll min-h-0 flex-1 space-y-4 overflow-y-auto py-4">
-            <div className="mb-2 flex justify-end">
+          <div
+            ref={scrollerRef}
+            className="chat-scroll min-h-0 flex-1 overflow-y-auto py-4"
+            {...scrollerProps}
+          >
+            <div className="space-y-4">
+              <div className="mb-2 flex justify-end">
               <button
                 type="button"
                 onClick={handleNewTry}
@@ -745,13 +751,13 @@ export const HomeTryChat = ({
                 </div>
               );
             })}
-            <div ref={bottomRef} />
+            </div>
           </div>
         )}
 
         {limitHit && messages.length > 0 ? (
           <div
-            className="relative mb-2 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 backdrop-blur-md"
+            className="relative mb-2 shrink-0 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 backdrop-blur-md"
             style={{ boxShadow: "var(--home-card-shadow)" }}
           >
             <div
@@ -793,13 +799,13 @@ export const HomeTryChat = ({
         ) : null}
 
         {error && !limitHit ? (
-          <p className="mb-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-center text-sm text-[var(--danger)]">
+          <p className="mb-3 shrink-0 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-center text-sm text-[var(--danger)]">
             {error}
           </p>
         ) : null}
 
         <div
-          className={`composer-shell relative sticky bottom-0 z-20 rounded-[28px] border bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
+          className={`composer-shell relative z-20 shrink-0 rounded-[28px] border bg-[var(--home-card-bg)] p-2 backdrop-blur-md focus-within:border-[var(--accent)]/50 focus-within:ring-4 focus-within:ring-[var(--ring)] ${
             isDraggingOver
               ? "border-[var(--accent)] ring-4 ring-[var(--ring)]"
               : "border-[var(--home-card-border)]"
@@ -936,7 +942,7 @@ export const HomeTryChat = ({
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[10px] leading-snug text-[var(--home-faint)] sm:text-[11px]">
+        <p className="mt-3 shrink-0 text-center text-[10px] leading-snug text-[var(--home-faint)] sm:text-[11px]">
           {canAttachImages || canImportImages
             ? t("chat.visionFooterHint")
             : t("home.footerHint")}

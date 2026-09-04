@@ -20,7 +20,6 @@ type ChatMessageListProps = {
   isSending: boolean;
   canListen: boolean;
   locale: AppLocale;
-  bottomRef: React.RefObject<HTMLDivElement | null>;
   onEditDraftChange: (value: string) => void;
   onStartEdit: (message: UiMessage) => void;
   onCancelEdit: () => void;
@@ -39,7 +38,6 @@ export const ChatMessageList = ({
   isSending,
   canListen,
   locale,
-  bottomRef,
   onEditDraftChange,
   onStartEdit,
   onCancelEdit,
@@ -120,6 +118,5 @@ export const ChatMessageList = ({
         </div>
       );
     })}
-    <div ref={bottomRef} />
   </div>
 );
