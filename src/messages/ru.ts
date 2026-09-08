@@ -248,6 +248,7 @@ export const ru: Messages = {
     regenerate: "Перегенерировать",
     messagePlaceholder: "Напишите SINAMGPT…",
     stopGenerating: "Остановить генерацию",
+    searching: "Поиск…",
     sendMessage: "Отправить сообщение",
     footerHint:
       "Enter — отправить · Shift+Enter — новая строка · Безлимит · Сохраняется на этом ПК",

@@ -134,7 +134,10 @@ const numericOptions = (options?: ChatOptions): Record<string, number> => {
 const thinkDisabled = (
   messages: ChatMessage[],
   options?: ChatOptions,
-): boolean => options?.think === false || messagesHaveAudio(messages);
+): boolean =>
+  options?.think === false ||
+  Boolean(options?.tools?.length) ||
+  messagesHaveAudio(messages);
 
 const toNativeMessages = (messages: ChatMessage[]) =>
   withAudioSystem(messages).map((message) => ({
@@ -151,6 +154,7 @@ const toNativeMessages = (messages: ChatMessage[]) =>
         }
       : {}),
     ...(message.toolName ? { tool_name: message.toolName } : {}),
+    ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
   }));
 
 const nativeChatBody = (
@@ -274,10 +278,23 @@ export const completeOllamaToolChat = async (
       return [{
         id: call.id?.trim() || `ollama-call-${index}`,
         name,
-        arguments: call.function?.arguments ?? {},
+        arguments: parseOllamaToolArguments(call.function?.arguments),
       }];
     }),
   };
+};
+
+const parseOllamaToolArguments = (value: unknown): unknown => {
+  if (value == null) return {};
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof value === "object") return value;
+  return {};
 };
 
 export const pingOllama = async (

@@ -124,9 +124,18 @@ type UsageDetail = {
   createdAt: string | null;
   requestPayload: string;
   responseFull: string;
+  toolTrace: Array<{
+    callId: string;
+    toolName: string;
+    status: string;
+    input?: string;
+    output?: string;
+    error?: string;
+    durationMs: number;
+  }>;
 };
 
-type DetailPane = "sent" | "reply";
+type DetailPane = "sent" | "reply" | "tools";
 type SourceFilter = "all" | "app" | "api";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
@@ -197,7 +206,10 @@ export const AdminUsagePanel = () => {
         setDetailError(json.error || t("admin.usage.failedDetail"));
         return;
       }
-      setDetail(json);
+      setDetail({
+        ...json,
+        toolTrace: Array.isArray(json.toolTrace) ? json.toolTrace : [],
+      });
       setDetailError("");
     } catch {
       setDetailError(t("admin.usage.failedDetail"));
@@ -346,12 +358,45 @@ export const AdminUsagePanel = () => {
   const detailText =
     detailPane === "sent"
       ? (detail?.requestPayload ?? "")
-      : (detail?.responseFull ?? "");
+      : detailPane === "reply"
+        ? (detail?.responseFull ?? "")
+        : detail?.toolTrace?.length
+          ? JSON.stringify(detail.toolTrace, null, 2)
+          : "";
   const detailEmpty =
     detailPane === "sent"
       ? t("admin.usage.detailEmptySent")
-      : t("admin.usage.detailEmptyReply");
-  const detailCopyKey = detailPane === "sent" ? "sent" : "reply";
+      : detailPane === "reply"
+        ? t("admin.usage.detailEmptyReply")
+        : t("admin.usage.toolsNone");
+  const detailCopyKey =
+    detailPane === "sent" ? "sent" : detailPane === "reply" ? "reply" : "tools";
+
+  const toolLabel = (name: string) => {
+    if (name === "web_search") return t("admin.usage.toolWebSearch");
+    if (name === "web_fetch") return t("admin.usage.toolWebFetch");
+    return name;
+  };
+
+  const toolStatusLabel = (status: string) => {
+    if (status === "completed") return t("admin.usage.toolStatusCompleted");
+    if (status === "handler_error") return t("admin.usage.toolStatusFailed");
+    if (status === "blocked_input") return t("admin.usage.toolStatusBlockedIn");
+    if (status === "blocked_output") return t("admin.usage.toolStatusBlockedOut");
+    if (status === "invalid_input") return t("admin.usage.toolStatusBadInput");
+    if (status === "invalid_output") return t("admin.usage.toolStatusBadOutput");
+    if (status === "unknown_tool") return t("admin.usage.toolStatusUnknown");
+    return status.replaceAll("_", " ");
+  };
+
+  const prettyTraceValue = (raw?: string) => {
+    if (!raw) return "";
+    try {
+      return JSON.stringify(JSON.parse(raw), null, 2);
+    } catch {
+      return raw;
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fade-up">
@@ -945,6 +990,13 @@ export const AdminUsagePanel = () => {
                           n: detail.tokensPerSec,
                         })}`
                       : ""}
+                    {` · ${
+                      detail.toolTrace?.length
+                        ? t("admin.usage.toolsCount", {
+                            n: detail.toolTrace.length,
+                          })
+                        : t("admin.usage.toolsNoneShort")
+                    }`}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-[var(--admin-muted)]">
@@ -979,6 +1031,7 @@ export const AdminUsagePanel = () => {
                 [
                   ["sent", "admin.usage.detailSent"],
                   ["reply", "admin.usage.detailReply"],
+                  ["tools", "admin.usage.detailTools"],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -999,6 +1052,78 @@ export const AdminUsagePanel = () => {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              {detailPane === "tools" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      disabled={!detailText}
+                      onClick={() => void copyText(detailCopyKey, detailText)}
+                      className={adminBtnGhost}
+                    >
+                      {copiedKey === detailCopyKey ? (
+                        <Check size={14} />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                      {copiedKey === detailCopyKey
+                        ? t("admin.chrome.copied")
+                        : t("admin.chrome.copy")}
+                    </button>
+                  </div>
+                  {detail?.toolTrace?.length ? (
+                    detail.toolTrace.map((entry, index) => (
+                      <article
+                        key={entry.callId || `${entry.toolName}-${index}`}
+                        className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-[var(--admin-fg)]">
+                            {toolLabel(entry.toolName)}
+                          </p>
+                          <span className={statusTone(
+                            entry.status === "completed" ? "ok" : "error",
+                          )}>
+                            {toolStatusLabel(entry.status)}
+                          </span>
+                          <span className="text-xs text-[var(--admin-muted)]">
+                            {fmtMs(entry.durationMs)}
+                          </span>
+                        </div>
+                        {entry.input ? (
+                          <div className="mt-2">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--admin-muted)]">
+                              {t("admin.usage.toolInput")}
+                            </p>
+                            <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[var(--admin-fg)]">
+                              {prettyTraceValue(entry.input)}
+                            </pre>
+                          </div>
+                        ) : null}
+                        {entry.output ? (
+                          <div className="mt-2">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--admin-muted)]">
+                              {t("admin.usage.toolOutput")}
+                            </p>
+                            <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[var(--admin-fg)]">
+                              {prettyTraceValue(entry.output)}
+                            </pre>
+                          </div>
+                        ) : null}
+                        {entry.error ? (
+                          <p className="mt-2 text-sm text-[var(--status-bad-fg)]">
+                            {t("admin.usage.toolError")}: {entry.error}
+                          </p>
+                        ) : null}
+                      </article>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-3 text-sm text-[var(--admin-muted)]">
+                      {t("admin.usage.toolsNone")}
+                    </p>
+                  )}
+                </div>
+              ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-end">
                   <button
@@ -1021,6 +1146,7 @@ export const AdminUsagePanel = () => {
                   {detailText || detailEmpty}
                 </pre>
               </div>
+              )}
             </div>
           </div>
         </div>

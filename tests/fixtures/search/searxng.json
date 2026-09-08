@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "title": "Paris - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "content": "Paris is the capital of France."
+    },
+    {
+      "title": "Internal",
+      "url": "http://127.0.0.1/secret",
+      "content": "should still parse; SSRF is applied later"
+    },
+    {
+      "title": "Skip me",
+      "url": "javascript:alert(1)",
+      "content": "bad"
+    }
+  ]
+}

@@ -82,6 +82,33 @@ describe("tool-capable adapters", () => {
     ]);
   });
 
+  it("parses Ollama tool arguments sent as JSON strings and disables thinking", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        message: {
+          content: "",
+          tool_calls: [
+            {
+              id: "q",
+              function: { name: "echo", arguments: "{\"value\":\"hi\"}" },
+            },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await completeOllamaToolChat(
+      ollama,
+      "model",
+      [{ role: "user", content: "hello" }],
+      { tools, timeoutMs: 1_000 },
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.think).toBe(false);
+    expect(result.toolCalls[0]?.arguments).toEqual({ value: "hi" });
+  });
+
   it("omits tools and parses OpenAI-compatible tool calls", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({

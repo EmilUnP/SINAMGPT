@@ -10,6 +10,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
+## [1.20.0] — 2026-09-08
+
+Signed-in chat can search the public web when an admin turns it on. Weather and news questions search even if the model claims it has no internet.
+
+### Added
+- **Internet search** — Admin → Settings → Features can turn on `web_search` / `web_fetch` for signed-in chat on tool-capable models. Default engine is DuckDuckGo HTML (no API key); optional SearXNG URL keeps queries on a machine you run. Fetches are public HTTPS only (LAN/metadata blocked). Fetched text is wrapped as untrusted data. Clickable “From:” sources, a “Searching…” step, and a streamed final answer after tools. Guest chat is unchanged. Off by default.
+- **Live questions actually search** — weather / news / “today” queries run `web_search` even when Gemma 4 thinks and then claims it has no internet. Thinking is off while tools run. Admin → Usage → Tools shows the search when it happened.
+
 ### Changed
 - **Tests** — unit and gated integration tests live in `tests/` instead of next to source files.
 - **`npm run test:smoke`** — hits a running app for pages, sign-in, forgot-password, and a ping of every configured provider (Ollama / vLLM / OpenAI-compatible). Chat is optional.
@@ -398,7 +406,8 @@ First public release of SINAMGPT: a local company GPT for SINAM, powered by Olla
 - Local-only AI via Ollama (no third-party cloud LLM APIs)
 - Secrets and SQLite data stay out of git (`.env*`, `/data`)
 
-[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.2...HEAD
+[Unreleased]: https://github.com/EmilUnP/SINAMGPT/compare/v1.20.0...HEAD
+[1.20.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.2...v1.20.0
 [1.19.2]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.1...v1.19.2
 [1.19.1]: https://github.com/EmilUnP/SINAMGPT/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/EmilUnP/SINAMGPT/compare/v1.18.1...v1.19.0

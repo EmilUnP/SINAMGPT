@@ -11,6 +11,17 @@ type KnowledgeCitationsProps = {
   tone?: "chat" | "home";
 };
 
+const safeHttpUrl = (value: string | undefined): string | null => {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+};
+
 export const KnowledgeCitations = ({
   sources,
   className = "",
@@ -19,8 +30,10 @@ export const KnowledgeCitations = ({
   const t = useTranslations();
   if (!sources?.length) return null;
 
-  const titles = sources.map((s) => s.title).join(" · ");
   const isHome = tone === "home";
+  const linkClass = isHome
+    ? "underline decoration-[var(--home-faint)] underline-offset-2 hover:text-[var(--home-muted)]"
+    : "underline decoration-[var(--text-muted)] underline-offset-2 hover:text-[var(--accent)]";
 
   return (
     <div
@@ -29,7 +42,9 @@ export const KnowledgeCitations = ({
           ? "text-[var(--home-faint)]"
           : "text-[var(--text-muted)]"
       } ${className}`}
-      title={sources.map((s) => `${s.title} (${s.category})`).join("\n")}
+      title={sources
+        .map((s) => `${s.title}${s.url ? ` (${s.url})` : ` (${s.category})`}`)
+        .join("\n")}
     >
       <BookMarked
         size={12}
@@ -39,7 +54,26 @@ export const KnowledgeCitations = ({
       />
       <p>
         <span className="font-medium opacity-90">{t("common.from")}</span>{" "}
-        {titles}
+        {sources.map((source, index) => {
+          const href = safeHttpUrl(source.url);
+          return (
+            <span key={`${source.id}-${index}`}>
+              {index > 0 ? " · " : null}
+              {href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClass}
+                >
+                  {source.title}
+                </a>
+              ) : (
+                source.title
+              )}
+            </span>
+          );
+        })}
       </p>
     </div>
   );

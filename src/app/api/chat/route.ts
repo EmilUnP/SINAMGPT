@@ -39,18 +39,28 @@ import {
 } from "@/lib/settings";
 import {
   attachUsageRequest,
+  attachUsageToolTrace,
   finishUsage,
   markUsageToken,
   startUsage,
 } from "@/lib/usage";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
-import type { Conversation, Message } from "@/lib/types";
+import type { Conversation, KnowledgeCitation, Message } from "@/lib/types";
 import {
+  encodeToolSseEvent,
+  getActiveToolRegistry,
   inspectToolPayload,
   runToolLoop,
   shouldUseToolRuntime,
-  toolRegistry,
 } from "@/lib/tools";
+import {
+  citationsFromSearchMessages,
+  compactToolMessagesForModel,
+  mergeCitations,
+  recoverLiveSearchCalls,
+  SEARCH_TOOL_TIMEOUT_MS,
+  withPostSearchAnswerHint,
+} from "@/lib/search";
 
 const imageSchema = z.object({
   mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
@@ -270,26 +280,119 @@ const streamAssistantReply = async (input: {
       const stopKeepalive = startSseKeepalive(controller, encoder);
       const decoder = new TextDecoder();
       let buffer = "";
+      let replySources: KnowledgeCitation[] = knowledgeSources;
+
+      const pumpOllamaNdjson = async (body: ReadableStream<Uint8Array>) => {
+        ollamaReader = body.getReader();
+        buffer = "";
+        while (true) {
+          const { done, value } = await ollamaReader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            let chunk: {
+              message?: { content?: string };
+              done?: boolean;
+              error?: string;
+              eval_count?: number;
+              prompt_eval_count?: number;
+              eval_duration?: number;
+            };
+
+            try {
+              chunk = JSON.parse(trimmed);
+            } catch {
+              continue;
+            }
+
+            if (chunk.error) {
+              throw new Error(chunk.error);
+            }
+
+            const piece = chunk.message?.content ?? "";
+            if (piece) {
+              assistantText += piece;
+              markUsageToken(usageId, piece);
+              send("token", { content: piece });
+            }
+
+            if (chunk.done) {
+              if (typeof chunk.eval_count === "number") {
+                tokensEval = chunk.eval_count;
+              }
+              if (typeof chunk.prompt_eval_count === "number") {
+                tokensPrompt = chunk.prompt_eval_count;
+              }
+              if (typeof chunk.eval_duration === "number") {
+                evalDurationNs = chunk.eval_duration;
+              }
+            }
+          }
+        }
+      };
 
       try {
         if (shouldUseToolRuntime(model)) {
           const result = await runToolLoop({
             messages: promptedHistory,
-            registry: toolRegistry,
+            registry: getActiveToolRegistry(),
             inspectPayload: inspectToolPayload,
             signal: abort.signal,
+            userId,
+            deferFinalStream: true,
+            callTimeoutMs: SEARCH_TOOL_TIMEOUT_MS,
+            onEvent: (event) => {
+              controller.enqueue(encodeToolSseEvent(event));
+            },
+            onTrace: (trace) => {
+              attachUsageToolTrace(usageId, trace);
+            },
+            recoverToolCalls: recoverLiveSearchCalls,
             complete: (messages, options) =>
               completeToolChat(model, messages, {
                 temperature: runtime.temperature,
                 numPredict: runtime.numPredict,
                 topP: runtime.topP,
                 signal: options.signal,
+                timeoutMs: options.timeoutMs,
                 tools: options.tools,
               }),
           });
-          assistantText = result.content;
           toolTrace = result.trace.length ? result.trace : null;
-          if (assistantText) {
+          replySources = mergeCitations(
+            knowledgeSources,
+            citationsFromSearchMessages(result.messages),
+          );
+          if (result.needsFinalStream) {
+            // After search, keep the final answer bounded — small models can
+            // hang for the full route maxDuration (5 min) on huge page dumps.
+            const finalSignal = AbortSignal.any([
+              abort.signal,
+              AbortSignal.timeout(90_000),
+            ]);
+            const ollamaRes = await streamChat(
+              model,
+              withPostSearchAnswerHint(
+                compactToolMessagesForModel(result.messages),
+              ),
+              {
+                temperature: runtime.temperature,
+                numPredict: Math.min(runtime.numPredict, 1024),
+                topP: runtime.topP,
+                signal: finalSignal,
+                think: false,
+              },
+            );
+            await pumpOllamaNdjson(ollamaRes.body!);
+          } else if (result.content) {
+            assistantText = result.content;
             markUsageToken(usageId, assistantText);
             send("token", { content: assistantText });
           }
@@ -300,66 +403,12 @@ const streamAssistantReply = async (input: {
             topP: runtime.topP,
             signal: abort.signal,
           });
-          ollamaReader = ollamaRes.body!.getReader();
-
-          while (true) {
-            const { done, value } = await ollamaReader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
-
-              let chunk: {
-                message?: { content?: string };
-                done?: boolean;
-                error?: string;
-                eval_count?: number;
-                prompt_eval_count?: number;
-                eval_duration?: number;
-              };
-
-              try {
-                chunk = JSON.parse(trimmed);
-              } catch {
-                continue;
-              }
-
-              if (chunk.error) {
-                throw new Error(chunk.error);
-              }
-
-              const piece = chunk.message?.content ?? "";
-              if (piece) {
-                assistantText += piece;
-                markUsageToken(usageId, piece);
-                send("token", { content: piece });
-              }
-
-              if (chunk.done) {
-                if (typeof chunk.eval_count === "number") {
-                  tokensEval = chunk.eval_count;
-                }
-                if (typeof chunk.prompt_eval_count === "number") {
-                  tokensPrompt = chunk.prompt_eval_count;
-                }
-                if (typeof chunk.eval_duration === "number") {
-                  evalDurationNs = chunk.eval_duration;
-                }
-              }
-            }
-          }
+          await pumpOllamaNdjson(ollamaRes.body!);
         }
 
         const assistantMessageId = newId();
         const sourcesJson =
-          knowledgeSources.length > 0
-            ? JSON.stringify(knowledgeSources)
-            : null;
+          replySources.length > 0 ? JSON.stringify(replySources) : null;
         db.prepare(
           `INSERT INTO messages
            (id, conversation_id, role, content, sources, tool_trace)
@@ -392,7 +441,7 @@ const streamAssistantReply = async (input: {
             role: "assistant",
             content: assistantText,
             created_at: new Date().toISOString(),
-            sources: knowledgeSources.length ? knowledgeSources : null,
+            sources: replySources.length ? replySources : null,
             tool_trace: toolTrace,
           } satisfies Message,
           usage: {
@@ -408,8 +457,15 @@ const streamAssistantReply = async (input: {
         controller.close();
       } catch (error) {
         if (abort.signal.aborted) return;
-        const errMsg =
+        const raw =
           error instanceof Error ? error.message : "Stream failed";
+        const errMsg =
+          error instanceof Error &&
+          (error.name === "AbortError" ||
+            raw.toLowerCase().includes("aborted") ||
+            raw.toLowerCase().includes("timeout"))
+            ? "Answer timed out after search. Try a smaller model reply or a clearer question."
+            : raw;
         finishUsage(usageId, {
           responseChars: assistantText.length,
           status: "error",

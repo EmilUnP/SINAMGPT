@@ -38,6 +38,12 @@ export type SettingsDraft = {
   fileUploadEnabled: boolean;
   fileImportEnabled: boolean;
   microphoneEnabled: boolean;
+  webSearchEnabled: boolean;
+  webSearchEngine: "duckduckgo" | "searxng";
+  webSearchSearxngUrl: string;
+  webSearchMaxResults: string;
+  webSearchDenyHosts: string;
+  webSearchDailyQuota: string;
 };
 
 type ModelOption = {
@@ -439,6 +445,100 @@ export const AdminSettingsPanel = ({
                 hint={t("admin.settings.microphoneHint")}
               />
             </div>
+          </SectionCard>
+          <SectionCard
+            title={t("admin.settings.webSearchTitle")}
+            description={t("admin.settings.webSearchDesc")}
+          >
+            <AdminToggleCard
+              emphasize
+              checked={draft.webSearchEnabled}
+              onChange={(v) => patch({ webSearchEnabled: v })}
+              label={t("admin.settings.webSearch")}
+              hint={t("admin.settings.webSearchHint")}
+            />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Field
+                label={t("admin.settings.webSearchEngine")}
+                hint={t("admin.settings.webSearchEngineHint")}
+              >
+                <select
+                  value={draft.webSearchEngine}
+                  onChange={(e) =>
+                    patch({
+                      webSearchEngine:
+                        e.target.value === "searxng" ? "searxng" : "duckduckgo",
+                    })
+                  }
+                  className={adminFieldClass}
+                >
+                  <option value="duckduckgo">
+                    {t("admin.settings.webSearchDuckDuckGo")}
+                  </option>
+                  <option value="searxng">
+                    {t("admin.settings.webSearchSearxng")}
+                  </option>
+                </select>
+              </Field>
+              <Field
+                label={t("admin.settings.webSearchMaxResults")}
+                hint={t("admin.settings.webSearchMaxResultsHint")}
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={draft.webSearchMaxResults}
+                  onChange={(e) =>
+                    patch({ webSearchMaxResults: e.target.value })
+                  }
+                  className={adminFieldClass}
+                />
+              </Field>
+              <Field
+                label={t("admin.settings.webSearchQuota")}
+                hint={t("admin.settings.webSearchQuotaHint")}
+              >
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={draft.webSearchDailyQuota}
+                  onChange={(e) =>
+                    patch({ webSearchDailyQuota: e.target.value })
+                  }
+                  className={adminFieldClass}
+                />
+              </Field>
+              {draft.webSearchEngine === "searxng" ? (
+                <Field
+                  label={t("admin.settings.webSearchSearxngUrl")}
+                  hint={t("admin.settings.webSearchSearxngUrlHint")}
+                >
+                  <input
+                    type="url"
+                    value={draft.webSearchSearxngUrl}
+                    onChange={(e) =>
+                      patch({ webSearchSearxngUrl: e.target.value })
+                    }
+                    placeholder="http://127.0.0.1:8080"
+                    className={adminFieldClass}
+                  />
+                </Field>
+              ) : null}
+            </div>
+            <Field
+              label={t("admin.settings.webSearchDeny")}
+              hint={t("admin.settings.webSearchDenyHint")}
+            >
+              <textarea
+                rows={3}
+                value={draft.webSearchDenyHosts}
+                onChange={(e) => patch({ webSearchDenyHosts: e.target.value })}
+                className={adminFieldClass}
+                placeholder="example.com"
+              />
+            </Field>
           </SectionCard>
         </div>
       ) : null}

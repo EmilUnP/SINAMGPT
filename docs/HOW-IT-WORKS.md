@@ -4,7 +4,7 @@
 
 **Audience:** people, not only engineers  
 **Length:** about 10 minutes  
-**Current product:** v1.19.2
+**Current product:** v1.20.0
 
 If you only need “what should we buy / approve?”, start here.  
 If you need to **install** it, use [README.md](../README.md).  
@@ -31,7 +31,7 @@ Three promises:
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
 | **Employee** | Signs in with a username or work email. Forgot password shows a reset button on the next screen if the account is an email (no mail is sent yet). Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
-| **Admin** | Turns models on, manages providers (Ollama, vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt), and can run Model lab. Turns on Developer API, file upload, file import, and microphone only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
+| **Admin** | Turns models on, manages providers (Ollama, vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt and whether tools ran), and can run Model lab. Turns on Developer API, file upload, file import, microphone, and **internet search** only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
 ---
@@ -58,25 +58,32 @@ You type a question (any language)  + optional image or short voice clip
 └──────────┬──────────┘
            ▼
 ┌─────────────────────┐
-│ 4. Local model      │  The selected runtime writes the answer, streaming on screen
+│ 4. Public web       │  Signed-in only, and only if Admin turned on Internet search
+│    (optional)       │  Weather / news / “today” questions search even if the model
+│                     │  would otherwise say it has no internet
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ 5. Local model      │  The selected runtime writes the answer, streaming on screen
 └──────────┬──────────┘
            ▼
    Reply in your language
-   + “From: …” citations when notes were used
+   + “From: …” citations when notes or web pages were used
 ```
 
 **If step 1 blocks:** the model never runs. The user sees the refusal text admins configured.
 
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
+**If Admin turned on Internet search (signed-in only):** a live question (weather, news, today’s facts) looks up public pages before the model answers. Guests never get that step. Fetched pages are treated as data, not as instructions, and the app will not fetch your LAN or cloud-metadata addresses.
+
 **Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
 
 **If Ollama is briefly busy or down:** the model picker still shows the last activated list. New pulls appear after Admin → Models refresh, or within about a minute in the background.
 
-**Foundation in v1.18:** long internal work can use a persistent single-process
-job queue, and future model tools have a validated, guarded runtime. Both are
-off by default, and the tool registry ships empty, so normal chat follows the
-same path as before.
+**Foundation in v1.20:** signed-in chat can call internet search tools when an admin
+turns that feature on. The tool runtime stays off for guests and while search is off,
+so normal chat still follows the same path as before.
 
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
@@ -143,8 +150,8 @@ You do not need engineering to run day-to-day:
 - **Knowledge** — add, edit, seed/replace the SINAM starter pack  
 - **Guardrails** — On/Off switches; apply to new chats immediately  
 - **Guest** — daily limit; can turn guest chat off  
-- **Features** — start **off** until you need them: Developer API, Dev lab, File upload, File import, Microphone  
-- **Live usage** — click a generation to see the exact prompt sent to the model and the reply. Chat, guest, and developer API calls all show here (API rows say **API**). **All / App / API** filters split in-app chat from third-party keys. **Clear logs** wipes that history (test clutter) without deleting saved chats.  
+- **Features** — start **off** until you need them: Developer API, Dev lab, File upload, File import, Microphone, **Internet search**  
+- **Live usage** — click a generation to see the exact prompt sent to the model, the reply, and a **Tools** tab if search ran. Chat, guest, and developer API calls all show here (API rows say **API**). **All / App / API** filters split in-app chat from third-party keys. **Clear logs** wipes that history (test clutter) without deleting saved chats.  
 - **Model lab** (`/lab`) — run the same chat path employees use and see pass rate / speed  
 
 Developer API (`/api/v1/chat/completions`), when on, is a **raw model pipe**: one key, every activated model (same idea as OpenRouter). No knowledge, no guardrails. Use it for other apps, not as a replacement for employee chat.
@@ -158,9 +165,10 @@ Say this clearly to the business:
 - We do **not** send prompts to a third-party LLM by default.  
 - We do **not** have departments, billing, or public internet share links. Share links work only for **logged-in** colleagues.  
 - We do **not** automatically read PDFs into knowledge yet (you paste or type docs in Admin).  
+- Internet search is **off** until an admin turns it on, and **guests never get it**. Queries go to DuckDuckGo (or your SearXNG) — not a third-party LLM.  
 - Vision is **not** every model — only those marked as image-capable, and only after Admin turns on File upload / File import.  
 - Voice is **not** every model — only those marked as audio-capable, and only after Admin turns on Microphone. Video still cannot be sent.  
-- **Functions** on a model badge means the model *could* call extra functions; SINAMGPT **does not run that yet**. The **+** menu in the chat box is attach image plus summarize and translate helpers — it does not call model tools.
+- **Functions** on a model badge means the model can call tools. With Internet search on, signed-in chat actually runs `web_search` / `web_fetch`. The **+** menu in the chat box is still attach image plus summarize and translate helpers.
 
 ---
 

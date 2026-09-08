@@ -249,6 +249,7 @@ export const az: Messages = {
     regenerate: "Yenidən yarat",
     messagePlaceholder: "SINAMGPT-yə yazın…",
     stopGenerating: "Generasiyanı dayandır",
+    searching: "Axtarılır…",
     sendMessage: "Mesaj göndər",
     footerHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Limitsiz · Bu PC-də saxlanılır",

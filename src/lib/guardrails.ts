@@ -13,6 +13,8 @@ import {
   MULTILANG_SYSTEM_RULES,
   replyLanguageInstruction,
 } from "@/lib/multilang";
+import { isWebSearchEnabled } from "@/lib/search/settings";
+import { SEARCH_SYSTEM_RULES } from "@/lib/search/intent";
 import {
   DEFAULT_GUARDRAILS as SEED_GUARDRAILS,
   DEFAULT_POLICY_SUGGESTIONS as SEED_POLICY_SUGGESTIONS,
@@ -554,6 +556,9 @@ export const withSystemPrompt = async <T extends { role: string; content: string
     uiLocale: opts?.uiLocale,
     priorText,
   })}`;
+  if (audience === "user" && isWebSearchEnabled()) {
+    content = `${content}\n\n${SEARCH_SYSTEM_RULES}`;
+  }
 
   const knowledge = await resolveKnowledgeContext(
     lastUser ?? "",

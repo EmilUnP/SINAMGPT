@@ -223,6 +223,25 @@ describe("runToolLoop", () => {
     expect(result.trace[0]?.status).toBe("handler_error");
   });
 
+  it("keeps a long model timeout separate from the handler timeout", async () => {
+    const complete = vi.fn().mockImplementation(
+      async (_messages, { signal }: { signal: AbortSignal }) => {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        expect(signal.aborted).toBe(false);
+        return { content: "slow complete", toolCalls: [] };
+      },
+    );
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "hi" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      inspectPayload: allow,
+      callTimeoutMs: 20,
+      completionTimeoutMs: 5_000,
+    });
+    expect(result.content).toBe("slow complete");
+  });
+
   it("uses a final no-tools pass at the iteration cap", async () => {
     const complete = vi
       .fn()
@@ -238,8 +257,107 @@ describe("runToolLoop", () => {
     });
 
     expect(result.reachedCap).toBe(true);
+    expect(result.needsFinalStream).toBe(false);
     expect(result.content).toBe("final pass");
     expect(complete.mock.calls[2]?.[1].tools).toBeUndefined();
+  });
+
+  it("defers the final completion so the caller can stream", async () => {
+    const events: string[] = [];
+    const complete = vi.fn().mockResolvedValueOnce(toolCall());
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "news" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      userId: "user-1",
+      onEvent: (event) => events.push(event.event),
+    });
+
+    expect(result.needsFinalStream).toBe(true);
+    expect(result.content).toBe("");
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(["tool_start", "tool_end"]);
+    expect(result.messages.some((message) => message.role === "tool")).toBe(true);
+  });
+
+  it("recovers tool calls when the model answers without calling tools", async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ content: "I cannot search", toolCalls: [] });
+    const handler = vi.fn(async () => ({ answer: "from tool" }));
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool(handler)]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      recoverToolCalls: (_messages, content) =>
+        content.includes("cannot")
+          ? [{ id: "forced", name: "echo", arguments: { value: "hello" } }]
+          : [],
+    });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalled();
+    expect(result.needsFinalStream).toBe(true);
+    expect(result.trace[0]?.status).toBe("completed");
+  });
+
+  it("asks the model first; recover only runs after a no-tool reply", async () => {
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ content: "plain answer", toolCalls: [] });
+    const handler = vi.fn(async () => ({ answer: "from tool" }));
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool(handler)]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      recoverToolCalls: (_messages, content) =>
+        content
+          ? [{ id: "forced", name: "echo", arguments: { value: "hello" } }]
+          : [],
+    });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalled();
+    expect(result.needsFinalStream).toBe(true);
+  });
+
+  it("can preempt tools before the first model call", async () => {
+    const complete = vi.fn();
+    const handler = vi.fn(async () => ({ answer: "from tool" }));
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool(handler)]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      recoverToolCalls: (_messages, content) =>
+        content
+          ? []
+          : [{ id: "forced", name: "echo", arguments: { value: "hello" } }],
+    });
+    expect(complete).not.toHaveBeenCalled();
+    expect(handler).toHaveBeenCalled();
+    expect(result.needsFinalStream).toBe(true);
+  });
+
+  it("reports the trace after each tool finishes", async () => {
+    const traces: number[] = [];
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce(toolCall())
+      .mockResolvedValueOnce({ content: "done", toolCalls: [] });
+    await runToolLoop({
+      messages: [],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      inspectPayload: allow,
+      onTrace: (trace) => traces.push(trace.length),
+    });
+    expect(traces).toEqual([1]);
   });
 });
 

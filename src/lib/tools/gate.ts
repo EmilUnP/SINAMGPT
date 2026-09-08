@@ -1,9 +1,11 @@
-import { isFeatureEnabled } from "@/lib/features";
+import { inferCapabilities } from "@/lib/llm/capabilities";
 import { modelSupportsTools } from "@/lib/settings";
-import { registeredTools } from "./bootstrap";
+import { getActiveToolRegistry } from "./bootstrap";
 
-/** All three gates are required; P0.6 bootstrap keeps the first one false. */
+/**
+ * Search tools run when Admin search is on and the model can take tools —
+ * including name heuristics when Ollama did not advertise a tools flag.
+ */
 export const shouldUseToolRuntime = (model: string): boolean =>
-  registeredTools.length > 0 &&
-  modelSupportsTools(model) &&
-  isFeatureEnabled("toolCalling");
+  getActiveToolRegistry().size > 0 &&
+  (modelSupportsTools(model) || inferCapabilities(model).tools);

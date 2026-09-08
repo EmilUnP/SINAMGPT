@@ -12,7 +12,7 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "owngpt.db");
 
 /** Bump when ensureDatabaseSchema gains a new migration so HMR re-applies once. */
-const SCHEMA_GENERATION = 3;
+const SCHEMA_GENERATION = 5;
 
 let db: Database.Database | null = null;
 let appliedSchemaGeneration = 0;
@@ -142,6 +142,7 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       conversation_id TEXT,
       request_payload TEXT NOT NULL DEFAULT '',
       response_full TEXT NOT NULL DEFAULT '',
+      tool_trace TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -306,6 +307,13 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_password_reset_user
       ON password_reset_tokens(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS search_quota (
+      user_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, day)
+    );
   `);
 
   // Seed defaults once (admin can change later in Admin → Settings / Guardrails)
@@ -504,6 +512,9 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
     database.exec(
       `ALTER TABLE usage_events ADD COLUMN response_full TEXT NOT NULL DEFAULT ''`,
     );
+  }
+  if (!hasColumn(database, "usage_events", "tool_trace")) {
+    database.exec(`ALTER TABLE usage_events ADD COLUMN tool_trace TEXT`);
   }
   if (!hasColumn(database, "api_usage_events", "request_payload")) {
     database.exec(

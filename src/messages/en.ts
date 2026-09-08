@@ -239,6 +239,7 @@ export const en = {
     regenerate: "Regenerate",
     messagePlaceholder: "Message SINAMGPT…",
     stopGenerating: "Stop generating",
+    searching: "Searching…",
     sendMessage: "Send message",
     footerHint:
       "Enter to send · Shift+Enter for new line · Unlimited · Saved on this PC",

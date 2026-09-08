@@ -2,7 +2,7 @@
 
 Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
 
-**Current version:** [1.19.2](./CHANGELOG.md#1192--2026-09-01)
+**Current version:** [1.20.0](./CHANGELOG.md#1200--2026-09-08)
 
 **New here?** Start with **[How it works](./docs/HOW-IT-WORKS.md)** — a short, plain-language guide for managers and everyday users (what happens when you send a message, how knowledge and safety work, where data lives).
 
@@ -26,8 +26,9 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
+- **Internet search** — off until Admin → Settings → Features turns it on. Signed-in chat can then use `web_search` / `web_fetch` (DuckDuckGo HTML by default, optional SearXNG). Weather and news questions search even if the model claims it has no internet. Guest chat stays without search. Fetches are public HTTPS only (no LAN/metadata).
 - **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
-- **Admin** — users, models (Activate before users can pick them), providers (Ollama / vLLM / OpenAI-compatible; test, health, sync, fallback), live usage (chat + API, All / App / API filter; click a row for the exact prompt and reply), knowledge, multi-layer guardrails, Settings → Features On/Off
+- **Admin** — users, models (Activate before users can pick them), providers (Ollama / vLLM / OpenAI-compatible; test, health, sync, fallback), live usage (chat + API, All / App / API filter; click a row for the prompt, reply, and **Tools** tab), knowledge, multi-layer guardrails, Settings → Features On/Off (including internet search)
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Developer API** (`/developer`) — off until Admin → Settings → Features; then one key calls every activated model from other company apps (OpenAI-compatible `/api/v1/chat/completions`, plus `/api/v1/models`). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits

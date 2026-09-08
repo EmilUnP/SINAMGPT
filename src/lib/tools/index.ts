@@ -1,9 +1,10 @@
 import { checkToolPayloadGuardrails } from "@/lib/guardrails";
 import type { ToolPayloadGuard } from "./types";
 
-export { registeredTools, toolRegistry } from "./bootstrap";
+export { getActiveToolRegistry, registeredTools, toolRegistry } from "./bootstrap";
 export { shouldUseToolRuntime } from "./gate";
 export {
+  DEFAULT_COMPLETION_TIMEOUT_MS,
   DEFAULT_MAX_TOOL_ITERATIONS,
   DEFAULT_TOOL_CALL_TIMEOUT_MS,
   runToolLoop,

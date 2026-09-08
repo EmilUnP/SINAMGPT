@@ -28,7 +28,7 @@ import {
 import { AdminGuardrailsPanel } from "./AdminGuardrailsPanel";
 import { AdminKnowledgePanel } from "./AdminKnowledgePanel";
 import { AdminProvidersPanel } from "./AdminProvidersPanel";
-import { AdminSettingsPanel } from "./AdminSettingsPanel";
+import { AdminSettingsPanel, type SettingsDraft } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
@@ -125,6 +125,12 @@ type AppSettings = {
   fileUploadEnabled: boolean;
   fileImportEnabled: boolean;
   microphoneEnabled: boolean;
+  webSearchEnabled: boolean;
+  webSearchEngine: "duckduckgo" | "searxng";
+  webSearchSearxngUrl: string;
+  webSearchMaxResults: number;
+  webSearchDenyHosts: string;
+  webSearchDailyQuota: number;
 };
 
 type TabId =
@@ -207,7 +213,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [pulse, setPulse] = useState<OverviewPulse | null>(null);
   const [meta, setMeta] = useState<OverviewMeta | null>(null);
-  const [settingsDraft, setSettingsDraft] = useState({
+  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
     guestEnabled: true,
     guestDailyLimit: "5",
     guestMaxMessageChars: "2000",
@@ -224,6 +230,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     fileUploadEnabled: false,
     fileImportEnabled: false,
     microphoneEnabled: false,
+    webSearchEnabled: false,
+    webSearchEngine: "duckduckgo",
+    webSearchSearxngUrl: "",
+    webSearchMaxResults: "5",
+    webSearchDenyHosts: "",
+    webSearchDailyQuota: "30",
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -339,6 +351,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           fileUploadEnabled: s.fileUploadEnabled === true,
           fileImportEnabled: s.fileImportEnabled === true,
           microphoneEnabled: s.microphoneEnabled === true,
+          webSearchEnabled: s.webSearchEnabled === true,
+          webSearchEngine:
+            s.webSearchEngine === "searxng" ? "searxng" : "duckduckgo",
+          webSearchSearxngUrl: s.webSearchSearxngUrl ?? "",
+          webSearchMaxResults: String(s.webSearchMaxResults ?? 5),
+          webSearchDenyHosts: s.webSearchDenyHosts ?? "",
+          webSearchDailyQuota: String(s.webSearchDailyQuota ?? 30),
         });
       }
 
@@ -710,6 +729,31 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       setError(t("admin.settings.errTopP"));
       return;
     }
+    const webSearchMaxResults = Number(settingsDraft.webSearchMaxResults);
+    const webSearchDailyQuota = Number(settingsDraft.webSearchDailyQuota);
+    if (
+      !Number.isFinite(webSearchMaxResults) ||
+      webSearchMaxResults < 1 ||
+      webSearchMaxResults > 10
+    ) {
+      setError(t("admin.settings.errWebSearchResults"));
+      return;
+    }
+    if (
+      !Number.isFinite(webSearchDailyQuota) ||
+      webSearchDailyQuota < 0 ||
+      webSearchDailyQuota > 500
+    ) {
+      setError(t("admin.settings.errWebSearchQuota"));
+      return;
+    }
+    if (
+      settingsDraft.webSearchEngine === "searxng" &&
+      !settingsDraft.webSearchSearxngUrl.trim()
+    ) {
+      setError(t("admin.settings.errWebSearchSearxng"));
+      return;
+    }
 
     setSavingSettings(true);
     setError("");
@@ -735,6 +779,12 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           fileUploadEnabled: settingsDraft.fileUploadEnabled,
           fileImportEnabled: settingsDraft.fileImportEnabled,
           microphoneEnabled: settingsDraft.microphoneEnabled,
+          webSearchEnabled: settingsDraft.webSearchEnabled,
+          webSearchEngine: settingsDraft.webSearchEngine,
+          webSearchSearxngUrl: settingsDraft.webSearchSearxngUrl.trim(),
+          webSearchMaxResults: Math.floor(webSearchMaxResults),
+          webSearchDenyHosts: settingsDraft.webSearchDenyHosts,
+          webSearchDailyQuota: Math.floor(webSearchDailyQuota),
         }),
       });
       const data = (await res.json()) as {
@@ -765,6 +815,13 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           fileUploadEnabled: s.fileUploadEnabled === true,
           fileImportEnabled: s.fileImportEnabled === true,
           microphoneEnabled: s.microphoneEnabled === true,
+          webSearchEnabled: s.webSearchEnabled === true,
+          webSearchEngine:
+            s.webSearchEngine === "searxng" ? "searxng" : "duckduckgo",
+          webSearchSearxngUrl: s.webSearchSearxngUrl ?? "",
+          webSearchMaxResults: String(s.webSearchMaxResults ?? 5),
+          webSearchDenyHosts: s.webSearchDenyHosts ?? "",
+          webSearchDailyQuota: String(s.webSearchDailyQuota ?? 30),
         });
       }
       setNotice(t("admin.settings.saved"));

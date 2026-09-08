@@ -36,6 +36,8 @@ export type KnowledgeCitation = {
   id: string;
   title: string;
   category: string;
+  /** Public page URL for internet-search citations. */
+  url?: string;
 };
 
 export type MessageAttachment = {

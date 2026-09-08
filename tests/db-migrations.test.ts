@@ -22,14 +22,19 @@ describe("database migrations", () => {
     const tables = database
       .prepare(
         `SELECT name FROM sqlite_master
-         WHERE type = 'table' AND name IN ('providers', 'jobs', 'models')`,
+         WHERE type = 'table' AND name IN ('providers', 'jobs', 'models', 'search_quota')`,
       )
       .all() as Array<{ name: string }>;
     expect(tables.map((row) => row.name).sort()).toEqual([
       "jobs",
       "models",
       "providers",
+      "search_quota",
     ]);
+    const usageColumns = database
+      .prepare(`PRAGMA table_info(usage_events)`)
+      .all() as Array<{ name: string }>;
+    expect(usageColumns.map((column) => column.name)).toContain("tool_trace");
     const messageColumns = database
       .prepare(`PRAGMA table_info(messages)`)
       .all() as Array<{ name: string }>;

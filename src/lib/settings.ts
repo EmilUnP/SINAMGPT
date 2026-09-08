@@ -15,6 +15,11 @@ import {
   setFeatureFlags,
   type FeatureFlags,
 } from "@/lib/features";
+import {
+  denyHostsToText,
+  getWebSearchSettings,
+  setWebSearchSettings,
+} from "@/lib/search/settings";
 
 const KEY_GUEST_DAILY_LIMIT = "guest_daily_limit";
 const KEY_GUEST_MAX_CHARS = "guest_max_message_chars";
@@ -67,6 +72,12 @@ export type AppSettings = {
   fileUploadEnabled: boolean;
   fileImportEnabled: boolean;
   microphoneEnabled: boolean;
+  webSearchEnabled: boolean;
+  webSearchEngine: "duckduckgo" | "searxng";
+  webSearchSearxngUrl: string;
+  webSearchMaxResults: number;
+  webSearchDenyHosts: string;
+  webSearchDailyQuota: number;
 };
 
 const getSetting = (key: string): string | null => {
@@ -237,6 +248,7 @@ export const setTopPSetting = (value: number) => {
 
 export const getAppSettings = (): AppSettings => {
   const features = getFeatureFlags();
+  const webSearch = getWebSearchSettings();
   return {
     guestEnabled: getGuestEnabledSetting(),
     guestDailyLimit: getGuestDailyLimitSetting(),
@@ -255,6 +267,12 @@ export const getAppSettings = (): AppSettings => {
     fileUploadEnabled: features.fileUpload,
     fileImportEnabled: features.fileImport,
     microphoneEnabled: features.microphone,
+    webSearchEnabled: webSearch.enabled,
+    webSearchEngine: webSearch.engine,
+    webSearchSearxngUrl: webSearch.searxngBaseUrl,
+    webSearchMaxResults: webSearch.maxResults,
+    webSearchDenyHosts: denyHostsToText(webSearch.denyHosts),
+    webSearchDailyQuota: webSearch.dailyQuota,
   };
 };
 
@@ -275,6 +293,8 @@ export const getPublicAppSettings = () => {
 
 export const setAppFeatureFlags = (next: Partial<FeatureFlags>): FeatureFlags =>
   setFeatureFlags(next);
+
+export const setAppWebSearchSettings = setWebSearchSettings;
 
 export const getChatRuntimeOptions = () => ({
   temperature: getTemperatureSetting(),

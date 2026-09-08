@@ -9,18 +9,19 @@ For the **multi-release expansion arc** — more runtimes than Ollama, image / s
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
-**Current release:** [v1.19.2](../CHANGELOG.md#1192--2026-09-01) (see [README](../README.md)).
+**Current release:** [v1.20.0](../CHANGELOG.md#1200--2026-09-08) (see [README](../README.md)).
 
 ---
 
 ## Product today
 
-What operators and users can rely on in the current tree (**v1.19.2**):
+What operators and users can rely on in the current tree (**v1.20.0**):
 
 | Area | Reality |
 |------|---------|
 | **Language** | English / Azərbaycan / Русский UI (flag toggle); knowledge + guardrails policy seeds in Azerbaijani; replies follow the user’s language (ASCII Azerbaijani counts; UI language is a hint on short prompts) |
 | **Chat** | Streaming replies, model picker **in the chat box** (input badges + short hints), plus-menu tools (attach image, summarize, translate), rewrite, theme; **Models guide** at `/models` is public. The picker uses the last activated catalog if a provider is briefly down. Image attach/drop stays **off** until Admin → File upload / File import **and** a vision model. Voice is **microphone** (Admin → Microphone + an audio/STT model) as a voice-message bubble, and **Listen** on replies when the selected model has Audio or Speak (TTS). Slow models keep the stream alive until the first token. No Fast/Smart toggle — pick a model in the composer |
+| **Internet search** | Off until Admin → Settings → Features turns it on. Signed-in chat then gets `web_search` / `web_fetch` (DuckDuckGo HTML default, optional SearXNG). Weather / news / “today” questions search even if the model claims it has no internet. Guest chat has **no** search. Public HTTPS only (LAN/metadata blocked). Clickable “From:” web sources. Admin → Usage → Tools shows what ran |
 | **History** | Per-user conversations in SQLite (`data/owngpt.db`); image and voice files under `data/attachments/` |
 | **Projects** | Up to **5 folders per user**; rename/delete; chats can sit in a project or **All chats**; project-tagged knowledge is boosted |
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
@@ -29,7 +30,7 @@ What operators and users can rely on in the current tree (**v1.19.2**):
 | **Auth / guest** | Local accounts with **username or work email**; **Forgot password** shows a reset button (no email yet); field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Provider registry for Ollama, vLLM, and OpenAI-compatible servers; Admin → Providers for kind, test, health, model sync, fallback, and concurrency. Hosted URLs need a remote-traffic acknowledgement. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
-| **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt and reply; **Clear logs** |
+| **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt, reply, and **Tools** tab; **Clear logs** |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys. One key calls every activated model via OpenAI-compatible `/api/v1/chat/completions` and `/api/v1/models` (custom `/api/v1/generate` still works). Admin **Dev lab** at `/devlab` |
 
 ---
@@ -38,8 +39,7 @@ What operators and users can rely on in the current tree (**v1.19.2**):
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| P3 | **Internet search** | `planned` | Re-ranked to first on 2026-08-28: cheapest remaining phase, and the only thing that proves the tool runtime — which is wired into the chat route but has never executed. See [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md) §4 |
-| P2a | **Embeddings & reranking** | `planned` | Now second. Hybrid keyword + vector retrieval, plus reranking over both knowledge hits and P3’s web snippets |
+| P2a | **Embeddings & reranking** | `planned` | Next. Hybrid keyword + vector retrieval, plus reranking over both knowledge hits and v1.20 web snippets. See [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md) §4 |
 
 ### Candidates (suggested order)
 
@@ -70,6 +70,14 @@ Ideas kept for later — not a commitment.
 ## Shipped history
 
 Closed tracks — keep for context; do not re-open unless regressing.
+
+### v1.20.0 — Internet search (2026-09-08)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Internet search | `done` | Admin on/off; DuckDuckGo HTML default; optional SearXNG; public HTTPS only; streamed answer + clickable sources; guest chat unchanged |
+| Live-query search | `done` | Weather / news / “today” questions run `web_search` even when the model skips tools |
+| Usage Tools tab | `done` | Request detail shows the tool trace when search ran |
 
 ### v1.19.2 — Forgot password (2026-09-01)
 

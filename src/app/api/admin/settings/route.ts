@@ -15,6 +15,7 @@ import {
   setUserHistoryLimitSetting,
   setUserMaxCharsSetting,
   setAppFeatureFlags,
+  setAppWebSearchSettings,
 } from "@/lib/settings";
 
 export async function GET() {
@@ -43,6 +44,12 @@ const patchSchema = z.object({
   fileUploadEnabled: z.boolean().optional(),
   fileImportEnabled: z.boolean().optional(),
   microphoneEnabled: z.boolean().optional(),
+  webSearchEnabled: z.boolean().optional(),
+  webSearchEngine: z.enum(["duckduckgo", "searxng"]).optional(),
+  webSearchSearxngUrl: z.string().trim().max(500).optional(),
+  webSearchMaxResults: z.number().int().min(1).max(10).optional(),
+  webSearchDenyHosts: z.string().max(4000).optional(),
+  webSearchDailyQuota: z.number().int().min(0).max(500).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -106,6 +113,39 @@ export async function PATCH(request: Request) {
         ? { microphone: d.microphoneEnabled }
         : {}),
     });
+  }
+  if (
+    d.webSearchEnabled !== undefined ||
+    d.webSearchEngine !== undefined ||
+    d.webSearchSearxngUrl !== undefined ||
+    d.webSearchMaxResults !== undefined ||
+    d.webSearchDenyHosts !== undefined ||
+    d.webSearchDailyQuota !== undefined
+  ) {
+    try {
+      setAppWebSearchSettings({
+        ...(d.webSearchEnabled !== undefined
+          ? { enabled: d.webSearchEnabled }
+          : {}),
+        ...(d.webSearchEngine !== undefined ? { engine: d.webSearchEngine } : {}),
+        ...(d.webSearchSearxngUrl !== undefined
+          ? { searxngBaseUrl: d.webSearchSearxngUrl }
+          : {}),
+        ...(d.webSearchMaxResults !== undefined
+          ? { maxResults: d.webSearchMaxResults }
+          : {}),
+        ...(d.webSearchDenyHosts !== undefined
+          ? { denyHosts: d.webSearchDenyHosts }
+          : {}),
+        ...(d.webSearchDailyQuota !== undefined
+          ? { dailyQuota: d.webSearchDailyQuota }
+          : {}),
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid search settings";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
   }
 
   return NextResponse.json({ settings: getAppSettings() });

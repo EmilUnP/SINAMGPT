@@ -4,7 +4,10 @@ import {
   getApiUsageEvent,
   listActiveApiUsage,
 } from "./api";
+import { parseToolTrace } from "@/lib/attachments";
 import { getDb } from "@/lib/db";
+import { boundToolTrace } from "@/lib/tools/trace";
+import type { ToolTraceEntry } from "@/lib/types";
 import { MAX_REQUEST_PAYLOAD, MAX_RESPONSE_FULL } from "./limits";
 
 export type UsageSource = "user" | "guest" | "api";
@@ -36,6 +39,7 @@ export type ActiveUsage = {
   status: "streaming";
   requestPayload: string;
   responseText: string;
+  toolTrace: ToolTraceEntry[];
 };
 
 export type UsageListItem = {
@@ -73,6 +77,7 @@ export type UsageDetail = {
   createdAt: string | null;
   requestPayload: string;
   responseFull: string;
+  toolTrace: ToolTraceEntry[];
 };
 
 export type UsageEvent = {
@@ -94,6 +99,7 @@ export type UsageEvent = {
   conversation_id: string | null;
   request_payload?: string;
   response_full?: string;
+  tool_trace?: string | null;
   created_at: string;
 };
 
@@ -159,6 +165,7 @@ export const startUsage = (input: {
     status: "streaming",
     requestPayload: clip(`=== user ===\n${input.prompt}`, MAX_REQUEST_PAYLOAD),
     responseText: "",
+    toolTrace: [],
   });
   return id;
 };
@@ -171,6 +178,16 @@ export const attachUsageRequest = (
   const row = active.get(id);
   if (!row) return;
   row.requestPayload = formatRequestPayload(messages);
+};
+
+/** Bounded, redacted tool steps for Admin request detail (live + persisted). */
+export const attachUsageToolTrace = (
+  id: string,
+  trace: ToolTraceEntry[],
+) => {
+  const row = active.get(id);
+  if (!row) return;
+  row.toolTrace = boundToolTrace(trace);
 };
 
 export const markUsageToken = (id: string, piece: string) => {
@@ -216,8 +233,8 @@ export const finishUsage = (id: string, meta: FinishMeta) => {
         id, source, user_id, username, model, prompt_preview, prompt_chars,
         response_chars, ttft_ms, duration_ms, tokens_eval, tokens_prompt,
         tokens_per_sec, status, error_message, conversation_id,
-        request_payload, response_full, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        request_payload, response_full, tool_trace, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     )
     .run(
       id,
@@ -238,6 +255,7 @@ export const finishUsage = (id: string, meta: FinishMeta) => {
       meta.conversationId ?? null,
       row.requestPayload,
       clip(row.responseText, MAX_RESPONSE_FULL),
+      row.toolTrace.length ? JSON.stringify(row.toolTrace) : null,
     );
 
   active.delete(id);
@@ -313,6 +331,7 @@ export const getUsageDetail = (id: string): UsageDetail | null => {
       createdAt: new Date(live.startedAt).toISOString(),
       requestPayload: live.requestPayload,
       responseFull: live.responseText,
+      toolTrace: live.toolTrace,
     };
   }
 
@@ -344,6 +363,7 @@ export const getUsageDetail = (id: string): UsageDetail | null => {
       createdAt: new Date(apiLive.startedAt).toISOString(),
       requestPayload: apiLive.requestPayload,
       responseFull: apiLive.responseText,
+      toolTrace: [],
     };
   }
 
@@ -373,6 +393,7 @@ export const getUsageDetail = (id: string): UsageDetail | null => {
       createdAt: row.created_at,
       requestPayload: row.request_payload ?? "",
       responseFull: row.response_full ?? "",
+      toolTrace: parseToolTrace(row.tool_trace),
     };
   }
 
@@ -401,6 +422,7 @@ export const getUsageDetail = (id: string): UsageDetail | null => {
     createdAt: apiRow.created_at,
     requestPayload: apiRow.request_payload || apiRow.prompt_preview,
     responseFull: apiRow.response_full ?? "",
+    toolTrace: [],
   };
 };
 

@@ -150,14 +150,30 @@ export const useChatStream = ({
               }),
             );
           }
+          if (parsed.event === "tool_start") {
+            const toolName = (parsed.data as { toolName?: string }).toolName;
+            if (toolName === "web_search" || toolName === "web_fetch") {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === tempAssistantId && !message.content
+                    ? { ...message, content: t("chat.searching") }
+                    : message,
+                ),
+              );
+            }
+          }
           if (parsed.event === "token") {
             const token = (parsed.data as { content: string }).content;
             setMessages((current) =>
-              current.map((message) =>
-                message.id === tempAssistantId
-                  ? { ...message, content: message.content + token }
-                  : message,
-              ),
+              current.map((message) => {
+                if (message.id !== tempAssistantId) return message;
+                const searching = t("chat.searching");
+                const nextContent =
+                  message.content === searching
+                    ? token
+                    : message.content + token;
+                return { ...message, content: nextContent };
+              }),
             );
           }
           if (parsed.event === "done") {
