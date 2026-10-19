@@ -6,7 +6,7 @@ export type ModelCapabilities = {
   tools: boolean;
   /** Speech-to-text / microphone input (Gemma 4, Whisper, omni, …). */
   audio: boolean;
-  /** Text-to-speech. Ollama chat still returns text; Listen uses on-device speech. */
+  /** Text-to-speech. Chat still returns text; Listen uses on-device speech. */
   tts: boolean;
   video: boolean;
 };
@@ -26,12 +26,12 @@ const VIDEO_RE = /\b(video|omni|qwen2\.5-omni|qwen3-omni|qwen3\.5)\b/i;
 
 /** Gemma 3 4B+ is multimodal; the 1B variant is text-only. */
 const isGemma3Vision = (name: string): boolean => {
-  if (!/gemma3/i.test(name)) return false;
+  if (!/gemma-?3/i.test(name)) return false;
   if (/\b1b\b/i.test(name) || /:1b\b/i.test(name)) return false;
   return true;
 };
 
-/** Name-based fallback when Ollama `/api/show` has no capabilities list. */
+/** Name-based hints for OpenAI-compatible model catalogs. */
 export const inferCapabilities = (name: string): ModelCapabilities => {
   const id = name.trim();
   const vision =
@@ -45,34 +45,10 @@ export const inferCapabilities = (name: string): ModelCapabilities => {
   const gemma4Audio = gemma4HasAudio(id);
   return {
     vision,
-    // Gemma 4 advertises `tools`; Gemma 3 does not (`/api/show` on gemma3:4b
-    // returns ["completion","vision"]). Claiming tools for Gemma 3 sends tool
-    // definitions to a model that cannot emit tool_calls.
+    // Family hints are also gated by the provider tool-parser setting.
     tools: TOOLS_RE.test(id) || /gemma-?4/i.test(id),
     audio: gemma4Audio ?? AUDIO_RE.test(id),
     tts: TTS_RE.test(id) || /omni/i.test(id),
     video: VIDEO_RE.test(id),
-  };
-};
-
-export const parseOllamaCapabilities = (
-  raw: unknown,
-  fallbackName: string,
-): ModelCapabilities => {
-  const heuristic = inferCapabilities(fallbackName);
-  if (!Array.isArray(raw)) return heuristic;
-  const caps = raw
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.toLowerCase());
-  return {
-    vision: caps.includes("vision") || heuristic.vision,
-    // When Ollama answered with a capability list it is authoritative for
-    // tools: a name heuristic must not add a capability the runtime denied,
-    // or the tool loop runs against a model that cannot call tools.
-    tools: caps.includes("tools"),
-    audio: caps.includes("audio") || heuristic.audio,
-    tts: caps.includes("tts") || heuristic.tts,
-    // Ollama has no video capability flag yet — name heuristic only.
-    video: heuristic.video,
   };
 };

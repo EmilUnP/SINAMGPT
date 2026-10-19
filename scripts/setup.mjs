@@ -19,28 +19,25 @@ if (!fs.existsSync(envLocal) && fs.existsSync(envExample)) {
 }
 
 console.log(`
-OwnGPT setup ready.
+SINAMGPT setup ready.
 
-1) Make sure Ollama is running:
-   ollama serve
+1) Start official vLLM on a Linux GPU host or Docker Desktop with WSL2:
+   Copy .env.vllm.example to .env.vllm, set VLLM_API_KEY and choose your GPU profile.
+   docker compose --env-file .env.vllm -f docker-compose.vllm.yml up -d
+   Windows shortcut: start-vllm.bat
+   Full instructions: docs/VLLM-SETUP.md
 
-2) Pull the company RTX 5090 fleet (activate each in Admin → Models):
-   ollama pull gemma3:4b
-   ollama pull gemma3:12b
-   ollama pull gemma4:e4b
-   ollama pull gemma4:26b
-   ollama pull gemma4:31b
-   ollama pull llama4:scout
-   ollama pull llama4:maverick
-   ollama pull qwen3.5:9b
-   ollama pull qwen3:32b
+2) Set VLLM_BASE_URL and VLLM_API_KEY in .env.local before the first startup.
+   Existing installs: edit the vllm provider in Admin > Providers instead.
 
 3) Set ADMIN_USERNAME and a unique ADMIN_PASSWORD (min 10 characters) in .env.local
 
 4) Start the app:
-   npm run dev
+   npm run dev -- --port 3055
 
 Open http://localhost:3055
 - Normal users: register and chat
 - Admin: sign in with ADMIN_* credentials → /admin
+- Providers: Test connection, configure tool calling, Sync models.
+- Models: Activate a served model, then choose the default in Settings.
 `);

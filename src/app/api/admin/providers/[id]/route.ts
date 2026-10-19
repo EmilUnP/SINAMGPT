@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const patchSchema = z
   .object({
-    kind: z.enum(["ollama", "vllm", "openai"]).optional(),
+    kind: z.enum(["vllm", "openai"]).optional(),
     baseUrl: z.string().trim().min(1).max(2048).optional(),
     enabled: z.boolean().optional(),
     apiKey: z
@@ -20,6 +20,7 @@ const patchSchema = z
       .optional(),
     fallbackId: z.string().trim().min(1).max(64).nullable().optional(),
     maxConcurrent: z.number().int().min(0).max(10_000).optional(),
+    toolsEnabled: z.boolean().optional(),
     acknowledgeRemote: z.boolean().optional(),
   })
   .refine(
@@ -29,7 +30,8 @@ const patchSchema = z
       value.enabled !== undefined ||
       value.apiKey !== undefined ||
       value.fallbackId !== undefined ||
-      value.maxConcurrent !== undefined,
+      value.maxConcurrent !== undefined ||
+      value.toolsEnabled !== undefined,
     { message: "Nothing to update" },
   );
 
@@ -65,6 +67,7 @@ export async function PATCH(request: Request, { params }: Params) {
       ...(parsed.data.maxConcurrent !== undefined
         ? { maxConcurrent: parsed.data.maxConcurrent }
         : {}),
+      toolsEnabled: parsed.data.toolsEnabled,
       acknowledgeRemote: parsed.data.acknowledgeRemote,
     });
     return NextResponse.json({ provider });

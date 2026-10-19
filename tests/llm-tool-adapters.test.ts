@@ -1,188 +1,107 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { completeOllamaToolChat } from "@/lib/llm/ollama";
-import { completeVllmToolChat } from "@/lib/llm/vllm";
+import { completeVllmToolChat, listVllmModels, streamVllmChat } from "@/lib/llm/vllm";
 import type { LlmProviderConfig, LlmToolDefinition } from "@/lib/llm/types";
 
-const ollama: LlmProviderConfig = {
-  id: "ollama",
-  kind: "ollama",
-  baseUrl: "http://ollama.test",
-  enabled: true,
-};
+const provider: LlmProviderConfig = { id: "vllm", kind: "vllm", baseUrl: "http://gpu.test/v1/", apiKey: "private-key", enabled: true, toolsEnabled: true };
+const tools: LlmToolDefinition[] = [{ type: "function", function: { name: "lookup", description: "Look up a value", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } }];
+const completion = () => Response.json({ choices: [{ message: { content: "ok" } }] });
+afterEach(() => { vi.unstubAllGlobals(); });
 
-const vllm: LlmProviderConfig = {
-  id: "gpu",
-  kind: "vllm",
-  baseUrl: "http://vllm.test",
-  apiKey: "test-key",
-  enabled: true,
-};
-
-const tools: LlmToolDefinition[] = [
-  {
-    type: "function",
-    function: {
-      name: "echo",
-      description: "Echo",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("tool-capable adapters", () => {
-  it("omits tool fields from Ollama requests when none are provided", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({ message: { content: "plain" } }),
-    );
+describe("vLLM requests", () => {
+  it("uses one /v1 prefix, authentication, and OpenAI sampling fields", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completion());
     vi.stubGlobal("fetch", fetchMock);
-
-    await completeOllamaToolChat(
-      ollama,
-      "model",
-      [{ role: "user", content: "hello" }],
-      { timeoutMs: 1_000 },
-    );
-
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(body).not.toHaveProperty("tools");
-    expect(body.messages[0]).not.toHaveProperty("tool_calls");
+    await completeVllmToolChat(provider, "Qwen/Qwen3-8B", [{ role: "user", content: "hello" }], { temperature: 0.2, topP: 0.9, numPredict: 100, think: false });
+    expect(fetchMock.mock.calls[0][0]).toBe("http://gpu.test/v1/chat/completions");
+    const init = fetchMock.mock.calls[0][1];
+    expect(init.headers.Authorization).toBe("Bearer private-key");
+    expect(JSON.parse(init.body)).toMatchObject({ model: "Qwen/Qwen3-8B", stream: false, max_tokens: 100, temperature: 0.2, top_p: 0.9, chat_template_kwargs: { enable_thinking: false } });
+    expect(JSON.parse(init.body)).not.toHaveProperty("tools");
   });
 
-  it("serializes tools and parses Ollama tool calls", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        Response.json({
-          message: {
-            content: "",
-            tool_calls: [
-              { id: "one", function: { name: "echo", arguments: {} } },
-            ],
-          },
-        }),
-      ),
-    );
-
-    const result = await completeOllamaToolChat(
-      ollama,
-      "model",
-      [{ role: "user", content: "hello" }],
-      { tools, timeoutMs: 1_000 },
-    );
-    expect(result.toolCalls).toEqual([
-      { id: "one", name: "echo", arguments: {} },
-    ]);
+  it("preserves tool call ids, JSON arguments and tool results across turns", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ choices: [{ message: { content: null, tool_calls: [{ id: "call-1", function: { name: "lookup", arguments: '{"query":"next"}' } }] } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await completeVllmToolChat(provider, "Qwen/Qwen3-8B", [
+      { role: "assistant", content: "", toolCalls: [{ id: "prior", name: "lookup", arguments: { query: "first" } }] },
+      { role: "tool", content: '{"value":"found"}', toolCallId: "prior", toolName: "lookup" },
+    ], { tools });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.tool_choice).toBe("auto");
+    expect(body.tools).toEqual(tools);
+    expect(body.messages[0].tool_calls[0]).toEqual({ id: "prior", type: "function", function: { name: "lookup", arguments: '{"query":"first"}' } });
+    expect(body.messages[1].tool_call_id).toBe("prior");
+    expect(result.toolCalls).toEqual([{ id: "call-1", name: "lookup", arguments: { query: "next" } }]);
   });
 
-  it("parses Ollama tool arguments sent as JSON strings and disables thinking", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({
-        message: {
-          content: "",
-          tool_calls: [
-            {
-              id: "q",
-              function: { name: "echo", arguments: "{\"value\":\"hi\"}" },
-            },
-          ],
-        },
-      }),
-    );
+  it("does not advertise or invoke tools without a configured parser", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ data: [{ id: "Qwen/Qwen3-8B" }] }));
     vi.stubGlobal("fetch", fetchMock);
-
-    const result = await completeOllamaToolChat(
-      ollama,
-      "model",
-      [{ role: "user", content: "hello" }],
-      { tools, timeoutMs: 1_000 },
-    );
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(body.think).toBe(false);
-    expect(result.toolCalls[0]?.arguments).toEqual({ value: "hi" });
+    const unconfigured = { ...provider, toolsEnabled: false };
+    expect((await listVllmModels(unconfigured))[0].tools).toBe(false);
+    await expect(completeVllmToolChat(unconfigured, "model", [], { tools })).rejects.toThrow("Tool calling is not configured");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("omits tools and parses OpenAI-compatible tool calls", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({
-        choices: [
-          {
-            message: {
-              content: "",
-              tool_calls: [
-                {
-                  id: "two",
-                  function: { name: "echo", arguments: '{"value":"ok"}' },
-                },
-              ],
-            },
-          },
-        ],
-      }),
-    );
+  it("sends WAV as input_audio and preserves PNG image MIME", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completion());
     vi.stubGlobal("fetch", fetchMock);
-
-    const result = await completeVllmToolChat(
-      vllm,
-      "model",
-      [{ role: "user", content: "hello" }],
-      { timeoutMs: 1_000 },
-    );
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(body).not.toHaveProperty("tools");
-    expect(result.toolCalls[0]).toEqual({
-      id: "two",
-      name: "echo",
-      arguments: { value: "ok" },
-    });
+    const wav = Buffer.from("RIFF0000WAVEfake").toString("base64");
+    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).toString("base64");
+    await completeVllmToolChat(provider, "multimodal", [{ role: "user", content: "Describe", images: [wav, png] }]);
+    const parts = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    expect(parts[1]).toEqual({ type: "input_audio", input_audio: { data: wav, format: "wav" } });
+    expect(parts[2].image_url.url).toBe(`data:image/png;base64,${png}`);
   });
 });
 
-describe("tool-turn context window", () => {
-  const bodyOf = async (
-    messages: Parameters<typeof completeOllamaToolChat>[2],
-    options: Parameters<typeof completeOllamaToolChat>[3],
-  ) => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(Response.json({ message: { content: "ok" } }));
+const streamResponse = (source: string, width = 7) => {
+  const bytes = new TextEncoder().encode(source);
+  let position = 0;
+  return new Response(new ReadableStream<Uint8Array>({ pull(controller) {
+    if (position >= bytes.length) { controller.close(); return; }
+    controller.enqueue(bytes.slice(position, position + width)); position += width;
+  } }));
+};
+
+describe("vLLM streaming", () => {
+  it("handles split UTF-8/CRLF events and collects usage after finish_reason exactly once", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(streamResponse(
+      ': keepalive\r\n\r\ndata: {"choices":[{"delta":{"content":"Salam, dünya"}}]}\r\n\r\n' +
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n' +
+      'data: {"choices":[],"usage":{"completion_tokens":4,"prompt_tokens":12}}\n\n' +
+      'data: [DONE]'
+    ));
     vi.stubGlobal("fetch", fetchMock);
-    await completeOllamaToolChat(ollama, "model", messages, options);
-    return JSON.parse(fetchMock.mock.calls[0][1].body as string);
-  };
-
-  it("widens num_ctx when tool schemas are sent", async () => {
-    const body = await bodyOf([{ role: "user", content: "hi" }], {
-      tools,
-      timeoutMs: 1_000,
-    });
-    expect(body.options.num_ctx).toBe(8192);
+    const response = await streamVllmChat(provider, "model", []);
+    const chunks = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
+    expect(chunks[0].message.content).toBe("Salam, dünya");
+    expect(chunks.filter((chunk) => chunk.done)).toEqual([{ message: { role: "assistant", content: "" }, done: true, eval_count: 4, prompt_eval_count: 12 }]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).stream_options).toEqual({ include_usage: true });
   });
 
-  it("widens num_ctx on the answer turn that carries tool results", async () => {
-    // The final call sends no tool schemas, but the fetched page text is still
-    // in the transcript — without the wider window it gets truncated away.
-    const body = await bodyOf(
-      [
-        { role: "user", content: "hi" },
-        { role: "tool", toolName: "web_search", content: "{\"results\":[]}" },
-      ],
-      { timeoutMs: 1_000 },
-    );
-    expect(body.options.num_ctx).toBe(8192);
+  it.each([
+    ['data: {"choices":[{"delta":{"content":"partial"}}]}\n\n', 'before completion'],
+    ['data: {"error":{"message":"GPU unavailable"}}\n\n', 'GPU unavailable'],
+    ['data: broken-json\n\n', 'JSON'],
+  ])("reports incomplete or failed streams instead of success", async (source, error) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamResponse(source)));
+    const response = await streamVllmChat(provider, "model", []);
+    const chunks = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
+    expect(chunks.at(-1).error).toContain(error);
+    expect(chunks.filter((chunk) => chunk.done)).toHaveLength(1);
   });
 
-  it("leaves plain chat turns on the model default", async () => {
-    const body = await bodyOf([{ role: "user", content: "hi" }], {
-      timeoutMs: 1_000,
-    });
-    expect(body.options?.num_ctx).toBeUndefined();
+  it("cancels the upstream HTTP request when the consumer stops", async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    const cancelled = vi.fn();
+    vi.stubGlobal("fetch", vi.fn((_url, init) => {
+      upstreamSignal = init.signal;
+      return Promise.resolve(new Response(new ReadableStream({ cancel: cancelled })));
+    }));
+    const response = await streamVllmChat(provider, "model", []);
+    await response.body!.cancel();
+    expect(upstreamSignal!.aborted).toBe(true);
+    expect(cancelled).toHaveBeenCalledOnce();
   });
 });

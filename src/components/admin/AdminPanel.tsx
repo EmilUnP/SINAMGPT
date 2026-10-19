@@ -55,7 +55,7 @@ type BackendPulse = {
 
 type OverviewPulse = {
   liveCount: number;
-  ollama: { ok: boolean; latencyMs: number; error?: string; backend?: string };
+  llm: { ok: boolean; latencyMs: number; error?: string; backend?: string };
   backends: BackendPulse[];
   summary: {
     total_requests: number | null;
@@ -284,7 +284,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
       };
       const usageData = (await usageRes.json()) as {
         live?: Array<{ id: string }>;
-        ollama?: OverviewPulse["ollama"];
+        llm?: OverviewPulse["llm"];
         backends?: BackendPulse[];
         analytics?: {
           summary?: OverviewPulse["summary"];
@@ -361,16 +361,16 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
         });
       }
 
-      if (usageRes.ok && usageData.analytics?.summary && usageData.ollama) {
+      if (usageRes.ok && usageData.analytics?.summary && usageData.llm) {
         setPulse({
           liveCount: usageData.live?.length ?? 0,
-          ollama: usageData.ollama,
+          llm: usageData.llm,
           backends: usageData.backends ?? [
             {
-              backend: "ollama",
-              ok: usageData.ollama.ok,
-              latencyMs: usageData.ollama.latencyMs,
-              error: usageData.ollama.error,
+              backend: "vllm",
+              ok: usageData.llm.ok,
+              latencyMs: usageData.llm.latencyMs,
+              error: usageData.llm.error,
             },
           ],
           summary: usageData.analytics.summary,
@@ -929,10 +929,10 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                 : pulse
                   ? [
                       {
-                        backend: "ollama" as const,
-                        ok: pulse.ollama.ok,
-                        latencyMs: pulse.ollama.latencyMs,
-                        error: pulse.ollama.error,
+                        backend: "vllm" as const,
+                        ok: pulse.llm.ok,
+                        latencyMs: pulse.llm.latencyMs,
+                        error: pulse.llm.error,
                       },
                     ]
                   : []
@@ -942,9 +942,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                 >
                   <Server size={12} />
-                  {b.backend === "ollama"
-                    ? "Ollama"
-                    : b.backend === "vllm"
+                  {b.backend === "vllm"
                       ? "vLLM"
                       : b.backend}{" "}
                   {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")}

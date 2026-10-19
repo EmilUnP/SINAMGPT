@@ -126,11 +126,11 @@ export const adminEn = {
   models: {
     title: "LLM models",
     subtitle:
-      "New Ollama models show up here after a refresh. They stay inactive for users until you Activate them.",
+      "New vLLM models show up here after a refresh. They stay inactive for users until you Activate them.",
     capsLegend:
-      "You can send Text and Image. Ollama may also list Audio. Functions = not used in chat yet.",
+      "Capabilities depend on the served model. Functions require a configured tool parser and tool calling enabled.",
     empty:
-      "No models found. Start Ollama and run `ollama list`.",
+      "No models found. Start vLLM, test its connection in Providers, then sync models.",
     colId: "Model id",
     colBackend: "Backend",
     colCaps: "Capabilities",
@@ -151,12 +151,12 @@ export const adminEn = {
     vision: "Vision",
     tools: "Functions",
     visionHint: "Can read images you attach or paste.",
-    toolsHint: "Can call extra functions. Chat does not use that yet.",
+    toolsHint: "Can call functions when the server tool parser and app tool calling are enabled.",
   },
   providers: {
     title: "Model providers",
     description:
-      "Add Ollama, vLLM, or another OpenAI-compatible server. Local and LAN addresses are the default. A public or cloud URL needs confirmation that traffic may leave the building.",
+      "Add vLLM, or another OpenAI-compatible server. Local and LAN addresses are the default. A public or cloud URL needs confirmation that traffic may leave the building.",
     add: "Add provider",
     id: "Provider id",
     url: "Base URL",
@@ -175,8 +175,8 @@ export const adminEn = {
     deleted: "Provider deleted.",
     confirmDelete: "Delete provider “{name}”?",
     kind: "Kind",
-    kindOllama: "Ollama",
     kindVllm: "vLLM",
+    toolsEnabled: "Tool calling configured on this server (vLLM tool parser required).",
     kindOpenai: "OpenAI-compatible",
     test: "Test connection",
     testing: "Testing…",
@@ -242,7 +242,7 @@ export const adminEn = {
     modelsTipAfter:
       "tab — settings here only pick defaults among available ones.",
     sampling: "Sampling",
-    samplingDesc: "Applies to Ollama chat completions.",
+    samplingDesc: "Applies to vLLM chat completions.",
     temperature: "Temperature",
     temperatureHint: "0 = focused · 0.7 default · 1.2+ more creative",
     maxTokens: "Max reply tokens",
@@ -752,11 +752,11 @@ export const adminAz: AdminMessages = {
   models: {
     title: "LLM modelləri",
     subtitle:
-      "Yeni Ollama modelləri yeniləyəndə burada görünür. Aktiv et basana qədər istifadəçilər üçün qeyri-aktiv qalır.",
+      "Yeni vLLM modelləri yeniləyəndə burada görünür. Aktiv et basana qədər istifadəçilər üçün qeyri-aktiv qalır.",
     capsLegend:
-      "Mətn və Şəkil göndərə bilərsiniz. Ollama Audio da göstərə bilər. Funksiya söhbətdə hələ yoxdur.",
+      "İmkanlar modeldən asılıdır. Funksiyalar üçün serverin alət parseri və tətbiqin alət çağırışları aktiv olmalıdır.",
     empty:
-      "Model tapılmadı. Ollama-nı işə salın və `ollama list` işlədin.",
+      "Model tapılmadı. vLLM serverini başladın və modelləri sinxronlaşdırın.",
     colId: "Model id",
     colBackend: "Backend",
     colCaps: "İmkanlar",
@@ -783,7 +783,7 @@ export const adminAz: AdminMessages = {
   providers: {
     title: "Model provayderləri",
     description:
-      "Ollama, vLLM və ya digər OpenAI-uyğun server əlavə edin. Lokal və LAN ünvanlar standartır. İctimai və ya bulud URL üçün trafikin binanı tərk edəcəyini təsdiqləyin.",
+      "vLLM və ya digər OpenAI-uyğun server əlavə edin. Lokal və LAN ünvanlar standartır. İctimai və ya bulud URL üçün trafikin binanı tərk edəcəyini təsdiqləyin.",
     add: "Provayder əlavə et",
     id: "Provayder id",
     url: "Baza URL",
@@ -802,8 +802,8 @@ export const adminAz: AdminMessages = {
     deleted: "Provayder silindi.",
     confirmDelete: "“{name}” provayderi silinsin?",
     kind: "Növ",
-    kindOllama: "Ollama",
     kindVllm: "vLLM",
+    toolsEnabled: "Bu serverdə alət çağırışları sazlanıb (vLLM alət parseri tələb olunur).",
     kindOpenai: "OpenAI-uyğun",
     test: "Bağlantını yoxla",
     testing: "Yoxlanır…",
@@ -869,7 +869,7 @@ export const adminAz: AdminMessages = {
     modelsTipAfter:
       "tabında aktiv/deaktiv edin — burada yalnız mövcudlar arasından standart seçilir.",
     sampling: "Nümunəgötürmə",
-    samplingDesc: "Ollama söhbət tamamlanalarına tətbiq olunur.",
+    samplingDesc: "vLLM söhbət tamamlanalarına tətbiq olunur.",
     temperature: "Temperatur",
     temperatureHint: "0 = fokuslu · 0.7 standart · 1.2+ daha yaradıcı",
     maxTokens: "Maks. cavab tokenləri",
@@ -1375,11 +1375,11 @@ export const adminRu: AdminMessages = {
   models: {
     title: "Модели LLM",
     subtitle:
-      "Новые модели Ollama появляются здесь после обновления. Для пользователей они остаются неактивными, пока вы не нажмёте Активировать.",
+      "Новые модели vLLM появляются здесь после обновления. Для пользователей они остаются неактивными, пока вы не нажмёте Активировать.",
     capsLegend:
-      "Можно отправлять текст и изображение. Ollama может также указывать аудио. Функции в чате пока не используются.",
+      "Возможности зависят от модели. Для функций нужен парсер инструментов на сервере и включённые вызовы инструментов в приложении.",
     empty:
-      "Модели не найдены. Запустите Ollama и выполните `ollama list`.",
+      "Модели не найдены. Запустите vLLM и синхронизируйте модели.",
     colId: "ID модели",
     colBackend: "Бэкенд",
     colCaps: "Возможности",
@@ -1405,7 +1405,7 @@ export const adminRu: AdminMessages = {
   providers: {
     title: "Провайдеры моделей",
     description:
-      "Добавьте Ollama, vLLM или другой OpenAI-совместимый сервер. Локальные и LAN-адреса — по умолчанию. Для публичного или облачного URL нужно подтвердить, что трафик покинет здание.",
+      "Добавьте vLLM или другой OpenAI-совместимый сервер. Локальные и LAN-адреса — по умолчанию. Для публичного или облачного URL нужно подтвердить, что трафик покинет здание.",
     add: "Добавить провайдер",
     id: "ID провайдера",
     url: "Базовый URL",
@@ -1424,8 +1424,8 @@ export const adminRu: AdminMessages = {
     deleted: "Провайдер удалён.",
     confirmDelete: "Удалить провайдер «{name}»?",
     kind: "Тип",
-    kindOllama: "Ollama",
     kindVllm: "vLLM",
+    toolsEnabled: "Вызов инструментов настроен на сервере (нужен парсер vLLM).",
     kindOpenai: "OpenAI-совместимый",
     test: "Проверить связь",
     testing: "Проверка…",
@@ -1491,7 +1491,7 @@ export const adminRu: AdminMessages = {
     modelsTipAfter:
       " — здесь выбираются только значения по умолчанию среди доступных.",
     sampling: "Сэмплирование",
-    samplingDesc: "Применяется к ответам чата Ollama.",
+    samplingDesc: "Применяется к ответам чата vLLM.",
     temperature: "Температура",
     temperatureHint: "0 = строго · 0.7 по умолчанию · 1.2+ творчее",
     maxTokens: "Макс. токенов ответа",

@@ -1,6 +1,6 @@
 # SINAMGPT
 
-Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your PC.
+Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, knowledge & guardrails, and saved history — all on your Server.
 
 **Current version:** [1.20.0](./CHANGELOG.md#1200--2026-09-08)
 
@@ -16,19 +16,19 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 | How we number releases | [docs/VERSIONING.md](./docs/VERSIONING.md) |
 | Original management concept | [docs/SINAMGPT-Concept-Plan.md](./docs/SINAMGPT-Concept-Plan.md) |
 
-- **Local models** via [Ollama](https://ollama.com) by default — company RTX 5090 fleet: `gemma3:4b`, `gemma3:12b`, `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`, `llama4:scout`, `llama4:maverick`, `qwen3.5:9b`, `qwen3:32b`. Extra runtimes (vLLM, LM Studio, llama.cpp, other OpenAI-compatible servers) from **Admin → Providers**
-- **Vision models** — attach, paste, or drop images when the selected model is multimodal **and** Admin has turned on File upload / File import (on this box: Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B). Qwen 3 32B is text-only. Those Features start **off**.
-- **Audio models** — record from the microphone (pick the device on laptops); up to 30 seconds. Needs an audio-capable model **and** Admin → Features → Microphone (starts **off**). On this box: every Gemma 4 (E4B / 26B / 31B) yes; Gemma 3 / Llama 4 / Qwen no
+- **Local models** via **vLLM**, using its OpenAI-compatible API and continuous batching. Additional vLLM endpoints and OpenAI-compatible servers are managed in **Admin → Providers**. See [vLLM setup](./docs/VLLM-SETUP.md).
+- **Vision models** — attach, paste, or drop images when the deployed model supports images and Admin enables File upload / File import. These features start **off**.
+- **Audio models** — record up to 30 seconds from the microphone when the deployed model and vLLM installation support audio input. Admin → Features → Microphone starts **off**. The example Qwen3 deployment is text-only.
 - **Login / register** with a username or work email (accounts stored locally). **Forgot password?** shows a reset button on the next screen (no email yet)
 - **Chat history** per user (SQLite in `data/owngpt.db`)
-- **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Ollama Functions tags), **+** tools menu, rewrite shortcuts
+- **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Functions badges), **+** tools menu, rewrite shortcuts
 - **Models guide** (`/models`) — public catalog of activated models (inputs, when to use, one caveat). Open it from home, the chat header, or the sidebar.
 - **Projects** — up to 5 folders per user; project-scoped knowledge boost
 - **Share chats** internally (logged-in colleagues, read-only `/share/…` links; shared images and voice clips stay visible)
 - **Cited answers** from the company knowledge base (admin on/off; guests too when knowledge applies). Search uses the question as written **plus** EN / AZ / RU keywords, so a Russian question can still find an English or Azerbaijani note. General chat (for example “what is AI”) does not attach About SINAM / product pages as “From: …”
 - **Internet search** — off until Admin → Settings → Features turns it on. Signed-in chat can then use `web_search` / `web_fetch` (DuckDuckGo HTML by default, optional SearXNG). Weather and news questions search even if the model claims it has no internet. Guest chat stays without search. Fetches are public HTTPS only (no LAN/metadata).
 - **English / Azərbaycan / Русский UI** — flag toggle on chat, auth, share, and Admin; choice remembered in the browser. Replies follow the user’s language
-- **Admin** — users, models (Activate before users can pick them), providers (Ollama / vLLM / OpenAI-compatible; test, health, sync, fallback), live usage (chat + API, All / App / API filter; click a row for the prompt, reply, and **Tools** tab), knowledge, multi-layer guardrails, Settings → Features On/Off (including internet search)
+- **Admin** — users, models (Activate before users can pick them), providers (vLLM / OpenAI-compatible; test, health, sync, fallback), live usage (chat + API, All / App / API filter; click a row for the prompt, reply, and **Tools** tab), knowledge, multi-layer guardrails, Settings → Features On/Off (including internet search)
 - **Model lab** (`/lab`) — admin-only live `/api/chat` suites (Quick, Assist, Guardrails) with Live chat, Results, and Charts
 - **Developer API** (`/developer`) — off until Admin → Settings → Features; then one key calls every activated model from other company apps (OpenAI-compatible `/api/v1/chat/completions`, plus `/api/v1/models`). Raw model pipe — **no** knowledge, **no** guardrails
 - **Dev lab** (`/devlab`) — off until the same Features toggle; admin view of all keys, API usage, and gateway limits
@@ -39,8 +39,8 @@ No third-party cloud LLM APIs unless an admin adds a public URL and confirms tha
 ## Requirements
 
 - Node.js 20+
-- [Ollama](https://ollama.com/download) installed and running
-- At least one pulled model (`ollama list`)
+- A reachable official vLLM server on Linux or Docker/WSL2 with compatible GPU hardware
+- A served model and its API key; see [vLLM setup](./docs/VLLM-SETUP.md)
 
 ## Quick start
 
@@ -66,33 +66,13 @@ npm run build
 npm run start
 ```
 
-## Ollama models (company RTX 5090)
+## vLLM models and migration
 
-These tags are what the company GPU box actually has. After deploy, **Activate** each one under Admin → Models. Default is `gemma3:4b`.
+Run official vLLM with the supplied `docker-compose.vllm.yml` and `.env.vllm.example`. The starting profile serves `Qwen/Qwen3-8B`; tune model size, context and concurrency for the actual GPU. Windows `start-vllm.bat` now launches the official container through Docker, not a Transformers imitation.
 
-| Tag | Role |
-|-----|------|
-| `gemma3:4b` | Fast default. Text + images. No microphone. |
-| `gemma3:12b` | Stronger Gemma 3. Text + images. No microphone. |
-| `gemma4:e4b` | Small Gemma 4. Text + images + microphone (30s). |
-| `gemma4:26b` | Large Gemma 4. Text + images + microphone (30s). |
-| `gemma4:31b` | Largest Gemma 4. Text + images + microphone (30s). |
-| `llama4:scout` | Llama 4 Scout (`16x17b`). Native text + images. No microphone. 109B MoE / 17B active — lighter than Maverick. |
-| `llama4:maverick` | Llama 4 Maverick (`128x17b`). Native text + images. No microphone. 400B MoE / 17B active. |
-| `qwen3.5:9b` | Fast Qwen. Native images. No microphone (Ollama may list video; chat cannot send it). |
-| `qwen3:32b` | Strongest text. No images, no microphone. |
+Existing Ollama providers and their model rows are disabled once on startup. Accounts, conversations and usage history are preserved. Configure **Admin → Providers → vllm**, test the connection, sync models, activate a model and select the default. Existing provider settings are kept in SQLite, so changing environment seed variables does not overwrite them.
 
-```bash
-ollama pull gemma3:4b
-ollama pull gemma3:12b
-ollama pull gemma4:e4b
-ollama pull gemma4:26b
-ollama pull gemma4:31b
-ollama pull llama4:scout
-ollama pull llama4:maverick
-ollama pull qwen3.5:9b
-ollama pull qwen3:32b
-```
+Read **[docs/VLLM-SETUP.md](./docs/VLLM-SETUP.md)** for GPU setup, tools, model ids, migration, multiple servers and load testing.
 
 ## Admin
 
@@ -112,7 +92,7 @@ There you can:
 - **Knowledge** — living company/project library. Keyword search (not embeddings yet) plus a short EN / AZ / RU keyword list from the same local model, so questions in one language can match notes in another; pack seed is a template; citations toggle (general chat does not cite About/product pages)
 - **Guardrails** — living policy with On/Off item switches (applies to new chats immediately); built-in harm phrases; blocked phrases can also match via that same keyword list
 - **Settings** — Features On/Off (Developer API, Dev lab, File upload, File import, Microphone — chat inputs start **off**), default model, generation controls (temperature, max tokens, top-p)
-- Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Text / Image you can send; Audio follows Ollama; Functions not used in chat)
+- Enable / disable accounts; **Activate** models on Admin → Models before users can pick them (Text / Image you can send; Audio requires a supported deployed model; Functions require a configured server parser)
 - Set guest daily message limit (default **5**; logged-in users are **unlimited**)
 - **Model lab** (`/lab`) — Quick (18) / Assist (20) / Guardrails (17) against the same `/api/chat` path employees use; **Live** streams the run like chat, **Results** scores facts/language/speed, **Charts** plot accuracy, tok/s, and latency
 - **Dev lab** (`/devlab`) — all API keys, API request log, gateway on/off, RPM / key limits, CORS origins
@@ -125,9 +105,13 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 |----------|---------|
 | `SESSION_SECRET` | Cookie signing secret. Also encrypts provider API keys unless `PROVIDER_KEY_SECRET` is set. Rotating this without a dedicated provider secret invalidates stored keys |
 | `PROVIDER_KEY_SECRET` | Optional dedicated secret for provider API-key encryption. Prefer this so cookie rotation does not lock stored keys |
-| `OLLAMA_BASE_URL` | Seeds the default `ollama` provider on first startup (`http://127.0.0.1:11434`); SQLite (`providers` table) is the runtime list afterwards |
-| `OLLAMA_KEEP_ALIVE` | Keep model loaded (`30m` default) for faster follow-ups |
-| `DEFAULT_MODEL` | Preferred Ollama model name if installed |
+| `VLLM_BASE_URL` | Seeds `vllm` when missing; default `http://127.0.0.1:8000`. Existing installs use Admin → Providers |
+| `VLLM_API_KEY` | Initial provider key, encrypted in SQLite; must match the server |
+| `VLLM_MAX_CONCURRENT` | Initial full-generation limit, default 32 per app process |
+| `VLLM_TOOL_CALLING` | Initial tool-parser confirmation; `1` only when configured on the server |
+| `LLM_MAX_QUEUE` / `LLM_QUEUE_TIMEOUT_MS` | Waiting requests and wait timeout; defaults 256 / 30000 ms |
+| `LLM_REQUEST_TIMEOUT_MS` | Inference timeout after admission; default 180000 ms |
+| `DEFAULT_MODEL` | Optional qualified app model id, e.g. `vllm:Qwen/Qwen3-8B` |
 | `ADMIN_USERNAME` | Seeded admin username |
 | `ADMIN_PASSWORD` | Required to seed the admin account (min 10 characters) |
 | `GUEST_DAILY_LIMIT` | Guest messages per day (admin can override) |
@@ -135,7 +119,7 @@ Copy `.env.example` → `.env.local` (or run `npm run setup`):
 | `TRUST_PROXY` | Set `1` only behind a reverse proxy you control; otherwise forwarded client IPs are ignored |
 | `APP_URL` | Optional public origin used in reset links, e.g. `http://localhost:3055` |
 
-Additional runtimes (Ollama, vLLM, LM Studio, llama.cpp, and other OpenAI-compatible servers) are managed in **Admin → Providers**. Extra runtimes stay off until an admin adds and enables a provider. Localhost and LAN addresses need no extra confirmation; a public or cloud URL requires an explicit “traffic may leave the building” acknowledgement. Provider API keys are encrypted with `PROVIDER_KEY_SECRET` (or `SESSION_SECRET` if that is unset) and are never returned by the Admin API.
+Additional runtimes (vLLM and other OpenAI-compatible servers) are managed in **Admin → Providers**. Extra runtimes stay off until an admin adds and enables a provider. Localhost and LAN addresses need no extra confirmation; a public or cloud URL requires an explicit “traffic may leave the building” acknowledgement. Provider API keys are encrypted with `PROVIDER_KEY_SECRET` (or `SESSION_SECRET` if that is unset) and are never returned by the Admin API.
 
 The persistent job worker is designed for this project's single-process,
 self-hosted Node deployment. It is not a distributed queue and must not be used
@@ -154,7 +138,7 @@ The job and tool-calling feature flags are off by default.
 
 ## Tests
 
-Unit tests are in `tests/`. They do not need Ollama or the app database:
+Unit tests are in `tests/`. They do not need a running model server:
 
 ```bash
 npm test
@@ -162,20 +146,20 @@ npm test
 
 Gated provider and long-job proofs: `npm run test:integration`.
 
-With the app running, a simple end-to-end check (pages, login, forgot-password, every provider ping — Ollama is optional):
+With the app running, a simple end-to-end check (pages, login, forgot-password, every provider ping — inference is optional):
 
 ```bash
 npm run test:smoke
 ```
 
-To prove a **new** tiny model through the vLLM provider (not Ollama), keep `start.bat` running, then:
+With official vLLM connected and a model activated:
 
 ```bash
-start-vllm.bat
-npm run test:tiny
+npm run test:vllm
+npm run test:vllm:load -- --concurrency 4 --requests 16
 ```
 
-That downloads `HuggingFaceTB/SmolLM2-135M-Instruct` and registers Admin → Providers → `vllm` at `http://127.0.0.1:8000`. Official vLLM does not install on this Windows PC; the bat file serves the same `/v1` API SINAMGPT uses for vLLM.
+The load test reports request success/failure, latency, time to first token and token throughput. Use `--app` with `SINAMGPT_API_KEY` to test through the app's Developer API and concurrency gate. See [deployment instructions](./docs/VLLM-SETUP.md).
 
 ## Deep chat test
 
@@ -246,14 +230,14 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes and [docs/VERSIONING.md](./
 ## Company use tips
 
 - Share [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) with managers and new users — it explains the flow without install steps
-- Run on one powerful PC; others can open `http://THAT-PC-IP:3055` on the LAN if firewall allows
+- Run on one powerful Server; others can open `http://THAT-PC-IP:3055` on the LAN if firewall allows
 - Change `SESSION_SECRET` and admin password before sharing
-- Keep Ollama updated; pull the models your team needs
+- Pin and validate the vLLM container and model checkpoints your team needs
 - This is intentionally simple — no departments, billing, or cloud sync (see roadmap for what’s next)
 
 ## Stack
 
-Next.js · React · Tailwind · SQLite (`better-sqlite3`) · Ollama · Zod
+Next.js · React · Tailwind · SQLite (`better-sqlite3`) · vLLM · Zod
 
 ## License
 

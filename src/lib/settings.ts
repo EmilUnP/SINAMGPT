@@ -218,7 +218,7 @@ export const setTemperatureSetting = (value: number) => {
   return safe;
 };
 
-/** -1 = Ollama default / unlimited. */
+/** -1 = server default. */
 export const getNumPredictSetting = (): number => {
   const raw = getSetting(KEY_NUM_PREDICT);
   if (raw == null || raw.trim() === "") return -1;
@@ -311,7 +311,7 @@ export const syncModelsFromProviders = async (
     : await listModels();
   const db = getDb();
   const hadAny = Boolean(
-    db.prepare(`SELECT 1 AS ok FROM models LIMIT 1`).get(),
+    db.prepare(`SELECT 1 AS ok FROM models WHERE backend IN (SELECT id FROM providers WHERE kind IN ('vllm', 'openai')) LIMIT 1`).get(),
   );
   // First catalog fill enables current provider models so setup works.
   // Later pulls insert as inactive until Admin → Models → Activate.
@@ -344,6 +344,14 @@ export const syncModelsFromProviders = async (
         video: boolean;
       }>,
     ) => {
+      // A successful sync may follow a vLLM restart with a different checkpoint.
+      // Retire absent models only for providers that actually answered this sync.
+      const syncedBackends = providerId ? [providerId] : [...new Set(rows.map((row) => row.backend))];
+      for (const backend of syncedBackends) {
+        const names = rows.filter((row) => row.backend === backend).map((row) => row.name);
+        const absent = names.length ? ` AND name NOT IN (${names.map(() => "?").join(",")})` : "";
+        db.prepare(`UPDATE models SET is_enabled = 0 WHERE backend = ?${absent}`).run(backend, ...names);
+      }
       for (const row of rows) {
         upsert.run(
           row.name,
@@ -387,7 +395,7 @@ export const syncModelsFromProviders = async (
       {
         is_enabled: row.is_enabled === 1,
         display_name: row.display_name,
-        backend: (row.backend?.trim() || "ollama") as LlmBackend,
+        backend: (row.backend?.trim() || "vllm") as LlmBackend,
         kind: normalizeModelKind(row.kind),
       },
     ]),
@@ -436,19 +444,12 @@ export const syncModelsFromProviders = async (
   });
 };
 
-/** @deprecated Use syncModelsFromProviders. */
-export const syncModelsFromOllama = syncModelsFromProviders;
-
 export const setModelEnabled = (name: string, enabled: boolean) => {
   getDb()
     .prepare(
-      `INSERT INTO models (name, is_enabled, updated_at)
-       VALUES (?, ?, datetime('now'))
-       ON CONFLICT(name) DO UPDATE SET
-         is_enabled = excluded.is_enabled,
-         updated_at = datetime('now')`,
+      `UPDATE models SET is_enabled = ?, updated_at = datetime('now') WHERE name = ?`,
     )
-    .run(name, enabled ? 1 : 0);
+    .run(enabled ? 1 : 0, name);
 };
 
 export const setModelDisplayName = (name: string, displayName: string) => {
@@ -457,13 +458,9 @@ export const setModelDisplayName = (name: string, displayName: string) => {
 
   getDb()
     .prepare(
-      `INSERT INTO models (name, display_name, is_enabled, updated_at)
-       VALUES (?, ?, 0, datetime('now'))
-       ON CONFLICT(name) DO UPDATE SET
-         display_name = excluded.display_name,
-         updated_at = datetime('now')`,
+      `UPDATE models SET display_name = ?, updated_at = datetime('now') WHERE name = ?`,
     )
-    .run(name, stored);
+    .run(stored, name);
 };
 
 export const setModelKind = (name: string, kind: ModelKind) => {
@@ -475,19 +472,26 @@ export const setModelKind = (name: string, kind: ModelKind) => {
 };
 
 /** Map UI label or model id → stored model name. */
-export const resolveOllamaModelName = (requested: string): string => {
+export const resolveModelName = (requested: string): string => {
   const value = requested.trim();
   if (!value) return value;
 
   const byName = getDb()
-    .prepare(`SELECT name FROM models WHERE name = ?`)
+    .prepare(`SELECT m.name FROM models m JOIN providers p ON p.id = m.backend
+      WHERE m.name = ? AND p.enabled = 1 AND p.kind IN ('vllm', 'openai')`)
     .get(value) as { name: string } | undefined;
   if (byName) return byName.name;
 
+  const byVllmName = getDb()
+    .prepare(`SELECT m.name FROM models m JOIN providers p ON p.id = m.backend
+      WHERE m.name = ? AND p.enabled = 1 AND p.kind = 'vllm'`)
+    .get(`vllm:${value}`) as { name: string } | undefined;
+  if (byVllmName) return byVllmName.name;
+
   const byDisplay = getDb()
     .prepare(
-      `SELECT name FROM models
-       WHERE display_name = ? COLLATE NOCASE
+      `SELECT m.name FROM models m JOIN providers p ON p.id = m.backend
+       WHERE m.display_name = ? COLLATE NOCASE AND p.enabled = 1 AND p.kind IN ('vllm', 'openai')
        LIMIT 1`,
     )
     .get(value) as { name: string } | undefined;
@@ -497,9 +501,9 @@ export const resolveOllamaModelName = (requested: string): string => {
 };
 
 export const isModelEnabled = (name: string): boolean => {
-  const resolved = resolveOllamaModelName(name);
+  const resolved = resolveModelName(name);
   const row = getDb()
-    .prepare(`SELECT is_enabled FROM models WHERE name = ?`)
+    .prepare(`SELECT m.is_enabled FROM models m JOIN providers p ON p.id = m.backend WHERE m.name = ? AND p.enabled = 1 AND p.kind IN ('vllm', 'openai')`)
     .get(resolved) as { is_enabled: number } | undefined;
 
   // Unknown / not yet activated: keep it off the user picker
@@ -508,7 +512,7 @@ export const isModelEnabled = (name: string): boolean => {
 };
 
 export const getModelKind = (name: string): ModelKind => {
-  const resolved = resolveOllamaModelName(name);
+  const resolved = resolveModelName(name);
   const row = getDb()
     .prepare(`SELECT kind FROM models WHERE name = ?`)
     .get(resolved) as { kind: string } | undefined;
@@ -519,7 +523,7 @@ export const isChatModel = (name: string): boolean =>
   getModelKind(name) === "chat";
 
 export const modelSupportsVision = (name: string): boolean => {
-  const resolved = resolveOllamaModelName(name);
+  const resolved = resolveModelName(name);
   const row = getDb()
     .prepare(`SELECT vision FROM models WHERE name = ?`)
     .get(resolved) as { vision: number } | undefined;
@@ -528,16 +532,17 @@ export const modelSupportsVision = (name: string): boolean => {
 };
 
 export const modelSupportsTools = (name: string): boolean => {
-  const resolved = resolveOllamaModelName(name);
+  const resolved = resolveModelName(name);
   const row = getDb()
-    .prepare(`SELECT tools FROM models WHERE name = ?`)
+    .prepare(`SELECT m.tools FROM models m JOIN providers p ON p.id = m.backend
+      WHERE m.name = ? AND p.enabled = 1
+      AND (p.kind = 'openai' OR (p.kind = 'vllm' AND p.tools_enabled = 1))`)
     .get(resolved) as { tools: number } | undefined;
-  if (row) return row.tools === 1;
-  return inferCapabilities(resolved).tools;
+  return row?.tools === 1;
 };
 
 export const modelSupportsAudio = (name: string): boolean => {
-  const resolved = resolveOllamaModelName(name);
+  const resolved = resolveModelName(name);
   const row = getDb()
     .prepare(`SELECT audio FROM models WHERE name = ?`)
     .get(resolved) as { audio: number } | undefined;
@@ -555,9 +560,11 @@ const displayNameFor = (name: string, stored: string | null): string => {
 export const listStoredModels = (): ManagedModel[] => {
   const rows = getDb()
     .prepare(
-      `SELECT name, is_enabled, display_name, backend, kind,
-              vision, tools, audio, tts, video, updated_at
-       FROM models`,
+      `SELECT m.name, m.is_enabled, m.display_name, m.backend, m.kind,
+              m.vision, CASE WHEN p.kind = 'vllm' AND p.tools_enabled = 0 THEN 0 ELSE m.tools END AS tools,
+              m.audio, m.tts, m.video, m.updated_at
+       FROM models m JOIN providers p ON p.id = m.backend
+       WHERE p.enabled = 1 AND p.kind IN ('vllm', 'openai')`,
     )
     .all() as Array<{
     name: string;
@@ -577,7 +584,7 @@ export const listStoredModels = (): ManagedModel[] => {
     name: row.name,
     size: 0,
     modified_at: row.updated_at,
-    backend: (row.backend?.trim() || "ollama") as LlmBackend,
+    backend: (row.backend?.trim() || "vllm") as LlmBackend,
     kind: normalizeModelKind(row.kind),
     is_enabled: row.is_enabled === 1,
     display_name: displayNameFor(row.name, row.display_name),

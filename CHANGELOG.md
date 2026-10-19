@@ -7,6 +7,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Changed
+- vLLM is the default inference runtime. Ollama is removed from routing and provider setup; a one-time migration retires its providers/models while preserving accounts and chat history.
+- The Windows vLLM launcher now uses official vLLM Docker images. Added Linux/WSL2 deployment configuration, tool-parser setup and migration instructions.
+- Provider tool calling requires server configuration confirmation. Native model ids, `/v1` URLs and image/audio inputs use the OpenAI-compatible protocol.
+
+### Fixed
+- Provider concurrency covers the full streaming response, with bounded, cancellable waiting and per-request inference deadlines.
+- Streaming usage is requested and recorded after the final usage event. Truncated streams report errors and cancellation closes the upstream request.
+
+### Added
+- `test:vllm` for app chat against a configured vLLM service, and `test:vllm:load` for direct or app-level parallel request measurements.
+
 ### Planned
 - See [docs/ROADMAP.md](./docs/ROADMAP.md) — **Next active track** / candidates / backlog.
 
@@ -138,7 +150,7 @@ Composer tools in the chat box, model picker next to the prompt, microphone-only
 
 ## [1.14.1] — 2026-08-17
 
-Security and performance hardening so the app stays snappy on a company PC.
+Security and performance hardening so the app stays snappy on a company Server.
 
 ### Security
 - **Shared files** — a share link is required to open someone else’s images or voice clips. Having any share token on the chat is no longer enough.

@@ -2,10 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LlmProviderConfig } from "@/lib/llm/types";
 
 const {
-  completeOllamaChatMock,
-  listOllamaModelsMock,
-  pingOllamaMock,
-  streamOllamaChatMock,
   listOpenAiCompatModelsMock,
   streamOpenAiCompatChatMock,
   listEnabledProviderConfigsMock,
@@ -13,16 +9,12 @@ const {
   modelBackend,
   catalogNames,
 } = vi.hoisted(() => ({
-  completeOllamaChatMock: vi.fn(),
-  listOllamaModelsMock: vi.fn(),
-  pingOllamaMock: vi.fn(),
-  streamOllamaChatMock: vi.fn(),
   listOpenAiCompatModelsMock: vi.fn(),
   streamOpenAiCompatChatMock: vi.fn(),
   listEnabledProviderConfigsMock: vi.fn(),
   getProviderConfigMock: vi.fn(),
-  modelBackend: { value: "ollama" },
-  catalogNames: { value: new Set<string>(["gemma3:4b"]) },
+  modelBackend: { value: "vllm" },
+  catalogNames: { value: new Set<string>(["vllm:gemma3:4b"]) },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -43,13 +35,6 @@ vi.mock("@/lib/providers", () => ({
   getProviderConfig: getProviderConfigMock,
 }));
 
-vi.mock("@/lib/llm/ollama", () => ({
-  completeOllamaChat: completeOllamaChatMock,
-  listOllamaModels: listOllamaModelsMock,
-  pingOllama: pingOllamaMock,
-  streamOllamaChat: streamOllamaChatMock,
-}));
-
 vi.mock("@/lib/llm/openai-compat", () => ({
   completeOpenAiCompatChat: vi.fn(),
   completeOpenAiCompatToolChat: vi.fn(),
@@ -61,16 +46,16 @@ vi.mock("@/lib/llm/openai-compat", () => ({
 import { getEnabledBackends, listModels, streamChat } from "@/lib/llm";
 
 const primary: LlmProviderConfig = {
-  id: "ollama",
-  kind: "ollama",
-  baseUrl: "http://127.0.0.1:11434",
+  id: "vllm",
+  kind: "vllm",
+  baseUrl: "http://127.0.0.1:8000",
   enabled: true,
 };
 
 const gpu2: LlmProviderConfig = {
   id: "gpu-2",
-  kind: "ollama",
-  baseUrl: "http://10.0.0.22:11434",
+  kind: "vllm",
+  baseUrl: "http://10.0.0.22:8000",
   enabled: true,
 };
 
@@ -84,27 +69,16 @@ const studio: LlmProviderConfig = {
 describe("LLM provider registry routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelBackend.value = "ollama";
-    catalogNames.value = new Set(["gemma3:4b"]);
+    modelBackend.value = "vllm";
+    catalogNames.value = new Set(["vllm:gemma3:4b"]);
     listEnabledProviderConfigsMock.mockReturnValue([primary, gpu2]);
     getProviderConfigMock.mockImplementation((id: string) =>
       id === primary.id ? primary : id === gpu2.id ? gpu2 : id === studio.id ? studio : null,
     );
-    listOllamaModelsMock.mockImplementation(
-      async (provider: LlmProviderConfig) => [
-        {
-          name: "gemma3:4b",
-          size: 1,
-          modified_at: "2026-01-01T00:00:00.000Z",
-          backend: provider.id,
-          kind: "chat",
-        },
-      ],
-    );
     listOpenAiCompatModelsMock.mockImplementation(
       async (provider: LlmProviderConfig) => [
         {
-          name: "llama-3",
+          name: provider.id === "studio" ? "llama-3" : "gemma3:4b",
           size: 0,
           modified_at: "2026-01-01T00:00:00.000Z",
           backend: provider.id,
@@ -115,14 +89,14 @@ describe("LLM provider registry routing", () => {
   });
 
   it("returns every enabled provider id", () => {
-    expect(getEnabledBackends()).toEqual(["ollama", "gpu-2"]);
+    expect(getEnabledBackends()).toEqual(["vllm", "gpu-2"]);
   });
 
-  it("keeps primary model names stable and qualifies additional providers", async () => {
+  it("qualifies model names from all providers", async () => {
     const models = await listModels();
     expect(models.map((model) => [model.name, model.backend])).toEqual([
-      ["gemma3:4b", "ollama"],
       ["gpu-2:gemma3:4b", "gpu-2"],
+      ["vllm:gemma3:4b", "vllm"],
     ]);
   });
 
@@ -130,20 +104,20 @@ describe("LLM provider registry routing", () => {
     listEnabledProviderConfigsMock.mockReturnValue([primary, studio]);
     const models = await listModels();
     expect(models.map((model) => [model.name, model.backend])).toEqual([
-      ["gemma3:4b", "ollama"],
       ["studio:llama-3", "studio"],
+      ["vllm:gemma3:4b", "vllm"],
     ]);
   });
 
   it("routes a qualified model to its stored provider", async () => {
     modelBackend.value = "gpu-2";
     const response = new Response("stream");
-    streamOllamaChatMock.mockResolvedValue(response);
+    streamOpenAiCompatChatMock.mockResolvedValue(response);
 
     await expect(
       streamChat("gpu-2:gemma3:4b", [{ role: "user", content: "Hello" }]),
     ).resolves.toBe(response);
-    expect(streamOllamaChatMock).toHaveBeenCalledWith(
+    expect(streamOpenAiCompatChatMock).toHaveBeenCalledWith(
       gpu2,
       "gemma3:4b",
       [{ role: "user", content: "Hello" }],
@@ -180,20 +154,20 @@ describe("LLM provider registry routing", () => {
     modelBackend.value = "gpu-2";
     const fallbackGpu: LlmProviderConfig = {
       ...gpu2,
-      fallbackId: "ollama",
+      fallbackId: "vllm",
     };
     getProviderConfigMock.mockImplementation((id: string) =>
-      id === "gpu-2" ? fallbackGpu : id === "ollama" ? primary : null,
+      id === "gpu-2" ? fallbackGpu : id === "vllm" ? primary : null,
     );
-    streamOllamaChatMock
+    streamOpenAiCompatChatMock
       .mockRejectedValueOnce(new TypeError("fetch failed"))
       .mockResolvedValueOnce(new Response("ok"));
 
     await streamChat("gpu-2:gemma3:4b", [{ role: "user", content: "Hello" }]);
 
-    expect(streamOllamaChatMock).toHaveBeenCalledTimes(2);
-    expect(streamOllamaChatMock.mock.calls[1][0]).toEqual(primary);
-    expect(streamOllamaChatMock.mock.calls[1][1]).toBe("gemma3:4b");
+    expect(streamOpenAiCompatChatMock).toHaveBeenCalledTimes(2);
+    expect(streamOpenAiCompatChatMock.mock.calls[1][0]).toEqual(primary);
+    expect(streamOpenAiCompatChatMock.mock.calls[1][1]).toBe("gemma3:4b");
   });
 
   it("fails clearly when the fallback does not have the model", async () => {
@@ -201,15 +175,15 @@ describe("LLM provider registry routing", () => {
     catalogNames.value = new Set();
     const fallbackGpu: LlmProviderConfig = {
       ...gpu2,
-      fallbackId: "ollama",
+      fallbackId: "vllm",
     };
     getProviderConfigMock.mockImplementation((id: string) =>
-      id === "gpu-2" ? fallbackGpu : id === "ollama" ? primary : null,
+      id === "gpu-2" ? fallbackGpu : id === "vllm" ? primary : null,
     );
-    streamOllamaChatMock.mockRejectedValue(new TypeError("fetch failed"));
+    streamOpenAiCompatChatMock.mockRejectedValue(new TypeError("fetch failed"));
 
     await expect(
       streamChat("gpu-2:gemma3:4b", [{ role: "user", content: "Hello" }]),
-    ).rejects.toThrow('fallback "ollama" does not have model "gemma3:4b"');
+    ).rejects.toThrow('fallback "vllm" does not have model "gemma3:4b"');
   });
 });

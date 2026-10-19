@@ -21,8 +21,8 @@ describe.skipIf(process.env.RUN_PROVIDER_INTEGRATION !== "1")(
     it("creates, updates, redacts, and deletes a provider", () => {
       saveProvider({
         id: providerId,
-        kind: "ollama",
-        baseUrl: "http://127.0.0.1:11434",
+        kind: "vllm",
+        baseUrl: "http://127.0.0.1:8000",
         enabled: false,
         apiKey: "temporary-smoke-key",
       });
@@ -37,13 +37,13 @@ describe.skipIf(process.env.RUN_PROVIDER_INTEGRATION !== "1")(
 
       const updated = saveProvider({
         id: providerId,
-        kind: "ollama",
-        baseUrl: "http://localhost:11434",
+        kind: "vllm",
+        baseUrl: "http://localhost:8000",
         enabled: false,
         apiKey: null,
       });
       expect(updated).toMatchObject({
-        baseUrl: "http://localhost:11434",
+        baseUrl: "http://localhost:8000",
         hasApiKey: false,
       });
 

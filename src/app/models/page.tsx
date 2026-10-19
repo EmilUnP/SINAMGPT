@@ -11,7 +11,7 @@ export default async function ModelsPage() {
     models = enabled.models;
     defaultModel = enabled.defaultModel;
   } catch {
-    // Public catalog still renders if Ollama is briefly unreachable.
+    // Public catalog still renders if vLLM is briefly unreachable.
   }
 
   return (

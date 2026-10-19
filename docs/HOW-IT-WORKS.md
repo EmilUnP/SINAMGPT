@@ -19,7 +19,7 @@ SINAMGPT is SINAM’s **internal ChatGPT-style assistant**. Employees sign in, a
 
 Three promises:
 
-1. **It stays with us.** Models run on company machines by default (Ollama, vLLM, or another server you add). We do not send chats to public clouds unless an admin adds a hosted URL and confirms that traffic may leave the building.
+1. **It stays with us.** Models run on company machines by default (vLLM, or another server you add). We do not send chats to public clouds unless an admin adds a hosted URL and confirms that traffic may leave the building.
 2. **Admins own the facts and the rules.** Product text and “do not answer this” policy live in Admin, not only in code.
 3. **It answers in the user’s language.** The screen is English / Azərbaycan / Русский. Azerbaijani typed without special letters (nedir, nece, menim) still counts as Azerbaijani. Clarifying questions stay in that language. Questions in Turkish still get a reply in that language when possible.
 
@@ -31,7 +31,7 @@ Three promises:
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
 | **Employee** | Signs in with a username or work email. Forgot password shows a reset button on the next screen if the account is an email (no mail is sent yet). Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
-| **Admin** | Turns models on, manages providers (Ollama, vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt and whether tools ran), and can run Model lab. Turns on Developer API, file upload, file import, microphone, and **internet search** only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
+| **Admin** | Turns models on, manages providers (vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt and whether tools ran), and can run Model lab. Turns on Developer API, file upload, file import, microphone, and **internet search** only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
 ---
@@ -79,7 +79,7 @@ You type a question (any language)  + optional image or short voice clip
 
 **Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
 
-**If Ollama is briefly busy or down:** the model picker still shows the last activated list. New pulls appear after Admin → Models refresh, or within about a minute in the background.
+**If vLLM is briefly busy or down:** the model picker still shows the last activated list. Newly served models appear after Admin → Models refresh, or within about a minute in the background.
 
 **Foundation in v1.20:** signed-in chat can call internet search tools when an admin
 turns that feature on. The tool runtime stays off for guests and while search is off,
@@ -87,7 +87,7 @@ so normal chat still follows the same path as before.
 
 **Images:** only if **two** things are true: the **selected model** can see pictures (Gemma 3 4B / 12B, every Gemma 4, Llama 4 Scout / Maverick, Qwen 3.5 9B), **and** an admin has turned on **File upload** (plus menu) and/or **File import** (paste / drop) in Admin → Settings → Features. Those switches start **off**. Qwen 3 32B is text-only.
 
-**Voice:** microphone if the selected model lists **Audio** (STT — on this box: every Gemma 4) **and** Admin → Microphone is on (30 seconds). Clips show as a voice message (play, waveform, time). **Listen** on a reply if the selected model has Audio or Speak (TTS). Chat models do not emit WAV; Listen uses the PC’s speech engine. Pull a TTS/omni/Whisper tag, **Activate** it, then pick it in chat to test. Video cannot be sent.
+**Voice:** microphone if the selected model lists **Audio** (STT — on this box: every Gemma 4) **and** Admin → Microphone is on (30 seconds). Clips show as a voice message (play, waveform, time). **Listen** on a reply if the selected model has Audio or Speak (TTS). Chat models do not emit WAV; Listen uses the Server’s speech engine. Pull a TTS/omni/Whisper tag, **Activate** it, then pick it in chat to test. Video cannot be sent.
 
 ---
 
@@ -127,17 +127,17 @@ Safety applies in every language. Switching language is not a bypass.
 
 ## 6. Where data lives
 
-Everything is on the company PC (or the LAN host):
+Everything is on the company Server (or the LAN host):
 
 | What | Where |
 |------|--------|
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
-| Models | Ollama on that machine by default (`gemma3:4b` / `12b`, `gemma4:e4b` / `26b` / `31b`, `llama4:scout` / `maverick`, `qwen3.5:9b`, `qwen3:32b`). Extra runtimes are added in Admin → Providers |
+| Models | vLLM on a company Linux GPU host by default. Additional providers are configured in Admin → Providers; see [vLLM setup](./VLLM-SETUP.md) |
 | Passwords | Hashed (not stored as plain text). **Forgot password** stores a one-hour token in SQLite and shows the reset button on the next screen (email comes later) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 
-Chats stay on the company PC. Forgot-password links stay in the browser for now (no mail service). Backup = copy the `data/` folder (and keep Ollama models separately). There is no one-click backup button yet.
+Chats stay on the company Server. Forgot-password links stay in the browser for now (no mail service). Backup = copy the `data/` folder (and keep vLLM models separately). There is no one-click backup button yet.
 
 ---
 
@@ -146,7 +146,7 @@ Chats stay on the company PC. Forgot-password links stay in the browser for now 
 You do not need engineering to run day-to-day:
 
 - **Users** — enable / disable accounts  
-- **Models** — a newly pulled Ollama model is **inactive** until Admin clicks **Activate**  
+- **Models** — a newly served vLLM model is **inactive** until Admin clicks **Activate**
 - **Knowledge** — add, edit, seed/replace the SINAM starter pack  
 - **Guardrails** — On/Off switches; apply to new chats immediately  
 - **Guest** — daily limit; can turn guest chat off  

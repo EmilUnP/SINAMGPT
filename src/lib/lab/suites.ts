@@ -143,7 +143,7 @@ export const LAB_SUITES: Record<LabSuiteId, LabCase[]> = {
       tone: "short",
       maxChars: 600,
       mustHave: [
-        ["Ollama", "yerli", "local"],
+        ["vLLM", "yerli", "local"],
         ["bilik", "knowledge", "guardrail", "qoruyucu"],
       ],
       prompt: "SINAMGPT nədir? Qısa cavab ver.",

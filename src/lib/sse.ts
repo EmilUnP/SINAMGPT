@@ -4,7 +4,7 @@
  * Large models (Llama 4 Scout ~100B) can spend 1–2 minutes on prompt eval
  * before the first token. If the HTTP response does not start until then,
  * browsers / reverse proxies idle-timeout and the UI shows an error even
- * though Ollama later finishes (usage stays "ok").
+ * though vLLM later finishes (usage stays "ok").
  *
  * Open the SSE immediately, send meta, then keep the socket alive with
  * comments until tokens arrive.

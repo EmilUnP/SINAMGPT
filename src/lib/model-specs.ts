@@ -62,7 +62,7 @@ const GEMMA4_31B: KnownModelSpec = {
   audioEncoder: "~300M",
 };
 
-/** Official Gemma 4 card facts when the Ollama tag is one we know. */
+/** Known Gemma 4 family specifications, independent of provider. */
 export const lookupKnownModelSpec = (name: string): KnownModelSpec | null => {
   const id = name.trim().toLowerCase();
   if (!/gemma-?4/.test(id)) return null;
@@ -75,7 +75,7 @@ export const lookupKnownModelSpec = (name: string): KnownModelSpec | null => {
 
 export const isGemma4 = (name: string): boolean => /gemma-?4/i.test(name);
 
-/** Every Gemma 4 Ollama tag lists audio (vision, tools, and thinking too). */
+/** Gemma 4 family audio hint; actual input support depends on the deployed runtime. */
 export const gemma4HasAudio = (name: string): boolean | null => {
   if (!isGemma4(name)) return null;
   return true;

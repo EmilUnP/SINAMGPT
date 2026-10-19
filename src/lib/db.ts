@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
+import { migrateToVllm } from "./vllm-migration";
 import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
@@ -12,7 +13,7 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "owngpt.db");
 
 /** Bump when ensureDatabaseSchema gains a new migration so HMR re-applies once. */
-const SCHEMA_GENERATION = 5;
+const SCHEMA_GENERATION = 6;
 
 let db: Database.Database | null = null;
 let appliedSchemaGeneration = 0;
@@ -111,7 +112,7 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       name TEXT PRIMARY KEY,
       is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
       display_name TEXT,
-      backend TEXT NOT NULL DEFAULT 'ollama',
+      backend TEXT NOT NULL DEFAULT 'vllm',
       kind TEXT NOT NULL DEFAULT 'chat' CHECK (
         kind IN ('chat', 'image', 'video', 'stt', 'tts', 'embedding', 'rerank')
       ),
@@ -383,17 +384,6 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
     }),
   );
 
-  const ollamaBaseUrl =
-    process.env.OLLAMA_BASE_URL?.trim().replace(/\/+$/, "") ||
-    "http://127.0.0.1:11434";
-  database
-    .prepare(
-      `INSERT INTO providers (id, kind, base_url, api_key_enc, enabled)
-       VALUES ('ollama', 'ollama', ?, NULL, 1)
-       ON CONFLICT(id) DO NOTHING`,
-    )
-    .run(ollamaBaseUrl);
-
   // Migrate older DBs created before admin fields existed
   if (!hasColumn(database, "users", "role")) {
     database.exec(
@@ -473,7 +463,7 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
         name TEXT PRIMARY KEY,
         is_enabled INTEGER NOT NULL DEFAULT 0 CHECK (is_enabled IN (0, 1)),
         display_name TEXT,
-        backend TEXT NOT NULL DEFAULT 'ollama',
+        backend TEXT NOT NULL DEFAULT 'vllm',
         kind TEXT NOT NULL DEFAULT 'chat' CHECK (
           kind IN ('chat', 'image', 'video', 'stt', 'tts', 'embedding', 'rerank')
         ),
@@ -534,6 +524,10 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       `ALTER TABLE providers ADD COLUMN max_concurrent INTEGER NOT NULL DEFAULT 0`,
     );
   }
+  if (!hasColumn(database, "providers", "tools_enabled")) {
+    database.exec(`ALTER TABLE providers ADD COLUMN tools_enabled INTEGER NOT NULL DEFAULT 0`);
+  }
+  migrateToVllm(database);
   database.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_share_token
      ON conversations(share_token)

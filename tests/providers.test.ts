@@ -86,7 +86,7 @@ describe("provider configuration validation", () => {
   });
 
   it("parses supported provider kinds", () => {
-    expect(parseProviderKind("ollama")).toBe("ollama");
+    expect(parseProviderKind("ollama")).toBeNull();
     expect(parseProviderKind("vllm")).toBe("vllm");
     expect(parseProviderKind("openai")).toBe("openai");
     expect(parseProviderKind("anthropic")).toBeNull();
@@ -111,7 +111,7 @@ describe("provider configuration validation", () => {
   it("protects the default and referenced providers from deletion", () => {
     expect(() =>
       assertProviderCanDelete({
-        id: "ollama",
+        id: "vllm",
         modelCount: 0,
         isEnabled: true,
         enabledProviderCount: 2,

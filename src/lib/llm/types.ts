@@ -1,8 +1,8 @@
-/** Stable provider id stored on each model (for example `ollama` or `gpu-2`). */
+/** Stable provider id stored on each model (for example `vllm` or `gpu-2`). */
 export type LlmBackend = string;
 
 /** Adapter protocol. Provider ids are free-form; kinds are code-supported. */
-export type ProviderKind = "ollama" | "vllm" | "openai";
+export type ProviderKind = "vllm" | "openai";
 
 export const isOpenAiCompatKind = (kind: ProviderKind): boolean =>
   kind === "vllm" || kind === "openai";
@@ -25,6 +25,8 @@ export type LlmProviderConfig = {
   fallbackId?: string | null;
   /** 0 = unlimited. In-process only. */
   maxConcurrent?: number;
+  /** vLLM must be started with a tool parser before tools can be sent. */
+  toolsEnabled?: boolean;
 };
 
 export type LlmToolCall = {
@@ -47,7 +49,7 @@ export type ChatMessage = {
   content: string;
   /**
    * Raw base64 (no data-URL prefix). Vision still uses this array; WAV
-   * recordings go here too (Ollama detects RIFF/WAVE in `images`).
+   * recordings go here too and are serialized as OpenAI input_audio parts.
    */
   images?: string[];
   toolCalls?: LlmToolCall[];
@@ -73,14 +75,11 @@ export type LlmModel = {
   video?: boolean;
 };
 
-/** @deprecated Use LlmModel — kept for older imports */
-export type OllamaModel = LlmModel;
-
 export type ChatOptions = {
   temperature?: number;
   numPredict?: number;
   topP?: number;
-  /** Ollama thinking. Audio turns must send false or Gemma 4 may swallow the reply. */
+  /** Passed as enable_thinking to vLLM chat templates that support it. */
   think?: boolean;
   /** Abort the upstream LLM request (client disconnect / Stop). */
   signal?: AbortSignal;

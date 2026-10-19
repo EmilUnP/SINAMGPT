@@ -130,7 +130,7 @@ export const HomeTryChat = ({
           error?: string;
         };
         if (!res.ok) {
-          setError(data.error || t("home.ollamaUnavailable"));
+          setError(data.error || t("home.modelUnavailable"));
           return;
         }
         if (data.guestEnabled === false) {

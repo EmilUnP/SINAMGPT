@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Simple app smoke test against a running SINAMGPT server.
- * Does not require Ollama. Provider pings are reported for every runtime
- * (Ollama, vLLM, OpenAI-compatible); unreachable runtimes are noted, not failed.
+ * Does not require vLLM. Provider pings are reported for every runtime
+ * (vLLM, OpenAI-compatible); unreachable runtimes are noted, not failed.
  *
  *   npm run test:smoke
  *   BASE_URL=http://127.0.0.1:3055 npm run test:smoke
@@ -113,7 +113,7 @@ const checkPage = async (pathname) => {
 
 const main = async () => {
   console.log(`\nSINAMGPT smoke — ${BASE_URL}`);
-  console.log("Pages, auth, forgot-password, and every provider (not only Ollama).\n");
+  console.log("Pages, auth, forgot-password, and every provider (including vLLM).\n");
 
   try {
     const { res } = await request("GET", "/", { json: false });
@@ -329,7 +329,7 @@ function printSummaryAndExit() {
     }
     process.exitCode = 1;
   } else {
-    console.log("App checks passed. Chat/Ollama is optional for this smoke.\n");
+    console.log("App checks passed. Chat/vLLM is optional for this smoke.\n");
   }
 }
 

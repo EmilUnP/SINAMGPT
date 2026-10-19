@@ -15,6 +15,7 @@ type Provider = {
   hasApiKey: boolean;
   fallbackId: string | null;
   maxConcurrent: number;
+  toolsEnabled: boolean;
 };
 
 type Draft = {
@@ -23,6 +24,7 @@ type Draft = {
   kind: ProviderKind;
   fallbackId: string;
   maxConcurrent: string;
+  toolsEnabled: boolean;
   acknowledgeRemote: boolean;
 };
 
@@ -34,14 +36,12 @@ type Health = {
   baseUrl: string;
 };
 
-const KINDS: ProviderKind[] = ["ollama", "vllm", "openai"];
+const KINDS: ProviderKind[] = ["vllm", "openai"];
 
 const kindLabelKey = (kind: ProviderKind) =>
-  kind === "ollama"
-    ? "admin.providers.kindOllama"
-    : kind === "vllm"
-      ? "admin.providers.kindVllm"
-      : "admin.providers.kindOpenai";
+  kind === "vllm"
+    ? "admin.providers.kindVllm"
+    : "admin.providers.kindOpenai";
 
 export const AdminProvidersPanel = () => {
   const t = useTranslations();
@@ -51,9 +51,10 @@ export const AdminProvidersPanel = () => {
   const [newId, setNewId] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newKey, setNewKey] = useState("");
-  const [newKind, setNewKind] = useState<ProviderKind>("ollama");
+  const [newKind, setNewKind] = useState<ProviderKind>("vllm");
   const [newFallback, setNewFallback] = useState("");
-  const [newMaxConcurrent, setNewMaxConcurrent] = useState("0");
+  const [newMaxConcurrent, setNewMaxConcurrent] = useState("32");
+  const [newToolsEnabled, setNewToolsEnabled] = useState(false);
   const [newAck, setNewAck] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [busyId, setBusyId] = useState("");
@@ -72,6 +73,7 @@ export const AdminProvidersPanel = () => {
             kind: provider.kind,
             fallbackId: provider.fallbackId ?? "",
             maxConcurrent: String(provider.maxConcurrent ?? 0),
+            toolsEnabled: provider.toolsEnabled,
             acknowledgeRemote: false,
           },
         ]),
@@ -174,16 +176,18 @@ export const AdminProvidersPanel = () => {
           ...(newKey.trim() ? { apiKey: newKey } : {}),
           ...(newFallback ? { fallbackId: newFallback } : {}),
           maxConcurrent: Number(newMaxConcurrent) || 0,
+          toolsEnabled: newToolsEnabled,
           ...(newUrlIsRemote ? { acknowledgeRemote: newAck } : {}),
         }),
       });
       setNewId("");
       setNewUrl("");
       setNewKey("");
-      setNewKind("ollama");
+      setNewKind("vllm");
       setNewFallback("");
-      setNewMaxConcurrent("0");
+      setNewMaxConcurrent("32");
       setNewAck(false);
+      setNewToolsEnabled(false);
       await load();
       setNotice(t("admin.providers.added"));
     } catch (requestError) {
@@ -203,6 +207,7 @@ export const AdminProvidersPanel = () => {
           baseUrl: draft.baseUrl,
           fallbackId: draft.fallbackId || null,
           maxConcurrent: Number(draft.maxConcurrent) || 0,
+          toolsEnabled: draft.toolsEnabled,
           ...(clearKey
             ? { apiKey: null }
             : draft.apiKey.trim()
@@ -342,7 +347,7 @@ export const AdminProvidersPanel = () => {
           <input
             value={newUrl}
             onChange={(event) => setNewUrl(event.target.value)}
-            placeholder="http://10.0.0.22:11434"
+            placeholder="http://10.0.0.22:8000"
             className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-3 py-2 text-sm"
           />
           <input
@@ -391,6 +396,10 @@ export const AdminProvidersPanel = () => {
             />
           </label>
         </div>
+        <label className="flex items-start gap-2 px-4 pb-3 text-xs text-[var(--admin-muted)]">
+          <input type="checkbox" checked={newToolsEnabled} onChange={(event) => setNewToolsEnabled(event.target.checked)} />
+          {t("admin.providers.toolsEnabled")}
+        </label>
         {newUrlIsRemote ? (
           <label className="flex items-start gap-2 border-t border-[var(--status-warn-border,var(--admin-border))] bg-[var(--status-warn-bg,transparent)] px-4 py-3 text-sm">
             <input
@@ -417,6 +426,7 @@ export const AdminProvidersPanel = () => {
             kind: provider.kind,
             fallbackId: provider.fallbackId ?? "",
             maxConcurrent: String(provider.maxConcurrent ?? 0),
+            toolsEnabled: provider.toolsEnabled,
             acknowledgeRemote: false,
           };
           const urlIsRemote = providerUrlIsRemote(draft.baseUrl);
@@ -428,7 +438,7 @@ export const AdminProvidersPanel = () => {
                   <p className="font-mono text-sm font-semibold">{provider.id}</p>
                   <p className="text-xs text-[var(--admin-muted)]">
                     {t(kindLabelKey(provider.kind))}
-                    {provider.id === "ollama"
+                    {provider.id === "vllm"
                       ? ` · ${t("admin.providers.default")}`
                       : ""}
                   </p>
@@ -446,7 +456,7 @@ export const AdminProvidersPanel = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {provider.id !== "ollama" ? (
+                  {provider.id !== "vllm" ? (
                     <select
                       value={draft.kind}
                       onChange={(event) =>
@@ -518,6 +528,10 @@ export const AdminProvidersPanel = () => {
                       className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-3 py-2 text-sm"
                     />
                   </div>
+                  <label className="flex items-start gap-2 text-xs text-[var(--admin-muted)]">
+                    <input type="checkbox" checked={draft.toolsEnabled} onChange={(event) => setDrafts((current) => ({ ...current, [provider.id]: { ...draft, toolsEnabled: event.target.checked } }))} />
+                    {t("admin.providers.toolsEnabled")}
+                  </label>
                   {urlIsRemote ? (
                     <label className="flex items-start gap-2 text-xs text-[var(--status-warn-fg,var(--admin-fg))]">
                       <input
@@ -608,7 +622,7 @@ export const AdminProvidersPanel = () => {
                       {t("admin.providers.clearKey")}
                     </button>
                   ) : null}
-                  {provider.id !== "ollama" ? (
+                  {provider.id !== "vllm" ? (
                     <button
                       type="button"
                       disabled={isBusy}

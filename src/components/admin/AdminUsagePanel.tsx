@@ -87,7 +87,7 @@ type UsagePayload = {
       avg_duration_ms: number | null;
     }>;
   };
-  ollama: {
+  llm: {
     ok: boolean;
     latencyMs: number;
     error?: string;
@@ -421,13 +421,13 @@ export const AdminUsagePanel = () => {
               <div className="flex flex-wrap items-center gap-1.5">
                 {(data?.backends?.length
                   ? data.backends
-                  : data?.ollama
+                  : data?.llm
                     ? [
                         {
-                          backend: "ollama" as const,
-                          ok: data.ollama.ok,
-                          latencyMs: data.ollama.latencyMs,
-                          error: data.ollama.error,
+                          backend: "vllm" as const,
+                          ok: data.llm.ok,
+                          latencyMs: data.llm.latencyMs,
+                          error: data.llm.error,
                         },
                       ]
                     : []
@@ -437,9 +437,7 @@ export const AdminUsagePanel = () => {
                     className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                   >
                     <Server size={12} />
-                    {b.backend === "ollama"
-                      ? "Ollama"
-                      : b.backend === "vllm"
+                    {b.backend === "vllm"
                         ? "vLLM"
                         : b.backend}{" "}
                     {b.ok ? t("admin.chrome.online") : t("admin.chrome.down")} ·{" "}

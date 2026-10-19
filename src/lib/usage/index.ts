@@ -601,4 +601,3 @@ export const clearUsageLogs = (): number => {
 export { pingBackends, pingLlm } from "@/lib/llm";
 
 /** @deprecated Prefer pingLlm / pingBackends — kept for older callers */
-export { pingLlm as pingOllama } from "@/lib/llm";

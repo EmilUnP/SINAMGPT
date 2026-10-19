@@ -30,7 +30,7 @@ import {
   isChatModel,
   isModelEnabled,
   modelSupportsVision,
-  resolveOllamaModelName,
+  resolveModelName,
 } from "@/lib/settings";
 import {
   attachUsageRequest,
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     const historyLimit = getGuestHistoryLimitSetting();
     const { model: requestedModel, history } = parsed.data;
     const message = (parsed.data.message ?? "").trim();
-    const model = resolveOllamaModelName(requestedModel);
+    const model = resolveModelName(requestedModel);
     const incomingImages = parsed.data.images ?? [];
 
     if (!isModelEnabled(model)) {
@@ -270,7 +270,7 @@ export async function POST(request: Request) {
     let tokensEval: number | null = null;
     let tokensPrompt: number | null = null;
     let evalDurationNs: number | null = null;
-    let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -290,16 +290,16 @@ export async function POST(request: Request) {
         const decoder = new TextDecoder();
 
         try {
-          const ollamaRes = await streamChat(model, messages, {
+          const upstreamRes = await streamChat(model, messages, {
             temperature: runtime.temperature,
             numPredict: runtime.numPredict,
             topP: runtime.topP,
             signal: abort.signal,
           });
-          ollamaReader = ollamaRes.body!.getReader();
+          upstreamReader = upstreamRes.body!.getReader();
 
           while (true) {
-            const { done, value } = await ollamaReader.read();
+            const { done, value } = await upstreamReader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
@@ -377,13 +377,14 @@ export async function POST(request: Request) {
           send("error", { error: errMsg });
           controller.close();
         } finally {
+          await upstreamReader?.cancel().catch(() => undefined);
           stopKeepalive();
           request.signal.removeEventListener("abort", onClientAbort);
         }
       },
       cancel() {
         abort.abort();
-        ollamaReader?.cancel().catch(() => undefined);
+        upstreamReader?.cancel().catch(() => undefined);
         finishUsage(usageId, {
           responseChars,
           status: "aborted",

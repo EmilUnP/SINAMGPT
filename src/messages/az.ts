@@ -158,11 +158,11 @@ export const az: Messages = {
     send: "Göndər",
     footerHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Qonaq tarixçəsi saxlanılmır",
-    ollamaUnavailable: "Ollama əlçatan deyil",
+    modelUnavailable: "vLLM əlçatan deyil",
     couldNotReach: "Yerli model xidmətinə çatmaq mümkün olmadı",
     guestDisabledError:
       "Qonaq söhbəti deaktivdir. SINAMGPT üçün daxil olun.",
-    noModel: "Yerli model tapılmadı. Ollama-nı işə salın və model yükləyin.",
+    noModel: "Yerli model tapılmadı. vLLM serverini başladın, Admin bölməsində modelləri sinxronlaşdırın və aktiv edin.",
     guestLimitReached:
       "Qonaq limiti dolub ({limit}/gün). Limitsiz söhbət üçün daxil olun.",
     chatFailed: "Söhbət uğursuz oldu",
@@ -257,9 +257,9 @@ export const az: Messages = {
     stepReading: "Oxunur",
     sendMessage: "Mesaj göndər",
     footerHint:
-      "Enter — göndər · Shift+Enter — yeni sətir · Limitsiz · Bu PC-də saxlanılır",
+      "Enter — göndər · Shift+Enter — yeni sətir · Limitsiz · Bu Server-də saxlanılır",
     failedLoadChats: "Söhbətləri yükləmək alınmadı",
-    ollamaUnavailable: "Ollama əlçatan deyil",
+    modelUnavailable: "vLLM əlçatan deyil",
     failedToLoad: "Yükləmək alınmadı",
     couldNotOpen: "Söhbəti açmaq mümkün olmadı",
     shareConfirmNew:
@@ -278,7 +278,7 @@ export const az: Messages = {
     couldNotDeleteProject: "Layihəni silmək alınmadı",
     couldNotMoveChat: "Söhbəti köçürmək alınmadı",
     noModelSelected:
-      "Yerli model seçilməyib. Ollama-nı işə salın və model yükləyin.",
+      "Yerli model seçilməyib. vLLM serverini başladın, Admin bölməsində modelləri sinxronlaşdırın və aktiv edin.",
     chatFailed: "Söhbət uğursuz oldu",
     streamError: "Axın xətası",
     failedToSend: "Mesaj göndərmək alınmadı",
@@ -312,7 +312,7 @@ export const az: Messages = {
       "Bu söhbətdə mikrofonla audio göndərə bilərsiniz (ən çox 30 saniyə).",
     inputTtsHint: "Bu modelin cavablarını dinləyə bilərsiniz.",
     inputVideoHint:
-      "Ollama bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
+      "vLLM bu modeli video qabiliyyətli kimi göstərir. Bu söhbət hələ video göndərə bilməz.",
     imagePlaceholder: "Açıqlama yazın və ya şəkli göndərin…",
     audioPlaceholder: "Qeyd yazın və ya göndərin…",
     visionFooterHint:

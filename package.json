@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:integration": "node scripts/test-integration.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
-    "test:tiny": "node scripts/tiny-model-check.mjs",
+    "test:vllm": "node scripts/vllm-check.mjs",
+    "test:vllm:load": "node scripts/vllm-load-test.mjs",
     "test:chat": "node scripts/deep-chat-test.mjs"
   },
   "dependencies": {

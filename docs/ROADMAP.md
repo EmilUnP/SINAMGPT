@@ -1,3 +1,5 @@
+> Runtime update (2026-10-19): vLLM is now the default; Ollama inference is retired. See [deployment and migration](./VLLM-SETUP.md). Older release tables below are historical.
+
 # SINAMGPT — Product roadmap
 
 Living plan for features that make SINAMGPT more valuable as a **local company GPT**.  
@@ -5,7 +7,7 @@ Pair with [CHANGELOG.md](../CHANGELOG.md) when shipping. Keep this file honest: 
 
 For a **plain-language** picture of chat, knowledge, and safety (managers / everyday users), see [HOW-IT-WORKS.md](./HOW-IT-WORKS.md).
 
-For the **multi-release expansion arc** — more runtimes than Ollama, image / speech / embedding models, internet search, and file understanding — see [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md). That track feeds this file: phases land here as releases when they ship.
+For the **multi-release expansion arc** — additional inference services, image / speech / embedding models, internet search, and file understanding — see [PLATFORM-ROADMAP.md](./PLATFORM-ROADMAP.md). That track feeds this file: phases land here as releases when they ship.
 
 **Status key:** `planned` · `in progress` · `done` · `deferred`
 
@@ -28,7 +30,7 @@ What operators and users can rely on in the current tree (**v1.20.0**):
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
 | **Auth / guest** | Local accounts with **username or work email**; **Forgot password** shows a reset button (no email yet); field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
-| **LLM** | Provider registry for Ollama, vLLM, and OpenAI-compatible servers; Admin → Providers for kind, test, health, model sync, fallback, and concurrency. Hosted URLs need a remote-traffic acknowledgement. Models have task kinds, and only chat models enter chat routes. New pulls stay inactive until Admin → Models → Activate |
+| **LLM** | Provider registry for vLLM and OpenAI-compatible servers; Admin → Providers for kind, test, health, model sync, fallback, and concurrency. Hosted URLs need a remote-traffic acknowledgement. Models have task kinds, and only chat models enter chat routes. Newly served models stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt, reply, and **Tools** tab; **Clear logs** |
 | **API gateway** | Off by default. Admin → Settings → Features On/Off turns on `/developer` keys. One key calls every activated model via OpenAI-compatible `/api/v1/chat/completions` and `/api/v1/models` (custom `/api/v1/generate` still works). Admin **Dev lab** at `/devlab` |

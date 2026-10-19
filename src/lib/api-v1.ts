@@ -27,7 +27,7 @@ import {
   isChatModel,
   isModelEnabled,
   modelSupportsVision,
-  resolveOllamaModelName,
+  resolveModelName,
   type PublicModel,
 } from "@/lib/settings";
 import {
@@ -278,7 +278,7 @@ export const resolveGatewayModel = async (
   requested?: string | null,
 ): Promise<string> => {
   const value = requested?.trim();
-  if (value) return resolveOllamaModelName(value);
+  if (value) return resolveModelName(value);
   const { defaultModel } = await getEnabledModels();
   return defaultModel;
 };
@@ -365,10 +365,10 @@ const openaiUsage = (result: {
 };
 
 const consumeNdjson = async (
-  ollamaRes: Response,
+  upstreamRes: Response,
   onPiece?: (piece: string) => void,
 ): Promise<ConsumeResult> => {
-  const reader = ollamaRes.body!.getReader();
+  const reader = upstreamRes.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let content = "";
@@ -376,37 +376,42 @@ const consumeNdjson = async (
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      let chunk: LlmChunk;
-      try {
-        chunk = JSON.parse(trimmed) as LlmChunk;
-      } catch {
-        continue;
-      }
-      if (chunk.error) throw new Error(chunk.error);
-      const piece = chunk.message?.content ?? "";
-      if (piece) {
-        content += piece;
-        onPiece?.(piece);
-      }
-      if (chunk.done) {
-        if (typeof chunk.eval_count === "number") tokensEval = chunk.eval_count;
-        if (typeof chunk.prompt_eval_count === "number") {
-          tokensPrompt = chunk.prompt_eval_count;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        let chunk: LlmChunk;
+        try {
+          chunk = JSON.parse(trimmed) as LlmChunk;
+        } catch {
+          continue;
         }
-        if (typeof chunk.eval_duration === "number") {
-          evalDurationNs = chunk.eval_duration;
+        if (chunk.error) throw new Error(chunk.error);
+        const piece = chunk.message?.content ?? "";
+        if (piece) {
+          content += piece;
+          onPiece?.(piece);
+        }
+        if (chunk.done) {
+          if (typeof chunk.eval_count === "number") tokensEval = chunk.eval_count;
+          if (typeof chunk.prompt_eval_count === "number") {
+            tokensPrompt = chunk.prompt_eval_count;
+          }
+          if (typeof chunk.eval_duration === "number") {
+            evalDurationNs = chunk.eval_duration;
+          }
         }
       }
     }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
 
   return { content, tokensEval, tokensPrompt, evalDurationNs };
@@ -534,9 +539,9 @@ export const runGatewayGenerate = async (
   const completionId = `chatcmpl-${usageId}`;
 
   if (!input.stream) {
-    let ollamaRes: Response;
+    let upstreamRes: Response;
     try {
-      ollamaRes = await streamChat(input.model, input.messages, {
+      upstreamRes = await streamChat(input.model, input.messages, {
         temperature: runtime.temperature,
         numPredict: runtime.numPredict,
         topP: runtime.topP,
@@ -558,7 +563,7 @@ export const runGatewayGenerate = async (
     }
 
     try {
-      const result = await consumeNdjson(ollamaRes, (piece) => {
+      const result = await consumeNdjson(upstreamRes, (piece) => {
         markApiUsageToken(usageId, piece.length, piece);
       });
       finishApiUsage(usageId, {
@@ -630,7 +635,7 @@ export const runGatewayGenerate = async (
   let tokensEval: number | null = null;
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
-  let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let sentRole = false;
 
   const stream = new ReadableStream({
@@ -671,16 +676,16 @@ export const runGatewayGenerate = async (
       const decoder = new TextDecoder();
 
       try {
-        const ollamaRes = await streamChat(input.model, input.messages, {
+        const upstreamRes = await streamChat(input.model, input.messages, {
           temperature: runtime.temperature,
           numPredict: runtime.numPredict,
           topP: runtime.topP,
           signal: abort.signal,
         });
-        ollamaReader = ollamaRes.body!.getReader();
+        upstreamReader = upstreamRes.body!.getReader();
 
         while (true) {
-          const { done, value } = await ollamaReader.read();
+          const { done, value } = await upstreamReader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
@@ -797,13 +802,14 @@ export const runGatewayGenerate = async (
         }
         controller.close();
       } finally {
+        await upstreamReader?.cancel().catch(() => undefined);
         stopKeepalive();
         request.signal.removeEventListener("abort", onClientAbort);
       }
     },
     cancel() {
       abort.abort();
-      ollamaReader?.cancel().catch(() => undefined);
+      upstreamReader?.cancel().catch(() => undefined);
       finishApiUsage(usageId, {
         responseChars,
         status: "aborted",

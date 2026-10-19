@@ -1,11 +1,4 @@
 import {
-  completeOllamaChat,
-  completeOllamaToolChat,
-  listOllamaModels,
-  pingOllama,
-  streamOllamaChat,
-} from "./ollama";
-import {
   completeOpenAiCompatChat,
   completeOpenAiCompatToolChat,
   listOpenAiCompatModels,
@@ -41,7 +34,6 @@ export type {
   LlmModel,
   LlmProviderConfig,
   ModelKind,
-  OllamaModel,
   ProviderKind,
 } from "./types";
 
@@ -53,12 +45,11 @@ export const getEnabledBackends = (): LlmBackend[] =>
 const qualifyModelName = (
   provider: LlmProviderConfig,
   modelName: string,
-): string => (provider.id === "ollama" ? modelName : `${provider.id}:${modelName}`);
+): string => `${provider.id}:${modelName}`;
 
 const listProviderModels = async (
   provider: LlmProviderConfig,
 ): Promise<LlmModel[]> => {
-  if (provider.kind === "ollama") return listOllamaModels(provider);
   if (isOpenAiCompatKind(provider.kind)) {
     return listOpenAiCompatModels(provider);
   }
@@ -112,7 +103,7 @@ export const resolveModelBackend = (modelName: string): LlmBackend => {
     const candidate = modelName.slice(0, separator);
     if (getProviderConfig(candidate)) return candidate;
   }
-  return "ollama";
+  return "vllm";
 };
 
 export const stripBackendPrefix = (
@@ -161,9 +152,6 @@ const dispatchStream = (
   messages: ChatMessage[],
   options?: ChatOptions,
 ): Promise<Response> => {
-  if (provider.kind === "ollama") {
-    return streamOllamaChat(provider, model, messages, options);
-  }
   if (isOpenAiCompatKind(provider.kind)) {
     return streamOpenAiCompatChat(provider, model, messages, options);
   }
@@ -176,9 +164,6 @@ const dispatchComplete = (
   messages: ChatMessage[],
   options?: ChatOptions & { timeoutMs?: number },
 ): Promise<string> => {
-  if (provider.kind === "ollama") {
-    return completeOllamaChat(provider, model, messages, options);
-  }
   if (isOpenAiCompatKind(provider.kind)) {
     return completeOpenAiCompatChat(provider, model, messages, options);
   }
@@ -191,9 +176,6 @@ const dispatchToolComplete = (
   messages: ChatMessage[],
   options?: ChatOptions & { timeoutMs?: number },
 ): Promise<LlmCompletion> => {
-  if (provider.kind === "ollama") {
-    return completeOllamaToolChat(provider, model, messages, options);
-  }
   if (isOpenAiCompatKind(provider.kind)) {
     return completeOpenAiCompatToolChat(provider, model, messages, options);
   }
@@ -204,16 +186,18 @@ const withFallback = async <T>(
   provider: LlmProviderConfig,
   strippedModel: string,
   run: (target: LlmProviderConfig, model: string) => Promise<T>,
+  signal?: AbortSignal,
 ): Promise<T> => {
   const invoke = (target: LlmProviderConfig) =>
-    withProviderConcurrency(target.id, target.maxConcurrent ?? 0, () =>
-      run(target, strippedModel),
+    withProviderConcurrency(
+      target.id, target.maxConcurrent ?? 0,
+      () => run(target, strippedModel), signal,
     );
 
   try {
     return await invoke(provider);
   } catch (error) {
-    if (!isUnreachableError(error)) throw error;
+    if (signal?.aborted || !isUnreachableError(error)) throw error;
     const fallback = fallbackProvider(provider);
     if (!fallback) throw error;
     if (!fallbackHasModel(fallback, strippedModel)) {
@@ -235,6 +219,7 @@ export const streamChat = async (
   const providerModel = stripBackendPrefix(model, provider.id);
   return withFallback(provider, providerModel, (target, name) =>
     dispatchStream(target, name, messages, options),
+    options?.signal,
   );
 };
 
@@ -248,6 +233,7 @@ export const completeChat = async (
   const providerModel = stripBackendPrefix(model, provider.id);
   return withFallback(provider, providerModel, (target, name) =>
     dispatchComplete(target, name, messages, options),
+    options?.signal,
   );
 };
 
@@ -261,13 +247,13 @@ export const completeToolChat = async (
   const providerModel = stripBackendPrefix(model, provider.id);
   return withFallback(provider, providerModel, (target, name) =>
     dispatchToolComplete(target, name, messages, options),
+    options?.signal,
   );
 };
 
 export const pingProvider = async (
   provider: LlmProviderConfig,
 ): Promise<BackendHealth> => {
-  if (provider.kind === "ollama") return pingOllama(provider);
   if (isOpenAiCompatKind(provider.kind)) return pingOpenAiCompat(provider);
   return {
     backend: provider.id,
@@ -302,7 +288,7 @@ const pingLlmFresh = async (): Promise<
     backends.find((b) => b.ok) ??
     backends[0] ??
     ({
-      backend: "ollama",
+      backend: "vllm",
       ok: false,
       latencyMs: 0,
       error: "No model provider is configured",
@@ -328,5 +314,6 @@ export const pingLlm = async (): Promise<
 export const getDefaultModel = (available: string[]): string => {
   const preferred = process.env.DEFAULT_MODEL?.trim();
   if (preferred && available.includes(preferred)) return preferred;
-  return available[0] ?? preferred ?? "gemma3:4b";
+  if (preferred && available.includes(`vllm:${preferred}`)) return `vllm:${preferred}`;
+  return available[0] ?? "";
 };

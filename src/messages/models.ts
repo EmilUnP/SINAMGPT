@@ -19,7 +19,7 @@ export const modelsEn = {
     summary: "Small and quick. Best for short, simple work.",
     use1: "Greetings, short questions, and one-line answers",
     use2: "Quick drafts, rewrites, and bullet lists",
-    use3: "When the PC is busy and you want a fast reply",
+    use3: "When the server is busy and you want a fast reply",
     pro1: "Usually the fastest reply",
     pro2: "Small file — easier on this machine",
     con1: "Weaker on long or hard questions",
@@ -43,7 +43,7 @@ export const modelsEn = {
     pro1: "Usually stronger reasoning and writing",
     pro2: "Better on long context than a tiny model",
     con1: "Slower replies",
-    con2: "Needs more GPU memory on this PC",
+    con2: "Needs more GPU memory on this Server",
   },
   general: {
     summary: "Balanced everyday model for questions and writing.",
@@ -56,7 +56,7 @@ export const modelsEn = {
     con2: "Very hard tasks may still need a larger model",
   },
   "gemma3-4b": {
-    summary: "Fast default on this PC. Reads images. Best for short everyday work.",
+    summary: "Fast default on this Server. Reads images. Best for short everyday work.",
     use1: "Quick questions, rewrites, and short emails",
     use2: "Screenshots and photos when you need an answer now",
     use3: "New chats — this is the usual starting model",
@@ -96,7 +96,7 @@ export const modelsEn = {
     con2: "Audio clips stay under 30 seconds",
   },
   "gemma4-31b": {
-    summary: "Largest Gemma 4 on this PC. Strong answers, images, and microphone.",
+    summary: "Largest Gemma 4 on this Server. Strong answers, images, and microphone.",
     use1: "Hard questions, careful drafts, and long context",
     use2: "Images and voice that need a thorough read",
     use3: "When a smaller Gemma 4 was not enough",
@@ -128,7 +128,7 @@ export const modelsEn = {
     con2: "No microphone — pick a Gemma 4 for voice",
   },
   "qwen3-32b": {
-    summary: "Strongest text model on this PC. No images and no microphone.",
+    summary: "Strongest text model on this Server. No images and no microphone.",
     use1: "Long analysis, structured writing, and harder reasoning",
     use2: "When Gemma’s answer was too thin",
     use3: "Text-only company work (email, notes, summaries)",
@@ -194,7 +194,7 @@ export const modelsAz = {
     pro1: "Adətən daha güclü düşüncə və yazı",
     pro2: "Uzun mətndə kiçik modeldən yaxşıdır",
     con1: "Daha yavaş cavab",
-    con2: "Bu PC-də daha çox GPU yaddaşı lazımdır",
+    con2: "Bu Server-də daha çox GPU yaddaşı lazımdır",
   },
   general: {
     summary: "Gündəlik suallar və yazı üçün tarazlı model.",
@@ -207,7 +207,7 @@ export const modelsAz = {
     con2: "Çox çətin tapşırıqlar üçün daha böyük model lazım ola bilər",
   },
   "gemma3-4b": {
-    summary: "Bu PC-də sürətli standart. Şəkil oxuyur. Qısa gündəlik iş üçün.",
+    summary: "Bu Server-də sürətli standart. Şəkil oxuyur. Qısa gündəlik iş üçün.",
     use1: "Tez suallar, yenidən yazma və qısa e-poçtlar",
     use2: "İndi cavab lazım olanda ekran görüntüsü və foto",
     use3: "Yeni söhbətlər — adətən bu modellə başlayır",
@@ -247,7 +247,7 @@ export const modelsAz = {
     con2: "Audio kliplər 30 saniyədən qısa qalır",
   },
   "gemma4-31b": {
-    summary: "Bu PC-də ən böyük Gemma 4. Güclü cavab, şəkil və mikrofon.",
+    summary: "Bu Server-də ən böyük Gemma 4. Güclü cavab, şəkil və mikrofon.",
     use1: "Çətin suallar, diqqətli qaralamalar və uzun kontekst",
     use2: "Ətraflı oxumaq lazım olan şəkil və səs",
     use3: "Kiçik Gemma 4 kifayət etməyəndə",
@@ -279,7 +279,7 @@ export const modelsAz = {
     con2: "Mikrofon yoxdur — səs üçün bir Gemma 4 seçin",
   },
   "qwen3-32b": {
-    summary: "Bu PC-də ən güclü mətn modeli. Şəkil və mikrofon yoxdur.",
+    summary: "Bu Server-də ən güclü mətn modeli. Şəkil və mikrofon yoxdur.",
     use1: "Uzun təhlil, strukturlu yazı və çətin düşüncə",
     use2: "Gemma-nın cavabı zəif olanda",
     use3: "Yalnız mətn şirkət işi (e-poçt, qeyd, xülasə)",

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Real tiny-model check through the vLLM provider (OpenAI /v1), not Ollama.
+ * End-to-end app chat check against an already configured official vLLM provider.
  *
- * Start the tiny server first:
+ * Configure the provider in Admin, then start official vLLM:
  *   start-vllm.bat
  * then:
- *   npm run test:tiny
+ *   npm run test:vllm
  */
 
 import fs from "fs";
@@ -18,10 +18,7 @@ const BASE_URL = (process.env.BASE_URL || "http://127.0.0.1:3055").replace(
   /\/$/,
   "",
 );
-const VLLM_URL = (
-  process.env.TINY_VLLM_URL || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
-const VLLM_ID = "vllm";
+const VLLM_ID = process.env.VLLM_PROVIDER_ID || "vllm";
 
 const loadEnvFile = (filePath) => {
   if (!fs.existsSync(filePath)) return;
@@ -151,7 +148,7 @@ const fail = (message) => {
 };
 
 const main = async () => {
-  console.log(`\nTiny model check — ${BASE_URL}\n`);
+  console.log(`\nvLLM app chat check — ${BASE_URL}\n`);
   if (!PASSWORD) {
     fail("Set ADMIN_PASSWORD in .env.local");
     return;
@@ -173,32 +170,11 @@ const main = async () => {
     return;
   }
   const existing = (providers.json.providers || []).find((p) => p.id === VLLM_ID);
-  if (!existing) {
-    const created = await api("POST", "/api/admin/providers", {
-      id: VLLM_ID,
-      kind: "vllm",
-      baseUrl: VLLM_URL,
-      enabled: true,
-    });
-    if (!created.res.ok) {
-      fail(created.json?.error || `Could not add ${VLLM_ID} provider`);
-      return;
-    }
-    console.log(`  ✓ added vLLM provider → ${VLLM_URL}`);
-  } else if (!existing.enabled) {
-    const updated = await api("PATCH", `/api/admin/providers/${VLLM_ID}`, {
-      enabled: true,
-      baseUrl: VLLM_URL,
-      kind: "vllm",
-    });
-    if (!updated.res.ok) {
-      fail(updated.json?.error || "Could not enable vLLM provider");
-      return;
-    }
-    console.log(`  ✓ enabled vLLM provider → ${VLLM_URL}`);
-  } else {
-    console.log(`  ✓ vLLM provider already enabled → ${existing.baseUrl}`);
+  if (!existing?.enabled) {
+    fail(`Configure and enable provider "${VLLM_ID}" in Admin > Providers first.`);
+    return;
   }
+  const VLLM_URL = existing.baseUrl;
 
   const ping = await api("POST", `/api/admin/providers/${VLLM_ID}/test`);
   if (!ping.json?.health?.ok) {
@@ -218,32 +194,18 @@ const main = async () => {
   }
 
   const pick = catalog.json.models.find(
-    (m) => m.backend === VLLM_ID && m.kind === "chat",
+    (m) => m.backend === VLLM_ID && m.kind === "chat" && m.is_enabled,
   );
   if (!pick) {
     fail(
-      "No chat model from the vLLM provider. Is start-vllm.bat running?",
+      "No activated chat model from vLLM. Sync and Activate one in Admin first.",
     );
     return;
   }
 
-  if (!pick.is_enabled) {
-    const patched = await api("PATCH", "/api/admin/models", {
-      name: pick.name,
-      is_enabled: true,
-    });
-    if (!patched.res.ok) {
-      fail(patched.json?.error || `Could not activate ${pick.name}`);
-      return;
-    }
-    console.log(`  ✓ activated ${pick.name} in Admin → Models`);
-  } else {
-    console.log(`  ✓ ${pick.name} already activated`);
-  }
-
-  console.log(`  · asking ${pick.name} (vLLM, not Ollama)…`);
+  console.log(`  · asking ${pick.name} (vLLM)…`);
   const reply = await readAssistant({
-    message: "Reply with exactly this sentence: SINAMGPT vLLM tiny model is working.",
+    message: "Reply with exactly this sentence: SINAMGPT vLLM is working.",
     model: pick.name,
     mode: "send",
     locale: "en",

@@ -9,7 +9,7 @@ export type FleetId =
   | "qwen3-32b"
   | "qwen35-9b";
 
-/** Ollama tags on the company RTX 5090 box. */
+/** Legacy display aliases, also recognized when used as vLLM served model names. */
 export const FLEET_TAGS = [
   "gemma3:4b",
   "gemma3:12b",
@@ -52,8 +52,8 @@ export const matchFleetModel = (name: string): FleetId | null => {
   if (/gemma-?4/.test(id) && /e4b/.test(id)) return "gemma4-e4b";
   if (/gemma-?4/.test(id) && /(?:^|[:\-_])26b\b/.test(id)) return "gemma4-26b";
   if (/gemma-?4/.test(id) && /(?:^|[:\-_])31b\b/.test(id)) return "gemma4-31b";
-  if (/gemma3/.test(id) && /(?:^|[:\-_])12b\b/.test(id)) return "gemma3-12b";
-  if (/gemma3/.test(id) && /(?:^|[:\-_])4b\b/.test(id) && !/e4b|12b/.test(id)) {
+  if (/gemma-?3/.test(id) && /(?:^|[:\-_])12b\b/.test(id)) return "gemma3-12b";
+  if (/gemma-?3/.test(id) && /(?:^|[:\-_])4b\b/.test(id) && !/e4b|12b/.test(id)) {
     return "gemma3-4b";
   }
   return null;
@@ -72,7 +72,7 @@ export const fleetHintKey = (
   return id ? `chat.modelHint.${id}` : null;
 };
 
-/** Qwen 3.5 is natively multimodal (text + image; Ollama may also list video). */
+/** Qwen 3.5 is natively multimodal (text + image; some runtimes also support video). */
 export const isQwen35Vision = (name: string): boolean => /qwen3\.5/i.test(name);
 
 /** Llama 4 (Maverick / Scout) is natively multimodal: text + image, not microphone. */

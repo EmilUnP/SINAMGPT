@@ -35,7 +35,7 @@ import {
   isModelEnabled,
   modelSupportsAudio,
   modelSupportsVision,
-  resolveOllamaModelName,
+  resolveModelName,
 } from "@/lib/settings";
 import {
   attachUsageRequest,
@@ -260,7 +260,7 @@ const streamAssistantReply = async (input: {
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
   let toolTrace: Message["tool_trace"] = null;
-  let ollamaReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -282,11 +282,11 @@ const streamAssistantReply = async (input: {
       let buffer = "";
       let replySources: KnowledgeCitation[] = knowledgeSources;
 
-      const pumpOllamaNdjson = async (body: ReadableStream<Uint8Array>) => {
-        ollamaReader = body.getReader();
+      const pumpModelNdjson = async (body: ReadableStream<Uint8Array>) => {
+        upstreamReader = body.getReader();
         buffer = "";
         while (true) {
-          const { done, value } = await ollamaReader.read();
+          const { done, value } = await upstreamReader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
@@ -384,7 +384,7 @@ const streamAssistantReply = async (input: {
               abort.signal,
               AbortSignal.timeout(90_000),
             ]);
-            const ollamaRes = await streamChat(
+            const upstreamRes = await streamChat(
               model,
               withPostSearchAnswerHint(
                 compactToolMessagesForModel(result.messages),
@@ -397,20 +397,20 @@ const streamAssistantReply = async (input: {
                 think: false,
               },
             );
-            await pumpOllamaNdjson(ollamaRes.body!);
+            await pumpModelNdjson(upstreamRes.body!);
           } else if (result.content) {
             assistantText = result.content;
             markUsageToken(usageId, assistantText);
             send("token", { content: assistantText });
           }
         } else {
-          const ollamaRes = await streamChat(model, promptedHistory, {
+          const upstreamRes = await streamChat(model, promptedHistory, {
             temperature: runtime.temperature,
             numPredict: runtime.numPredict,
             topP: runtime.topP,
             signal: abort.signal,
           });
-          await pumpOllamaNdjson(ollamaRes.body!);
+          await pumpModelNdjson(upstreamRes.body!);
         }
 
         const assistantMessageId = newId();
@@ -485,13 +485,14 @@ const streamAssistantReply = async (input: {
         send("error", { error: errMsg });
         controller.close();
       } finally {
+        await upstreamReader?.cancel().catch(() => undefined);
         stopKeepalive();
         clientSignal?.removeEventListener("abort", onClientAbort);
       }
     },
     cancel() {
       abort.abort();
-      ollamaReader?.cancel().catch(() => undefined);
+      upstreamReader?.cancel().catch(() => undefined);
       finishUsage(usageId, {
         responseChars: assistantText.length,
         status: "aborted",
@@ -548,7 +549,7 @@ export async function POST(request: Request) {
 
     const mode = parsed.data.mode;
     const uiLocale = parsed.data.locale;
-    const model = resolveOllamaModelName(parsed.data.model);
+    const model = resolveModelName(parsed.data.model);
     const maxChars = getUserMaxCharsSetting();
     const db = getDb();
 

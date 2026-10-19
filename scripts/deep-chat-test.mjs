@@ -4,7 +4,7 @@
  *
  * Prerequisites:
  *   npm run dev   (or npm start after build)
- *   Ollama/vLLM with at least one enabled model
+ *   vLLM with at least one enabled model
  *
  * Usage:
  *   npm run test:chat
@@ -322,7 +322,7 @@ async function main() {
     if (!res.ok || !Array.isArray(json?.models) || !json.models.length) {
       fail(
         "models available",
-        json?.error || "No models — start Ollama/vLLM and enable one in Admin",
+        json?.error || "No models — start vLLM and enable one in Admin",
       );
       printSummaryAndExit();
       return;

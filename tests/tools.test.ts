@@ -5,6 +5,11 @@ import {
   MAX_ACTIVITY_SITES,
 } from "@/lib/tools/sse";
 import { describe, expect, it, vi } from "vitest";
+// Unit tests must not initialize or mutate the operator's application database.
+vi.mock("@/lib/search/settings", async () => ({
+  ...await vi.importActual<typeof import("@/lib/search/settings")>("@/lib/search/settings"),
+  isWebSearchEnabled: () => false,
+}));
 import type { LlmCompletion } from "@/lib/llm";
 import {
   registeredTools,

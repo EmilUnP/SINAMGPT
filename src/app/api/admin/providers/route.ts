@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { getProviderConfig, listProviders, saveProvider } from "@/lib/providers";
 
-const kindSchema = z.enum(["ollama", "vllm", "openai"]);
+const kindSchema = z.enum(["vllm", "openai"]);
 
 const createSchema = z.object({
   id: z
@@ -18,6 +18,7 @@ const createSchema = z.object({
   apiKey: z.string().trim().min(1).max(512).optional(),
   fallbackId: z.string().trim().min(1).max(64).nullable().optional(),
   maxConcurrent: z.number().int().min(0).max(10_000).optional(),
+  toolsEnabled: z.boolean().optional(),
   acknowledgeRemote: z.boolean().optional(),
 });
 
@@ -36,12 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid provider" },
       { status: 400 },
-    );
-  }
-  if (parsed.data.id === "ollama") {
-    return NextResponse.json(
-      { error: "The default Ollama provider already exists." },
-      { status: 409 },
     );
   }
   if (getProviderConfig(parsed.data.id)) {

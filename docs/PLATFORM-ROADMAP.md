@@ -1,3 +1,5 @@
+> Runtime update (2026-10-19): active provider kinds are `vllm` and `openai`. Ollama inference and its adapter are retired. Historical phase notes below describe earlier implementations; the current setup is [VLLM-SETUP.md](./VLLM-SETUP.md).
+
 # SINAMGPT — Platform track (v1.18 → v2.0)
 
 Expansion plan for turning SINAMGPT from a **local chat app** into a **local AI platform**:

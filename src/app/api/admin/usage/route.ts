@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       : undefined,
     analytics,
     /** Primary / best available backend (compat) */
-    ollama: {
+    llm: {
       ok: llm.ok,
       latencyMs: llm.latencyMs,
       error: llm.error,

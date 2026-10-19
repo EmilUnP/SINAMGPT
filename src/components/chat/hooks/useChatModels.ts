@@ -18,7 +18,7 @@ export const useChatModels = (t: Translate) => {
       error?: string;
     };
     if (!res.ok) {
-      setModelsError(data.error || t("chat.ollamaUnavailable"));
+      setModelsError(data.error || t("chat.modelUnavailable"));
       setModels([]);
       return;
     }

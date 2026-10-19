@@ -157,11 +157,11 @@ export const ru: Messages = {
     send: "Отправить",
     footerHint:
       "Enter — отправить · Shift+Enter — новая строка · История гостя не сохраняется",
-    ollamaUnavailable: "Ollama недоступна",
+    modelUnavailable: "vLLM недоступна",
     couldNotReach: "Не удалось связаться с локальной службой модели",
     guestDisabledError:
       "Гостевой чат отключён. Войдите, чтобы пользоваться SINAMGPT.",
-    noModel: "Локальная модель не найдена. Запустите Ollama и загрузите модель.",
+    noModel: "Локальная модель не найдена. Запустите vLLM, синхронизируйте и активируйте модель в панели администратора.",
     guestLimitReached:
       "Лимит гостя исчерпан ({limit}/день). Войдите для безлимитного чата.",
     chatFailed: "Чат не удался",
@@ -258,7 +258,7 @@ export const ru: Messages = {
     footerHint:
       "Enter — отправить · Shift+Enter — новая строка · Безлимит · Сохраняется на этом ПК",
     failedLoadChats: "Не удалось загрузить чаты",
-    ollamaUnavailable: "Ollama недоступна",
+    modelUnavailable: "vLLM недоступна",
     failedToLoad: "Не удалось загрузить",
     couldNotOpen: "Не удалось открыть чат",
     shareConfirmNew:
@@ -277,7 +277,7 @@ export const ru: Messages = {
     couldNotDeleteProject: "Не удалось удалить проект",
     couldNotMoveChat: "Не удалось переместить чат",
     noModelSelected:
-      "Локальная модель не выбрана. Запустите Ollama и загрузите модель.",
+      "Локальная модель не выбрана. Запустите vLLM, синхронизируйте и активируйте модель в панели администратора.",
     chatFailed: "Чат не удался",
     streamError: "Ошибка потока",
     failedToSend: "Не удалось отправить сообщение",
@@ -311,7 +311,7 @@ export const ru: Messages = {
       "В этом чате можно записать аудио с микрофона (до 30 секунд).",
     inputTtsHint: "Можно прослушать ответы этой модели.",
     inputVideoHint:
-      "Ollama указывает, что модель умеет видео. Этот чат пока не отправляет видео.",
+      "vLLM указывает, что модель умеет видео. Этот чат пока не отправляет видео.",
     imagePlaceholder: "Добавьте подпись или отправьте изображение…",
     audioPlaceholder: "Добавьте заметку или отправьте…",
     visionFooterHint:

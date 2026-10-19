@@ -150,10 +150,10 @@ export const en = {
     send: "Send",
     footerHint:
       "Enter to send · Shift+Enter for new line · Guest history is not saved",
-    ollamaUnavailable: "Ollama is not available",
+    modelUnavailable: "vLLM is not available",
     couldNotReach: "Could not reach the local model service",
     guestDisabledError: "Guest try-chat is disabled. Sign in to use SINAMGPT.",
-    noModel: "No local model found. Start Ollama and pull a model.",
+    noModel: "No local model found. Start vLLM, then sync and activate a model in Admin.",
     guestLimitReached:
       "Guest limit reached ({limit}/day). Sign in for unlimited chat.",
     chatFailed: "Chat failed",
@@ -247,9 +247,9 @@ export const en = {
     stepReading: "Reading",
     sendMessage: "Send message",
     footerHint:
-      "Enter to send · Shift+Enter for new line · Unlimited · Saved on this PC",
+      "Enter to send · Shift+Enter for new line · Unlimited · Saved on this Server",
     failedLoadChats: "Failed to load chats",
-    ollamaUnavailable: "Ollama not available",
+    modelUnavailable: "vLLM not available",
     failedToLoad: "Failed to load",
     couldNotOpen: "Could not open chat",
     shareConfirmNew:
@@ -267,7 +267,7 @@ export const en = {
       "Delete project “{name}”? Chats stay saved but leave this project.",
     couldNotDeleteProject: "Could not delete project",
     couldNotMoveChat: "Could not move chat",
-    noModelSelected: "No local model selected. Start Ollama and pull a model.",
+    noModelSelected: "No local model selected. Start vLLM, then sync and activate a model in Admin.",
     chatFailed: "Chat failed",
     streamError: "Stream error",
     failedToSend: "Failed to send message",
@@ -288,7 +288,7 @@ export const en = {
     vision: "Vision",
     tools: "Functions",
     visionHint: "Can read images you attach or paste.",
-    toolsHint: "Can call extra functions. Chat does not use that yet.",
+    toolsHint: "Can call functions when the server tool parser and app tool calling are enabled.",
     inputText: "Text",
     inputImage: "Image",
     inputAudio: "Audio",
@@ -300,7 +300,7 @@ export const en = {
       "You can record from the microphone in this chat (up to 30 seconds).",
     inputTtsHint: "You can listen to this model's replies.",
     inputVideoHint:
-      "Ollama lists this model as video-capable. This chat cannot send video yet.",
+      "vLLM lists this model as video-capable. This chat cannot send video yet.",
     imagePlaceholder: "Add a caption, or send the image…",
     audioPlaceholder: "Add a note, or send…",
     visionFooterHint:
