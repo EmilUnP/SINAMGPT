@@ -45,6 +45,8 @@ Images use OpenAI `image_url` parts, and microphone WAV clips use `input_audio`.
 
 ## 4. Existing-data migration
 
+Upgrading a live Linux server that runs the Ollama version? Use the step-by-step [upgrade guide](./UPGRADE-FROM-OLLAMA.md): it downloads the model ahead of time, keeps downtime short and includes a rollback.
+
 At the first startup with this code, a one-time transaction:
 
 - Creates the default `vllm` provider if missing; preserves an existing vLLM URL, key, concurrency and tool settings.

@@ -22,6 +22,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Streaming usage is requested and recorded after the final usage event. Truncated streams report errors and cancellation closes the upstream request.
 
 ### Added
+- Step-by-step Linux upgrade guide from a running Ollama install to vLLM, with an advance model download, short switch window, checklist and rollback. See `docs/UPGRADE-FROM-OLLAMA.md`.
 - One-server production Docker setup with HTTPS, persistent app data, private vLLM and an initial single-5090 profile. See `docs/SERVER-DEPLOYMENT.md`.
 - OpenCode v1 configuration in Developer > How to call, configurable coding prompt budgets up to 1,000,000 characters, protocol tests and `npm run test:api` for live tool-cycle acceptance.
 - `test:vllm` for app chat against a configured vLLM service, and `test:vllm:load` for direct or app-level parallel request measurements.

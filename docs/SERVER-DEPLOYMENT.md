@@ -1,5 +1,7 @@
 # One-server deployment: app, developer API and RTX 5090
 
+> Already running the Ollama version on this server? Upgrade it in place first with [UPGRADE-FROM-OLLAMA.md](./UPGRADE-FROM-OLLAMA.md). This page is the full Docker + HTTPS setup.
+
 The app is the public entry point. Users sign in, create their own `sinam_...` key in Developer, and call activated models through `https://YOUR_DOMAIN/api/v1`. vLLM receives only the private provider key. OpenCode executes file edits and terminal commands on the user's computer and sends tool results back to the model through the app.
 
 ## Validation status (2026-10-20)

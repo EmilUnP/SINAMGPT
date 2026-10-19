@@ -10,6 +10,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 |-----------|------|
 | How the product works (no install) | [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) |
 | Install, env vars, API examples | This README |
+| Upgrade a running Ollama server to vLLM (keeps all data) | [docs/UPGRADE-FROM-OLLAMA.md](./docs/UPGRADE-FROM-OLLAMA.md) |
 | Deploy app + API + vLLM on one GPU server | [docs/SERVER-DEPLOYMENT.md](./docs/SERVER-DEPLOYMENT.md) |
 | Connect OpenCode or your own product | [docs/DEVELOPER-API.md](./docs/DEVELOPER-API.md) |
 | What shipped vs what is next | [docs/ROADMAP.md](./docs/ROADMAP.md) |
@@ -72,7 +73,7 @@ npm run start
 
 Run official vLLM with the supplied `docker-compose.vllm.yml` and `.env.vllm.example`. The starting profile serves `Qwen/Qwen3-8B`; tune model size, context and concurrency for the actual GPU. Windows `start-vllm.bat` now launches the official container through Docker, not a Transformers imitation.
 
-Existing Ollama providers and their model rows are disabled once on startup. Accounts, conversations and usage history are preserved. Configure **Admin → Providers → vllm**, test the connection, sync models, activate a model and select the default. Existing provider settings are kept in SQLite, so changing environment seed variables does not overwrite them.
+Existing Ollama providers and their model rows are disabled once on startup. Accounts, conversations and usage history are preserved. For a server already running the Ollama version, follow the step-by-step [upgrade guide](./docs/UPGRADE-FROM-OLLAMA.md). Configure **Admin → Providers → vllm**, test the connection, sync models, activate a model and select the default. Existing provider settings are kept in SQLite, so changing environment seed variables does not overwrite them.
 
 Read **[docs/VLLM-SETUP.md](./docs/VLLM-SETUP.md)** for GPU setup, tools, model ids, migration, multiple servers and load testing.
 
