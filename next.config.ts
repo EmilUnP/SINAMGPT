@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingExcludes: { "/*": ["./data/**/*", "./.env*"] },
+  outputFileTracingIncludes: { "/*": ["./node_modules/better-sqlite3/build/Release/*.node"] },
   serverExternalPackages: ["better-sqlite3"],
   async headers() {
     return [

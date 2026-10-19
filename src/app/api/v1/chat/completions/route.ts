@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { MAX_CHAT_IMAGES, type IncomingImage } from "@/lib/attachments";
+import { type IncomingImage } from "@/lib/attachments";
+import { chatCompletionSchema as schema } from "@/lib/api-chat-input";
 import {
   apiV1Options,
   authenticateGateway,
@@ -12,54 +13,6 @@ import {
   toChatMessages,
   type GatewayIncomingMessage,
 } from "@/lib/api-v1";
-
-const imageSchema = z.object({
-  mime: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
-  data: z.string().min(32).max(16_000_000),
-  name: z.string().trim().max(200).optional(),
-});
-
-const contentPartSchema = z.union([
-  z.object({
-    type: z.literal("text"),
-    text: z.string().max(32000),
-  }),
-  z.object({
-    type: z.literal("image_url"),
-    image_url: z.union([
-      z.string().min(32).max(16_000_000),
-      z.object({ url: z.string().min(32).max(16_000_000) }),
-    ]),
-  }),
-]);
-
-const schema = z
-  .object({
-    model: z.string().trim().min(1).max(120).optional(),
-    messages: z
-      .array(
-        z.object({
-          role: z.enum(["user", "assistant", "system"]),
-          content: z
-            .union([
-              z.string().max(32000),
-              z.array(contentPartSchema).min(1).max(24),
-            ])
-            .optional(),
-          images: z.array(imageSchema).max(MAX_CHAT_IMAGES).optional(),
-        }),
-      )
-      .min(1)
-      .max(40),
-    stream: z.boolean().optional().default(false),
-    temperature: z.number().min(0).max(2).optional(),
-    max_tokens: z.number().int().min(1).max(8192).optional(),
-    max_completion_tokens: z.number().int().min(1).max(8192).optional(),
-    top_p: z.number().min(0.05).max(1).optional(),
-    stream_options: z
-      .object({ include_usage: z.boolean().optional() })
-      .optional(),
-  });
 
 const flattenMessage = (
   row: z.infer<typeof schema>["messages"][number],
@@ -86,7 +39,16 @@ const flattenMessage = (
     }
   }
 
-  return { role: row.role, content: text, ...(images.length ? { images } : {}) };
+  return {
+    role: row.role === "developer" ? "system" : row.role,
+    content: text, ...(images.length ? { images } : {}),
+    ...(row.tool_calls ? { toolCalls: row.tool_calls.map((call) => ({
+      id: call.id, name: call.function.name, arguments: call.function.arguments,
+    })) } : {}),
+    ...(row.tool_call_id ? { toolCallId: row.tool_call_id } : {}),
+    ...(row.name ? { toolName: row.name } : {}),
+    ...(row.reasoning_content ? { reasoningContent: row.reasoning_content } : {}),
+  };
 };
 
 // Numeric literal required; Next.js cannot analyze imported constants.
@@ -195,6 +157,14 @@ export async function POST(request: Request) {
       maxTokens: parsedBody.max_completion_tokens ?? parsedBody.max_tokens,
       topP: parsedBody.top_p,
       includeUsage: parsedBody.stream_options?.include_usage === true,
+      tools: parsedBody.tools,
+      toolChoice: parsedBody.tool_choice,
+      parallelToolCalls: parsedBody.parallel_tool_calls,
+      stop: parsedBody.stop ?? undefined,
+      seed: parsedBody.seed,
+      presencePenalty: parsedBody.presence_penalty,
+      frequencyPenalty: parsedBody.frequency_penalty,
+      responseFormat: parsedBody.response_format,
     },
     "openai",
   );

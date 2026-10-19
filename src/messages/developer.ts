@@ -1,4 +1,8 @@
 export const developerEn = {
+  opencodeHint: "Save this as opencode.json (OpenCode v1). Set SINAMGPT_API_KEY in your terminal, or use /connect with provider ID sinam and remove apiKey from this config. Match context and output limits to your server. OpenCode runs file and shell tools on your computer.",
+  opencodeToolsRequired: "Choose a model with tool calling enabled for coding and editing.",
+  contextTokens: "Server context limit (tokens)",
+  outputTokens: "Output limit (tokens)",
   title: "Developer",
   badge: "API keys",
   description:
@@ -80,6 +84,10 @@ type WidenStrings<T> = {
 export type DeveloperMessages = WidenStrings<typeof developerEn>;
 
 export const developerAz: DeveloperMessages = {
+  opencodeHint: "Bunu opencode.json kimi saxlayın (OpenCode v1). Terminalda SINAMGPT_API_KEY təyin edin və ya /connect ilə sinam provayderini seçib apiKey sətrini silin. Kontekst və çıxış limitlərini serverə uyğunlaşdırın. Fayl və terminal alətləri kompüterinizdə işləyir.",
+  opencodeToolsRequired: "Kod yazmaq və redaktə etmək üçün alət çağırışları aktiv olan modeli seçin.",
+  contextTokens: "Serverin kontekst limiti (token)",
+  outputTokens: "Çıxış limiti (token)",
   title: "Tərtibatçı",
   badge: "API açarları",
   description:
@@ -155,6 +163,10 @@ export const developerAz: DeveloperMessages = {
 };
 
 export const developerRu: DeveloperMessages = {
+  opencodeHint: "Сохраните как opencode.json (OpenCode v1). Задайте SINAMGPT_API_KEY в терминале или используйте /connect с ID провайдера sinam и удалите apiKey из конфигурации. Укажите лимиты контекста и ответа вашего сервера. Инструменты файлов и терминала работают на вашем компьютере.",
+  opencodeToolsRequired: "Для написания и редактирования кода выберите модель с поддержкой вызова инструментов.",
+  contextTokens: "Лимит контекста сервера (токены)",
+  outputTokens: "Лимит ответа (токены)",
   title: "Разработчик",
   badge: "API-ключи",
   description:

@@ -47,6 +47,7 @@ export const az: Messages = {
     statusRejected: "rədd",
   },
   auth: {
+    forgotContactAdmin: "Şifrənizi sıfırlamaq üçün administratorla əlaqə saxlayın. E-poçt vasitəsilə bərpa hələ mövcud deyil.",
     signInTitle: "Hesabınıza daxil olun",
     registerTitle: "Hesab yaradın",
     signInSubtitle:

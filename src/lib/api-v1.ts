@@ -20,6 +20,9 @@ import {
 import { FEATURE_DISABLED_ERROR, isFeatureEnabled } from "@/lib/features";
 import { isAllowedImageMime, type AllowedImageMime } from "@/lib/media/limits";
 import { streamChat, type ChatMessage } from "@/lib/llm";
+import type { ChatOptions, LlmStreamChunk } from "@/lib/llm/types";
+import { ToolCallAccumulator, type WireToolCall } from "@/lib/llm/tool-stream";
+import { ModelBusyError, ModelServerError } from "@/lib/llm/errors";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
 import {
   getChatRuntimeOptions,
@@ -27,6 +30,7 @@ import {
   isChatModel,
   isModelEnabled,
   modelSupportsVision,
+  modelSupportsTools,
   resolveModelName,
   type PublicModel,
 } from "@/lib/settings";
@@ -44,25 +48,19 @@ export type GatewayReady = {
   ip: string;
 };
 
-type LlmChunk = {
-  message?: { content?: string };
-  done?: boolean;
-  error?: string;
-  eval_count?: number;
-  prompt_eval_count?: number;
-  eval_duration?: number;
-};
+type LlmChunk = LlmStreamChunk;
 
 type ConsumeResult = {
   content: string;
+  reasoningContent: string;
+  toolCalls: WireToolCall[];
+  finishReason: string;
   tokensEval: number | null;
   tokensPrompt: number | null;
   evalDurationNs: number | null;
 };
 
-export type GatewayIncomingMessage = {
-  role: "user" | "assistant" | "system";
-  content: string;
+export type GatewayIncomingMessage = Omit<ChatMessage, "images"> & {
   images?: IncomingImage[];
 };
 
@@ -76,6 +74,14 @@ export type GatewayGenerateInput = {
   maxTokens?: number;
   topP?: number;
   includeUsage?: boolean;
+  tools?: ChatOptions["tools"];
+  toolChoice?: ChatOptions["toolChoice"];
+  parallelToolCalls?: boolean;
+  stop?: ChatOptions["stop"];
+  seed?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+  responseFormat?: ChatOptions["responseFormat"];
 };
 
 export type ApiModelCard = {
@@ -102,6 +108,13 @@ const errorBody = (format: ApiResponseFormat, message: string) =>
   format === "openai"
     ? { error: { message, type: "invalid_request_error" } }
     : { error: message };
+
+const upstreamErrorStatus = (error: unknown): number => {
+  if (error instanceof ModelBusyError) return 503;
+  // Upstream credentials belong to the operator, not the API-key holder.
+  if (error instanceof ModelServerError && [400, 413, 422, 429, 503].includes(error.status)) return error.status;
+  return 502;
+};
 
 export const jsonWithCors = (
   request: Request,
@@ -241,9 +254,10 @@ export const toChatMessages = (
     }
     if (images.length) hasImages = true;
     messages.push({
+      ...row,
       role: row.role,
       content: row.content,
-      ...(images.length ? { images } : {}),
+      images: images.length ? images : undefined,
     });
   }
   return { messages, hasImages };
@@ -372,6 +386,9 @@ const consumeNdjson = async (
   const decoder = new TextDecoder();
   let buffer = "";
   let content = "";
+  let reasoningContent = "";
+  let finishReason = "stop";
+  const calls = new ToolCallAccumulator();
   let tokensEval: number | null = null;
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
@@ -393,6 +410,11 @@ const consumeNdjson = async (
           continue;
         }
         if (chunk.error) throw new Error(chunk.error);
+        calls.add(chunk.message?.tool_calls);
+        reasoningContent += chunk.message?.reasoning_content ?? "";
+        if (chunk.finish_reason) finishReason = chunk.finish_reason;
+        const toolPiece = (chunk.message?.tool_calls ?? []).map((call) => call.function?.arguments ?? "").join("");
+        if (toolPiece) onPiece?.(toolPiece);
         const piece = chunk.message?.content ?? "";
         if (piece) {
           content += piece;
@@ -414,7 +436,7 @@ const consumeNdjson = async (
     reader.releaseLock();
   }
 
-  return { content, tokensEval, tokensPrompt, evalDurationNs };
+  return { content, reasoningContent, toolCalls: calls.result(), finishReason, tokensEval, tokensPrompt, evalDurationNs };
 };
 
 const clampRuntime = (input: GatewayGenerateInput) => {
@@ -442,8 +464,8 @@ export const prepareGatewayGenerate = (
 ): Response | { usageId: string; runtime: ReturnType<typeof clampRuntime> } => {
   const { auth, settings, ip } = gate;
   const totalChars = input.messages.reduce(
-    (sum, m) => sum + m.content.length,
-    0,
+    (sum, m) => sum + m.content.length + (m.reasoningContent?.length ?? 0) + (m.toolCalls?.length ? JSON.stringify(m.toolCalls).length : 0),
+    (input.tools?.length ? JSON.stringify(input.tools).length : 0) + (input.responseFormat ? JSON.stringify(input.responseFormat).length : 0),
   );
 
   if (!isModelEnabled(input.model)) {
@@ -480,6 +502,12 @@ export const prepareGatewayGenerate = (
       format,
       { model: input.model, prompt: input.prompt },
     );
+  }
+
+  if ((input.tools?.length || input.messages.some((m) => m.toolCalls?.length || m.role === "tool")) && !modelSupportsTools(input.model)) {
+    return rejectGateway(request, auth, ip,
+      "Tool calling is not enabled for this model. Configure the vLLM tool parser and enable tools in Admin > Providers, then refresh the model catalog.",
+      400, format, { model: input.model, prompt: input.prompt });
   }
 
   if (totalChars > settings.maxChars) {
@@ -537,11 +565,18 @@ export const runGatewayGenerate = async (
   const { settings } = gate;
   const created = Math.floor(Date.now() / 1000);
   const completionId = `chatcmpl-${usageId}`;
+  const toolOptions: ChatOptions = {
+    tools: input.tools, toolChoice: input.toolChoice,
+    parallelToolCalls: input.parallelToolCalls, stop: input.stop, seed: input.seed,
+    presencePenalty: input.presencePenalty, frequencyPenalty: input.frequencyPenalty,
+    responseFormat: input.responseFormat,
+  };
 
   if (!input.stream) {
     let upstreamRes: Response;
     try {
       upstreamRes = await streamChat(input.model, input.messages, {
+        ...toolOptions,
         temperature: runtime.temperature,
         numPredict: runtime.numPredict,
         topP: runtime.topP,
@@ -559,7 +594,7 @@ export const runGatewayGenerate = async (
         status: aborted ? "aborted" : "error",
         errorMessage: message,
       });
-      return jsonWithCors(request, errorBody(format, message), aborted ? 499 : 502);
+      return jsonWithCors(request, errorBody(format, message), aborted ? 499 : upstreamErrorStatus(error));
     }
 
     try {
@@ -567,7 +602,7 @@ export const runGatewayGenerate = async (
         markApiUsageToken(usageId, piece.length, piece);
       });
       finishApiUsage(usageId, {
-        responseChars: result.content.length,
+        responseChars: result.content.length + result.toolCalls.reduce((n, c) => n + c.function.arguments.length, 0),
         status: "ok",
         tokensEval: result.tokensEval,
         tokensPrompt: result.tokensPrompt,
@@ -583,8 +618,12 @@ export const runGatewayGenerate = async (
             choices: [
               {
                 index: 0,
-                message: { role: "assistant", content: result.content },
-                finish_reason: "stop",
+                message: {
+                  role: "assistant", content: result.content || (result.toolCalls.length ? null : ""),
+                  ...(result.toolCalls.length ? { tool_calls: result.toolCalls } : {}),
+                  ...(result.reasoningContent ? { reasoning_content: result.reasoningContent } : {}),
+                },
+                finish_reason: result.finishReason,
               },
             ],
             usage: openaiUsage(result),
@@ -637,6 +676,24 @@ export const runGatewayGenerate = async (
   let evalDurationNs: number | null = null;
   let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let sentRole = false;
+  let finishReason = "stop";
+  let streamCancelled = false;
+
+  // Obtain upstream headers before committing a 200 SSE response. Coding clients
+  // need a real 400 for context overflow and a retryable status when overloaded.
+  try {
+    const upstreamRes = await streamChat(input.model, input.messages, {
+      ...toolOptions, temperature: runtime.temperature, numPredict: runtime.numPredict,
+      topP: runtime.topP, signal: abort.signal,
+    });
+    upstreamReader = upstreamRes.body!.getReader();
+  } catch (error) {
+    request.signal.removeEventListener("abort", onClientAbort);
+    const aborted = abort.signal.aborted || isAbortError(error);
+    const message = aborted ? CLIENT_DISCONNECT : error instanceof Error ? error.message : "LLM request failed";
+    finishApiUsage(usageId, { responseChars: 0, status: aborted ? "aborted" : "error", errorMessage: message });
+    return jsonWithCors(request, errorBody(format, message), aborted ? 499 : upstreamErrorStatus(error));
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -676,16 +733,8 @@ export const runGatewayGenerate = async (
       const decoder = new TextDecoder();
 
       try {
-        const upstreamRes = await streamChat(input.model, input.messages, {
-          temperature: runtime.temperature,
-          numPredict: runtime.numPredict,
-          topP: runtime.topP,
-          signal: abort.signal,
-        });
-        upstreamReader = upstreamRes.body!.getReader();
-
         while (true) {
-          const { done, value } = await upstreamReader.read();
+          const { done, value } = await upstreamReader!.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
@@ -701,6 +750,21 @@ export const runGatewayGenerate = async (
               continue;
             }
             if (chunk.error) throw new Error(chunk.error);
+            if (chunk.finish_reason) finishReason = chunk.finish_reason;
+            const toolCalls = chunk.message?.tool_calls;
+            const reasoning = chunk.message?.reasoning_content;
+            if (format === "openai" && (toolCalls?.length || reasoning)) {
+              const toolPiece = (toolCalls ?? []).map((call) => call.function?.arguments ?? "").join("");
+              responseChars += toolPiece.length;
+              markApiUsageToken(usageId, toolPiece.length, toolPiece);
+              sendOpenAi({
+                id: completionId, object: "chat.completion.chunk", created, model: input.model,
+                choices: [{ index: 0, delta: {
+                  ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
+                  ...(reasoning ? { reasoning_content: reasoning } : {}),
+                }, finish_reason: null }],
+              });
+            }
             const piece = chunk.message?.content ?? "";
             if (piece) {
               responseChars += piece.length;
@@ -751,12 +815,11 @@ export const runGatewayGenerate = async (
             object: "chat.completion.chunk",
             created,
             model: input.model,
-            choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-            ...(input.includeUsage
-              ? {
-                  usage: openaiUsage({ tokensPrompt, tokensEval }),
-                }
-              : {}),
+            choices: [{ index: 0, delta: {}, finish_reason: finishReason }],
+          });
+          if (input.includeUsage) sendOpenAi({
+            id: completionId, object: "chat.completion.chunk", created, model: input.model,
+            choices: [], usage: openaiUsage({ tokensPrompt, tokensEval }),
           });
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } else {
@@ -786,7 +849,10 @@ export const runGatewayGenerate = async (
           tokensPrompt,
           evalDurationNs,
         });
-        if (aborted) return;
+        if (aborted) {
+          if (!streamCancelled) controller.close();
+          return;
+        }
         if (format === "openai") {
           sendOpenAi({
             id: completionId,
@@ -808,6 +874,7 @@ export const runGatewayGenerate = async (
       }
     },
     cancel() {
+      streamCancelled = true;
       abort.abort();
       upstreamReader?.cancel().catch(() => undefined);
       finishApiUsage(usageId, {

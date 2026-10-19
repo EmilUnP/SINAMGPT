@@ -30,7 +30,7 @@ Three promises:
 | Person | What they do |
 |--------|----------------|
 | **Guest** | Tries chat on the home page. Limited messages per day. History is **not** saved. Can open **Models** without signing in. |
-| **Employee** | Signs in with a username or work email. Forgot password shows a reset button on the next screen if the account is an email (no mail is sent yet). Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
+| **Employee** | Signs in with a username or work email. Password recovery is assisted by an administrator, who can issue a private one-hour reset link. Email delivery is not implemented. Unlimited chat, saved history, projects (folders), share a read-only link with colleagues who are also signed in. Pick a model in the chat box. Open **Models** to compare what you can send and when to use each one. Works on phones. |
 | **Admin** | Turns models on, manages providers (vLLM, OpenAI-compatible), edits knowledge, sets guardrails, watches usage (including the exact prompt and whether tools ran), and can run Model lab. Turns on Developer API, file upload, file import, microphone, and **internet search** only when the company wants those surfaces. Hosted/cloud URLs need an explicit warning acknowledgement. |
 | **Manager** | Decides hardware, who may use it, and whether company docs are accurate. Does not need to know the code. |
 
@@ -134,7 +134,7 @@ Everything is on the company Server (or the LAN host):
 | Accounts, chats, knowledge, settings | `data/owngpt.db` (SQLite) |
 | Chat images and voice clips | `data/attachments/` |
 | Models | vLLM on a company Linux GPU host by default. Additional providers are configured in Admin → Providers; see [vLLM setup](./VLLM-SETUP.md) |
-| Passwords | Hashed (not stored as plain text). **Forgot password** stores a one-hour token in SQLite and shows the reset button on the next screen (email comes later) |
+| Passwords | Hashed (not stored as plain text). **Admin > Users > Reset password** issues a private, single-use, one-hour link. Public requests cannot create or reveal reset tokens (email delivery comes later) |
 | API keys (if enabled) | Secret shown **once**; only a hash is saved |
 
 Chats stay on the company Server. Forgot-password links stay in the browser for now (no mail service). Backup = copy the `data/` folder (and keep vLLM models separately). There is no one-click backup button yet.
@@ -194,3 +194,7 @@ That is the product in one paragraph.
 | [CHANGELOG.md](../CHANGELOG.md) | What changed in each version |
 | [VERSIONING.md](./VERSIONING.md) | How we number releases |
 | [SINAMGPT-Concept-Plan.md](./SINAMGPT-Concept-Plan.md) | Original management concept (not a live status report) |
+
+## Use the same server from other products
+
+Users can create a Developer API key and connect their own backend or OpenCode to the app. The API supports streamed chat and function calls; OpenCode executes file edits and terminal tools on the user's computer. See [Developer API](./DEVELOPER-API.md) and [one-server deployment](./SERVER-DEPLOYMENT.md).

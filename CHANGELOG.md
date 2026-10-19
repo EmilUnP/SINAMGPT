@@ -11,12 +11,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - vLLM is the default inference runtime. Ollama is removed from routing and provider setup; a one-time migration retires its providers/models while preserving accounts and chat history.
 - The Windows vLLM launcher now uses official vLLM Docker images. Added Linux/WSL2 deployment configuration, tool-parser setup and migration instructions.
 - Provider tool calling requires server configuration confirmation. Native model ids, `/v1` URLs and image/audio inputs use the OpenAI-compatible protocol.
+- OpenCode works with default settings: the Developer API prompt budget defaults to 100,000 characters (installs still on the old 16,000/32,000 default are raised once; other admin values are kept), the production vLLM context is 32,768 tokens (standalone example 16,384), and the generated OpenCode config defaults to 32,768 context / 4,096 output.
 
 ### Fixed
+- Production builds no longer copy the local `data/` folder (database, backups) into the standalone output.
+- Production builds use bundled Fraunces/Manrope files instead of requiring a Google Fonts download; original subsets, fallback metrics and font licenses are retained.
+- Developer Chat Completions accepts function tools and tool-result history, preserves streamed tool fragments and finish reasons, and assembles non-streamed parallel calls. Context errors retain HTTP 400 before SSE starts; tool schemas count toward the prompt budget.
+- Password reset links can only be issued by an authenticated administrator. Removed the anonymous on-screen reset flow; Admin > Users now issues private, single-use links for username and email accounts.
 - Provider concurrency covers the full streaming response, with bounded, cancellable waiting and per-request inference deadlines.
 - Streaming usage is requested and recorded after the final usage event. Truncated streams report errors and cancellation closes the upstream request.
 
 ### Added
+- One-server production Docker setup with HTTPS, persistent app data, private vLLM and an initial single-5090 profile. See `docs/SERVER-DEPLOYMENT.md`.
+- OpenCode v1 configuration in Developer > How to call, configurable coding prompt budgets up to 1,000,000 characters, protocol tests and `npm run test:api` for live tool-cycle acceptance.
 - `test:vllm` for app chat against a configured vLLM service, and `test:vllm:load` for direct or app-level parallel request measurements.
 
 ### Planned

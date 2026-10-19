@@ -52,6 +52,26 @@ describe("database migrations", () => {
     ensureDatabaseSchema(database);
     expect(database.prepare("SELECT enabled FROM providers WHERE id = 'vllm'").get()).toEqual({ enabled: 0 });
   });
+
+  it("raises an old Developer API prompt cap once, then keeps the admin's choice", () => {
+    const gateway = (database: Database.Database) => JSON.parse(
+      (database.prepare("SELECT value FROM app_settings WHERE key = 'api_gateway'").get() as { value: string }).value,
+    ) as { maxChars: number; maxRequestsPerMinute: number };
+    const database = memoryDatabase();
+    ensureDatabaseSchema(database);
+    expect(gateway(database).maxChars).toBe(100000);
+
+    database.exec(`
+      DELETE FROM app_settings WHERE key = 'api_gateway_coding_budget_v1';
+      UPDATE app_settings SET value = '{"enabled":true,"maxKeysPerUser":5,"maxRequestsPerMinute":12,"maxChars":32000,"corsOrigins":[]}' WHERE key = 'api_gateway';
+    `);
+    ensureDatabaseSchema(database);
+    expect(gateway(database)).toMatchObject({ maxChars: 100000, maxRequestsPerMinute: 12 });
+
+    database.exec(`UPDATE app_settings SET value = json_set(value, '$.maxChars', 32000) WHERE key = 'api_gateway'`);
+    ensureDatabaseSchema(database);
+    expect(gateway(database).maxChars).toBe(32000);
+  });
   it("creates the Phase 0 schema on a fresh database", () => {
     const database = memoryDatabase();
     ensureDatabaseSchema(database);

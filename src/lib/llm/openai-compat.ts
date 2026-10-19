@@ -1,6 +1,7 @@
 import { inferCapabilities } from "./capabilities";
 import { inferModelKind } from "./model-kind";
-import type { BackendHealth, ChatMessage, ChatOptions, LlmCompletion, LlmModel, LlmProviderConfig } from "./types";
+import { ModelServerError } from "./errors";
+import type { BackendHealth, ChatMessage, ChatOptions, LlmCompletion, LlmModel, LlmProviderConfig, ToolCallDelta } from "./types";
 
 const authHeaders = (provider: LlmProviderConfig): Record<string, string> =>
   provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {};
@@ -38,10 +39,11 @@ const toOpenAiMessages = (messages: ChatMessage[]) => messages.map((message) => 
     ? [...(message.content.trim() ? [{ type: "text", text: message.content }] : []), ...message.images.map(mediaPart)]
     : message.content,
   ...(message.toolCalls?.length ? { tool_calls: message.toolCalls.map((call) => ({
-    id: call.id, type: "function", function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+    id: call.id, type: "function", function: { name: call.name, arguments: typeof call.arguments === "string" ? call.arguments : JSON.stringify(call.arguments) },
   })) } : {}),
   ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
   ...(message.toolName ? { name: message.toolName } : {}),
+  ...(message.reasoningContent ? { reasoning_content: message.reasoningContent } : {}),
 }));
 
 const requestBody = (provider: LlmProviderConfig, model: string, messages: ChatMessage[], stream: boolean, options?: ChatOptions): Record<string, unknown> => {
@@ -54,7 +56,13 @@ const requestBody = (provider: LlmProviderConfig, model: string, messages: ChatM
     ...(options?.temperature != null ? { temperature: options.temperature } : {}),
     ...(options?.numPredict != null && options.numPredict > 0 ? { max_tokens: options.numPredict } : {}),
     ...(options?.topP != null ? { top_p: options.topP } : {}),
-    ...(options?.tools?.length ? { tools: options.tools, tool_choice: "auto" } : {}),
+    ...(options?.tools?.length ? { tools: options.tools, tool_choice: options.toolChoice ?? "auto" } : {}),
+    ...(options?.parallelToolCalls != null ? { parallel_tool_calls: options.parallelToolCalls } : {}),
+    ...(options?.stop != null ? { stop: options.stop } : {}),
+    ...(options?.seed != null ? { seed: options.seed } : {}),
+    ...(options?.presencePenalty != null ? { presence_penalty: options.presencePenalty } : {}),
+    ...(options?.frequencyPenalty != null ? { frequency_penalty: options.frequencyPenalty } : {}),
+    ...(options?.responseFormat != null ? { response_format: options.responseFormat } : {}),
     ...(provider.kind === "vllm" && options?.think != null ? { chat_template_kwargs: { enable_thinking: options.think } } : {}),
   };
 };
@@ -63,7 +71,7 @@ export const listOpenAiCompatModels = async (provider: LlmProviderConfig): Promi
   const res = await fetch(openAiEndpoint(provider.baseUrl, "models"), {
     cache: "no-store", redirect: "manual", headers: authHeaders(provider), signal: AbortSignal.timeout(5_000),
   });
-  if (!res.ok) throw new Error(formatOpenAiCompatError(await res.text(), res.status, "model catalog", provider.baseUrl));
+  if (!res.ok) throw formatOpenAiCompatError(await res.text(), res.status, "model catalog", provider.baseUrl);
   const data = await res.json() as { data?: Array<{ id: string; created?: number }> };
   if (!Array.isArray(data.data)) throw new Error(`Invalid model catalog from provider "${provider.id}".`);
   return data.data.filter((m) => typeof m.id === "string" && m.id.trim()).map((m) => {
@@ -77,7 +85,7 @@ export const listOpenAiCompatModels = async (provider: LlmProviderConfig): Promi
 };
 
 type StreamChunk = {
-  choices?: Array<{ delta?: { content?: string | null }; finish_reason?: string | null }>;
+  choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string; reasoning?: string; tool_calls?: ToolCallDelta[] }; finish_reason?: string | null }>;
   usage?: { completion_tokens?: number; prompt_tokens?: number };
   error?: { message?: string } | string;
 };
@@ -114,7 +122,7 @@ export const streamOpenAiCompatChat = async (provider: LlmProviderConfig, model:
     body: JSON.stringify(requestBody(provider, model, messages, true, options)),
     cache: "no-store", redirect: "manual", signal,
   });
-  if (!res.ok || !res.body) throw new Error(formatOpenAiCompatError(await res.text().catch(() => ""), res.status, model, provider.baseUrl));
+  if (!res.ok || !res.body) throw formatOpenAiCompatError(await res.text().catch(() => ""), res.status, model, provider.baseUrl);
   const reader = res.body.getReader();
   const encoder = new TextEncoder();
   const encode = (payload: Record<string, unknown>) => encoder.encode(`${JSON.stringify(payload)}\n`);
@@ -123,6 +131,7 @@ export const streamOpenAiCompatChat = async (provider: LlmProviderConfig, model:
     let completionTokens: number | undefined;
     let promptTokens: number | undefined;
     let completed = false;
+    let finishReason = "stop";
     try {
       for await (const data of sseData(reader)) {
         if (data.trim() === "[DONE]") { completed = true; break; }
@@ -131,13 +140,20 @@ export const streamOpenAiCompatChat = async (provider: LlmProviderConfig, model:
         if (typeof chunk.usage?.completion_tokens === "number") completionTokens = chunk.usage.completion_tokens;
         if (typeof chunk.usage?.prompt_tokens === "number") promptTokens = chunk.usage.prompt_tokens;
         const choice = chunk.choices?.[0];
-        if (choice?.delta?.content) yield encode({ message: { role: "assistant", content: choice.delta.content }, done: false });
-        if (choice?.finish_reason) completed = true;
+        const delta = choice?.delta;
+        if (delta?.content || delta?.tool_calls?.length || delta?.reasoning_content || delta?.reasoning) {
+          yield encode({ message: {
+            role: "assistant", content: delta.content ?? "",
+            ...(delta.tool_calls?.length ? { tool_calls: delta.tool_calls } : {}),
+            ...((delta.reasoning_content ?? delta.reasoning) ? { reasoning_content: delta.reasoning_content ?? delta.reasoning } : {}),
+          }, done: false });
+        }
+        if (choice?.finish_reason) { completed = true; finishReason = choice.finish_reason; }
       }
       signal.throwIfAborted();
       if (!completed) throw new Error("Model stream ended before completion. Please retry.");
       // Usage arrives after finish_reason. Emit one terminal record only after it is received.
-      yield encode({ message: { role: "assistant", content: "" }, done: true, eval_count: completionTokens, prompt_eval_count: promptTokens });
+      yield encode({ message: { role: "assistant", content: "" }, done: true, finish_reason: finishReason, eval_count: completionTokens, prompt_eval_count: promptTokens });
     } catch (error) {
       if (!cancelled) yield encode({ error: error instanceof Error ? error.message : "Model stream failed", done: true });
     } finally {
@@ -176,7 +192,7 @@ export const completeOpenAiCompatToolChat = async (provider: LlmProviderConfig, 
     body: JSON.stringify(requestBody(provider, model, messages, false, options)),
     cache: "no-store", redirect: "manual", signal,
   });
-  if (!res.ok) throw new Error(formatOpenAiCompatError(await res.text().catch(() => ""), res.status, model, provider.baseUrl));
+  if (!res.ok) throw formatOpenAiCompatError(await res.text().catch(() => ""), res.status, model, provider.baseUrl);
   const data = await res.json() as {
     choices?: Array<{ message?: { content?: string | null; tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }> } }>;
     error?: { message?: string } | string;
@@ -203,11 +219,11 @@ export const pingOpenAiCompat = async (provider: LlmProviderConfig): Promise<Bac
   }
 };
 
-const formatOpenAiCompatError = (text: string, status: number, model: string, baseUrl: string): string => {
+const formatOpenAiCompatError = (text: string, status: number, model: string, baseUrl: string): ModelServerError => {
   let message = text.trim();
   try {
     const parsed = JSON.parse(message) as { error?: { message?: string } | string };
     message = typeof parsed.error === "string" ? parsed.error : parsed.error?.message || message;
   } catch { /* Keep the server's diagnostic. */ }
-  return `Model server HTTP ${status}: ${message || `request for "${model}" failed at ${baseUrl}`}`;
+  return new ModelServerError(`Model server HTTP ${status}: ${message || `request for "${model}" failed at ${baseUrl}`}`, status);
 };

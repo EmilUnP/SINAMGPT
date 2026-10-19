@@ -9,8 +9,9 @@ import {
   DEFAULT_POLICY_SUGGESTIONS,
 } from "@/lib/seeds/guardrails";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "owngpt.db");
+// Runtime-only paths: keep the local database and backups out of build traces.
+const DATA_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), "data");
+const DB_PATH = path.join(/* turbopackIgnore: true */ DATA_DIR, "owngpt.db");
 
 /** Bump when ensureDatabaseSchema gains a new migration so HMR re-applies once. */
 const SCHEMA_GENERATION = 6;
@@ -347,29 +348,37 @@ export const ensureDatabaseSchema = (database: Database.Database) => {
       enabled: true,
       maxKeysPerUser: 5,
       maxRequestsPerMinute: 30,
-      maxChars: 32000,
+      maxChars: 100000,
       corsOrigins: [],
     }),
   );
-  // One-time: raise Developer API prompt cap 16k → 32k when still on old default
-  {
+  // One-time: raise Developer API prompt cap to 100k when still on an old default
+  // (16k, then 32k — also the old maximum) so coding clients fit out of the box.
+  // The marker keeps a cap an admin sets later from being overwritten on restart.
+  const gatewayBudgetMarker = "api_gateway_coding_budget_v1";
+  if (
+    !database
+      .prepare(`SELECT 1 FROM app_settings WHERE key = ?`)
+      .get(gatewayBudgetMarker)
+  ) {
     const row = database
       .prepare(`SELECT value FROM app_settings WHERE key = ?`)
       .get("api_gateway") as { value: string } | undefined;
     if (row?.value) {
       try {
         const parsed = JSON.parse(row.value) as { maxChars?: number };
-        if (Number(parsed.maxChars) === 16000) {
+        if ([16000, 32000].includes(Number(parsed.maxChars))) {
           database
             .prepare(
               `UPDATE app_settings SET value = ? WHERE key = 'api_gateway'`,
             )
-            .run(JSON.stringify({ ...parsed, maxChars: 32000 }));
+            .run(JSON.stringify({ ...parsed, maxChars: 100000 }));
         }
       } catch {
         /* ignore bad JSON */
       }
     }
+    insertSettingIfMissing(gatewayBudgetMarker, "1");
   }
   insertSettingIfMissing(
     "feature_flags",

@@ -1,3 +1,5 @@
+import { ModelBusyError } from "./errors";
+
 type Waiter = { grant: () => void };
 type Pool = { active: number; queue: Waiter[] };
 const pools = new Map<string, Pool>();
@@ -13,7 +15,7 @@ const acquire = async (id: string, limit: number, signal?: AbortSignal): Promise
   pools.set(id, pool);
   if (pool.active >= limit || pool.queue.length) {
     if (pool.queue.length >= positiveEnv("LLM_MAX_QUEUE", 256)) {
-      throw new Error(`Provider "${id}" is busy. Request queue is full; please retry shortly.`);
+      throw new ModelBusyError(`Provider "${id}" is busy. Request queue is full; please retry shortly.`);
     }
     await new Promise<void>((resolve, reject) => {
       const cleanup = () => {
@@ -29,7 +31,7 @@ const acquire = async (id: string, limit: number, signal?: AbortSignal): Promise
       };
       const abort = () => remove(signal?.reason ?? new DOMException("Aborted", "AbortError"));
       const waiter: Waiter = { grant: () => { cleanup(); resolve(); } };
-      const timer = setTimeout(() => remove(new Error(`Provider "${id}" is busy. Queue wait timed out; please retry.`)), positiveEnv("LLM_QUEUE_TIMEOUT_MS", 30_000));
+      const timer = setTimeout(() => remove(new ModelBusyError(`Provider "${id}" is busy. Queue wait timed out; please retry.`)), positiveEnv("LLM_QUEUE_TIMEOUT_MS", 30_000));
       pool.queue.push(waiter);
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) abort();

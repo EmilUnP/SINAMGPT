@@ -23,7 +23,7 @@ import type { User } from "@/lib/types";
 type Props = { user: User; devLabEnabled?: boolean };
 
 type Tab = "keys" | "models" | "requests" | "howto";
-type SnippetLang = "python" | "javascript" | "curl";
+type SnippetLang = "python" | "javascript" | "curl" | "opencode";
 
 type CatalogModel = {
   name: string;
@@ -44,7 +44,7 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const [tab, setTab] = useState<Tab>("keys");
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
   const [models, setModels] = useState<CatalogModel[]>([]);
-  const [defaultModel, setDefaultModel] = useState("gemma3:4b");
+  const [defaultModel, setDefaultModel] = useState("");
   const [exampleModel, setExampleModel] = useState("");
   const [maxKeys, setMaxKeys] = useState(5);
   const [gatewayOn, setGatewayOn] = useState(true);
@@ -58,6 +58,9 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const [requests, setRequests] = useState<ApiUsageEvent[]>([]);
   const [snippetLang, setSnippetLang] = useState<SnippetLang>("python");
   const [streamExample, setStreamExample] = useState(false);
+  // Matches the production vLLM profile (VLLM_MAX_MODEL_LEN=32768).
+  const [contextTokens, setContextTokens] = useState(32768);
+  const [outputTokens, setOutputTokens] = useState(4096);
   const [origin] = useState(() =>
     typeof window === "undefined"
       ? "http://localhost:3055"
@@ -120,10 +123,27 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const activeCount = keys.filter((k) => !k.revokedAt).length;
   const baseUrl = `${origin}/api/v1`;
   const sampleKey = secret || "sinam_YOUR_KEY";
-  const modelId = exampleModel || defaultModel || "gemma3:4b";
+  const modelId = exampleModel || defaultModel || "YOUR_MODEL_ID";
 
   const snippet = useMemo(() => {
     const prompt = "Hello from another SINAM app";
+    if (snippetLang === "opencode") {
+      return JSON.stringify({
+        $schema: "https://opencode.ai/config.json",
+        model: `sinam/${modelId}`,
+        provider: {
+          sinam: {
+            npm: "@ai-sdk/openai-compatible", name: "SINAMGPT",
+            options: { baseURL: baseUrl, apiKey: "{env:SINAMGPT_API_KEY}" },
+            models: { [modelId]: {
+              name: models.find((m) => m.name === modelId)?.display_name || modelId,
+              tool_call: Boolean(models.find((m) => m.name === modelId)?.tools),
+              limit: { context: contextTokens, output: Math.min(outputTokens, contextTokens - 1) },
+            } },
+          },
+        },
+      }, null, 2);
+    }
     if (snippetLang === "python") {
       if (streamExample) {
         return `from openai import OpenAI
@@ -136,7 +156,8 @@ stream = client.chat.completions.create(
     stream=True,
 )
 for chunk in stream:
-    print(chunk.choices[0].delta.content or "", end="", flush=True)`;
+    if chunk.choices:
+        print(chunk.choices[0].delta.content or "", end="", flush=True)`;
       }
       return `from openai import OpenAI
 
@@ -184,7 +205,7 @@ console.log(completion.choices[0].message.content);`;
   -H "Authorization: Bearer ${sampleKey}" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"${modelId}",${streamFlag}"messages":[{"role":"user","content":"${prompt}"}]}'`;
-  }, [baseUrl, modelId, sampleKey, snippetLang, streamExample]);
+  }, [baseUrl, modelId, sampleKey, snippetLang, streamExample, models, contextTokens, outputTokens]);
 
   const handleCreate = async () => {
     setBusy(true);
@@ -616,6 +637,7 @@ console.log(completion.choices[0].message.content);`;
                       ["python", t("developer.snippetPython")],
                       ["javascript", t("developer.snippetJs")],
                       ["curl", t("developer.snippetCurl")],
+                      ["opencode", "OpenCode"],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -631,15 +653,31 @@ console.log(completion.choices[0].message.content);`;
                       {label}
                     </button>
                   ))}
-                  <label className="ml-auto inline-flex items-center gap-2 text-xs text-[var(--admin-muted)]">
+                  {snippetLang !== "opencode" ? <label className="ml-auto inline-flex items-center gap-2 text-xs text-[var(--admin-muted)]">
                     <input
                       type="checkbox"
                       checked={streamExample}
                       onChange={(e) => setStreamExample(e.target.checked)}
                     />
                     {t("developer.streamExample")}
-                  </label>
+                  </label> : null}
                 </div>
+                {snippetLang === "opencode" ? (
+                  <div className="space-y-3 text-xs text-[var(--admin-muted)]">
+                    <p>{t("developer.opencodeHint")}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label>{t("developer.contextTokens")}
+                        <input type="number" min={1024} max={1000000} value={contextTokens}
+                          onChange={(e) => setContextTokens(Math.max(1024, Math.min(1000000, Number(e.target.value) || 32768)))} className={adminFieldClass} />
+                      </label>
+                      <label>{t("developer.outputTokens")}
+                        <input type="number" min={1} max={Math.min(8192, contextTokens - 1)} value={Math.min(outputTokens, contextTokens - 1)}
+                          onChange={(e) => setOutputTokens(Math.max(1, Math.min(8192, contextTokens - 1, Number(e.target.value) || 4096)))} className={adminFieldClass} />
+                      </label>
+                    </div>
+                    {!models.find((m) => m.name === modelId)?.tools ? <p className="text-[var(--status-bad-fg)]">{t("developer.opencodeToolsRequired")}</p> : null}
+                  </div>
+                ) : null}
                 <div className="relative">
                   <pre className={snippetClass}>{snippet}</pre>
                   <div className="absolute top-2 right-2">

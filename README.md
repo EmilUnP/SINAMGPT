@@ -10,6 +10,8 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 |-----------|------|
 | How the product works (no install) | [docs/HOW-IT-WORKS.md](./docs/HOW-IT-WORKS.md) |
 | Install, env vars, API examples | This README |
+| Deploy app + API + vLLM on one GPU server | [docs/SERVER-DEPLOYMENT.md](./docs/SERVER-DEPLOYMENT.md) |
+| Connect OpenCode or your own product | [docs/DEVELOPER-API.md](./docs/DEVELOPER-API.md) |
 | What shipped vs what is next | [docs/ROADMAP.md](./docs/ROADMAP.md) |
 | The v2.0 platform plan (more runtimes, more model types, search, files) | [docs/PLATFORM-ROADMAP.md](./docs/PLATFORM-ROADMAP.md) |
 | What changed in each version | [CHANGELOG.md](./CHANGELOG.md) |
@@ -19,7 +21,7 @@ Local company GPT for [SINAM](https://sinam.net): login, ChatGPT-style chat, kno
 - **Local models** via **vLLM**, using its OpenAI-compatible API and continuous batching. Additional vLLM endpoints and OpenAI-compatible servers are managed in **Admin → Providers**. See [vLLM setup](./docs/VLLM-SETUP.md).
 - **Vision models** — attach, paste, or drop images when the deployed model supports images and Admin enables File upload / File import. These features start **off**.
 - **Audio models** — record up to 30 seconds from the microphone when the deployed model and vLLM installation support audio input. Admin → Features → Microphone starts **off**. The example Qwen3 deployment is text-only.
-- **Login / register** with a username or work email (accounts stored locally). **Forgot password?** shows a reset button on the next screen (no email yet)
+- **Login / register** with a username or work email (accounts stored locally). Password recovery is admin-assisted: Admin > Users creates a private one-hour reset link. Automated email delivery is not implemented.
 - **Chat history** per user (SQLite in `data/owngpt.db`)
 - **Streaming replies**, model picker in the chat box (Text / Image / Audio, plus Functions badges), **+** tools menu, rewrite shortcuts
 - **Models guide** (`/models`) — public catalog of activated models (inputs, when to use, one caveat). Open it from home, the chat header, or the sidebar.
@@ -38,7 +40,7 @@ No third-party cloud LLM APIs unless an admin adds a public URL and confirms tha
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 22+
 - A reachable official vLLM server on Linux or Docker/WSL2 with compatible GPU hardware
 - A served model and its API key; see [vLLM setup](./docs/VLLM-SETUP.md)
 

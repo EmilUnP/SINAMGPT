@@ -169,31 +169,12 @@ const main = async () => {
 
   {
     const { res, data } = await request("POST", "/api/auth/forgot-password", {
-      body: { username: "missing-user-xyz@example.com" },
+      body: { username: USERNAME || "person@example.com" },
     });
-    if (res.status === 404 && data?.code === "user_not_found") {
-      pass("forgot password — unknown account");
+    if (res.status === 403 && data?.code === "reset_admin_required" && !data.resetUrl) {
+      pass("password recovery requires an administrator");
     } else {
-      fail(
-        "forgot password — unknown account",
-        `HTTP ${res.status} ${data?.code || ""}`.trim(),
-      );
-    }
-  }
-
-  if (USERNAME && !USERNAME.includes("@")) {
-    const { res, data } = await request("POST", "/api/auth/forgot-password", {
-      body: { username: USERNAME },
-    });
-    if (res.status === 400 && data?.code === "reset_no_email") {
-      pass("forgot password — username-only account");
-    } else if (res.status === 404 && data?.code === "user_not_found") {
-      pass("forgot password — username-only account", "user not seeded yet");
-    } else {
-      fail(
-        "forgot password — username-only account",
-        `HTTP ${res.status} ${data?.code || ""}`.trim(),
-      );
+      fail("password recovery requires an administrator", `HTTP ${res.status}`);
     }
   }
 

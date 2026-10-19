@@ -15,7 +15,7 @@ docker compose --env-file .env.vllm -f docker-compose.vllm.yml logs -f vllm
 
 On Windows, `start-vllm.bat` uses the same Compose file. Its first run creates `.env.vllm` if needed and asks you to fill it in. First boot downloads the image and model weights; wait for the service to become healthy. The image is pinned to `vllm/vllm-openai:v0.32.0`; validate your GPU driver against that image before deployment.
 
-The supplied profile serves **Qwen/Qwen3-8B**, with 8,192 context tokens and up to 32 scheduled sequences. This is a starting configuration, not a measured capacity guarantee. Weights, KV cache, context length, and parallel sequences all consume VRAM. For an 8 GB laptop development GPU, start with `Qwen/Qwen3-1.7B`, context 4,096, and 4 sequences. Reduce the profile further if needed. Larger models and longer contexts may need quantized checkpoints or multiple GPUs. Stop old inference services yourself if their loaded models are occupying the same GPU.
+The supplied profile serves **Qwen/Qwen3-8B**, with 16,384 context tokens and up to 32 scheduled sequences. That is enough for OpenCode on small tasks; the one-server production profile uses 32,768 (see [SERVER-DEPLOYMENT.md](./SERVER-DEPLOYMENT.md)). This is a starting configuration, not a measured capacity guarantee. Weights, KV cache, context length, and parallel sequences all consume VRAM. For an 8 GB laptop development GPU, start with `Qwen/Qwen3-1.7B`, context 4,096, and 4 sequences. Reduce the profile further if needed. Larger models and longer contexts may need quantized checkpoints or multiple GPUs. Stop old inference services yourself if their loaded models are occupying the same GPU.
 
 The container binds to loopback by default. If the app is on another machine, set `VLLM_BIND_HOST` to the server's private LAN address, allow only the app host through the firewall, and use that address in Admin. Keep the inference service private: vLLM's API key does not protect every server endpoint. For deployments beyond a trusted private network, put authentication and access restrictions on a reverse proxy.
 
@@ -87,3 +87,5 @@ The load test reports successes, failures, latency p50/p95, p95 time to first to
 - [Tool calling and model-specific parsers](https://docs.vllm.ai/en/latest/features/tool_calling/)
 - [OpenAI-compatible server](https://docs.vllm.ai/en/latest/serving/online_serving/openai_compatible_server/)
 - [vLLM releases](https://github.com/vllm-project/vllm/releases)
+
+For the combined app + HTTPS + one-GPU deployment, use [SERVER-DEPLOYMENT.md](./SERVER-DEPLOYMENT.md). External coding clients and tool-call verification are covered in [DEVELOPER-API.md](./DEVELOPER-API.md).

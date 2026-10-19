@@ -76,7 +76,7 @@ describe("vLLM streaming", () => {
     const response = await streamVllmChat(provider, "model", []);
     const chunks = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
     expect(chunks[0].message.content).toBe("Salam, dünya");
-    expect(chunks.filter((chunk) => chunk.done)).toEqual([{ message: { role: "assistant", content: "" }, done: true, eval_count: 4, prompt_eval_count: 12 }]);
+    expect(chunks.filter((chunk) => chunk.done)).toEqual([{ message: { role: "assistant", content: "" }, done: true, finish_reason: "stop", eval_count: 4, prompt_eval_count: 12 }]);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).stream_options).toEqual({ include_usage: true });
   });
 

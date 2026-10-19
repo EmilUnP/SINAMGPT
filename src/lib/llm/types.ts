@@ -39,8 +39,9 @@ export type LlmToolDefinition = {
   type: "function";
   function: {
     name: string;
-    description: string;
-    parameters: Record<string, unknown>;
+    description?: string;
+    parameters?: Record<string, unknown>;
+    strict?: boolean | null;
   };
 };
 
@@ -55,6 +56,7 @@ export type ChatMessage = {
   toolCalls?: LlmToolCall[];
   toolCallId?: string;
   toolName?: string;
+  reasoningContent?: string;
 };
 
 export type LlmCompletion = {
@@ -85,6 +87,31 @@ export type ChatOptions = {
   signal?: AbortSignal;
   /** Omitted from provider requests when empty or undefined. */
   tools?: LlmToolDefinition[];
+  toolChoice?: "auto" | "none" | "required" | { type: "function"; function: { name: string } };
+  parallelToolCalls?: boolean;
+  stop?: string | string[];
+  seed?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+  responseFormat?: Record<string, unknown>;
+};
+
+/** Wire-format fragments: arguments must remain strings until the call is complete. */
+export type ToolCallDelta = {
+  index: number;
+  id?: string;
+  type?: "function";
+  function?: { name?: string; arguments?: string };
+};
+
+export type LlmStreamChunk = {
+  message?: { content?: string; reasoning_content?: string; tool_calls?: ToolCallDelta[] };
+  done?: boolean;
+  finish_reason?: string;
+  error?: string;
+  eval_count?: number;
+  prompt_eval_count?: number;
+  eval_duration?: number;
 };
 
 export type BackendHealth = {

@@ -70,7 +70,7 @@ describe("requestPasswordReset", () => {
   it("reports missing, username-only, and email accounts separately", () => {
     expect(
       requestPasswordReset("emil", "http://localhost:3055", { db: database }),
-    ).toEqual({ status: "no_email" });
+    ).toMatchObject({ status: "ready" });
     expect(
       requestPasswordReset("missing@company.com", "http://localhost:3055", {
         db: database,

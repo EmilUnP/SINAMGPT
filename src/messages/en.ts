@@ -46,6 +46,7 @@ export const en = {
     statusRejected: "rejected",
   },
   auth: {
+    forgotContactAdmin: "Contact your administrator to reset your password. Email recovery is not available yet.",
     signInTitle: "Sign in to your account",
     registerTitle: "Create your account",
     signInSubtitle: "Saved chats, full history, and unlimited messages.",

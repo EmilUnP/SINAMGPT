@@ -47,6 +47,7 @@ export const ru: Messages = {
     statusRejected: "отклонено",
   },
   auth: {
+    forgotContactAdmin: "Для сброса пароля обратитесь к администратору. Восстановление по электронной почте пока недоступно.",
     signInTitle: "Войдите в аккаунт",
     registerTitle: "Создайте аккаунт",
     signInSubtitle:

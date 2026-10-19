@@ -1,0 +1,12 @@
+{$SITE_ADDRESS} {
+    request_body {
+        max_size 80MB
+    }
+    reverse_proxy app:3000 {
+        # Override client-supplied forwarding headers; the app trusts only this proxy.
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+        # Caddy flushes text/event-stream immediately by default.
+        # Keep its default disconnect cancellation behavior.
+    }
+}

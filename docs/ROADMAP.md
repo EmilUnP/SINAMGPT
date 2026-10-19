@@ -1,3 +1,5 @@
+> API/server update: client tool-call round trips, OpenCode configuration, and one-server production setup are implemented. Linux GPU acceptance is pending. See [deployment](./SERVER-DEPLOYMENT.md) and [API guide](./DEVELOPER-API.md). Historical reset-link behaviour below has been replaced by admin-only recovery.
+
 > Runtime update (2026-10-19): vLLM is now the default; Ollama inference is retired. See [deployment and migration](./VLLM-SETUP.md). Older release tables below are historical.
 
 # SINAMGPT — Product roadmap
@@ -29,7 +31,7 @@ What operators and users can rely on in the current tree (**v1.20.0**):
 | **Share** | Read-only `/share/[token]` for **logged-in** colleagues (including images and voice clips); owner can revoke or rotate (“New link”) |
 | **Knowledge** | Living Admin library. Still **keyword search** (not embeddings). Query-side EN / AZ / RU keyword gloss so a question in one language can hit notes in another; IDF + strong title/tag hits; skip generic About/Contact when a specific doc already matches; **no citations on general chat** (only when the question is about the company or a title/tag actually matches); pack seed add-missing / refresh / replace |
 | **Guardrails** | Living policy with On/Off item switches (apply immediately); layered detectors; built-in harm phrases; blocked phrases can also match via the same query gloss; Admin Overview / Policy / Detectors |
-| **Auth / guest** | Local accounts with **username or work email**; **Forgot password** shows a reset button (no email yet); field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
+| **Auth / guest** | Local accounts with **username or work email**; **Password recovery** requires an administrator-issued private reset link (no email delivery yet); field-level validation on register; login/register rate limits; signed-in chat burst limits; guest daily cap (cookie + IP) + burst; guest vision up to 2 images when File upload / File import is on; admin middleware by session role |
 | **LLM** | Provider registry for vLLM and OpenAI-compatible servers; Admin → Providers for kind, test, health, model sync, fallback, and concurrency. Hosted URLs need a remote-traffic acknowledgement. Models have task kinds, and only chat models enter chat routes. Newly served models stay inactive until Admin → Models → Activate |
 | **Quality check** | `npm run test:chat` CLI smoke suite; admin **Model lab** at `/lab` — Quick (18) / Assist (20) / Guardrails (17); Live chat, Results scores, Charts |
 | **Admin usage** | Live usage auto-refresh for chat **and** developer API calls (API rows tagged **API**); **All / App / API** filter; click a row for the prompt, reply, and **Tools** tab; **Clear logs** |

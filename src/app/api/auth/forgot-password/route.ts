@@ -7,6 +7,7 @@ import {
 import { resolveAppOrigin } from "@/lib/app-url";
 import { requestPasswordReset } from "@/lib/password-reset";
 import { clientIp, takeRateLimit } from "@/lib/rate-limit";
+import { requireAdmin } from "@/lib/auth";
 
 const schema = z.object({
   username: z.string().trim().min(1).max(ACCOUNT_NAME_MAX + 8),
@@ -40,6 +41,13 @@ const ISSUE_RESPONSE: Record<
 
 export async function POST(request: Request) {
   try {
+    // Email delivery is not implemented. Knowing an email is not proof of ownership.
+    if (!(await requireAdmin())) {
+      return NextResponse.json({
+        error: "Contact your administrator to reset your password.",
+        code: "reset_admin_required",
+      }, { status: 403 });
+    }
     const ip = clientIp(request);
     const ipLimit = takeRateLimit(`forgot:ip:${ip}`, 8, 60 * 60 * 1000);
     if (!ipLimit.ok) {
@@ -96,17 +104,6 @@ export async function POST(request: Request) {
           code: "user_not_found",
         },
         { status: 404 },
-      );
-    }
-
-    if (result.status === "no_email") {
-      return NextResponse.json(
-        {
-          error:
-            "This account has no email. Ask an admin to reset the password.",
-          code: "reset_no_email",
-        },
-        { status: 400 },
       );
     }
 

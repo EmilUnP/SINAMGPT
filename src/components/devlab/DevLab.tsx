@@ -552,7 +552,7 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
                   <input
                     type="number"
                     min={500}
-                    max={32000}
+                    max={1000000}
                     value={draft.maxChars}
                     onChange={(e) =>
                       setDraft({

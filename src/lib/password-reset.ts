@@ -59,7 +59,6 @@ export const consumeResetToken = (
 export type PasswordResetRequestResult =
   | { status: "ready"; resetUrl: string }
   | { status: "not_found" }
-  | { status: "no_email" }
   | { status: "invalid"; issue: AccountNameIssue };
 
 export const requestPasswordReset = (
@@ -80,10 +79,6 @@ export const requestPasswordReset = (
 
   if (!user || user.is_active !== 1) {
     return { status: "not_found" };
-  }
-
-  if (!user.username.includes("@")) {
-    return { status: "no_email" };
   }
 
   const token = createResetToken(user.id, db);

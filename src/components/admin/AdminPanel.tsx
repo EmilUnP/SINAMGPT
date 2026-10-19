@@ -32,6 +32,7 @@ import { AdminSettingsPanel, type SettingsDraft } from "./AdminSettingsPanel";
 import { AdminUsagePanel } from "./AdminUsagePanel";
 import { ModelCapabilityBadges } from "@/components/ModelCapabilityBadges";
 import { PageHeader } from "@/components/PageHeader";
+import { CopyButton } from "@/components/chat/CopyButton";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
 import { LOCALE_BCP47 } from "@/lib/locale";
@@ -247,6 +248,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
   >(25);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [resetLink, setResetLink] = useState<{ username: string; url: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busyModel, setBusyModel] = useState<string | null>(null);
@@ -516,6 +518,23 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const handleResetPassword = async (user: AdminUserRow) => {
+    setBusyId(user.id);
+    setError("");
+    setResetLink(null);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username }),
+      });
+      const data = await res.json() as { resetUrl?: string; error?: string };
+      if (!res.ok || !data.resetUrl) throw new Error(data.error || t("auth.forgotSendFailed"));
+      setResetLink({ username: user.username, url: data.resetUrl });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t("admin.chrome.networkError"));
+    } finally { setBusyId(null); }
   };
 
   const handleDelete = async (user: AdminUserRow) => {
@@ -1276,6 +1295,17 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           </div>
         ) : null}
 
+        {tab === "users" && resetLink ? (
+          <div className="admin-card space-y-2 p-4">
+            <p className="text-sm font-medium">{resetLink.username}</p>
+            <p className="text-xs text-[var(--admin-muted)]">{t("admin.users.resetLinkHint")}</p>
+            <div className="flex items-center gap-2">
+              <input readOnly value={resetLink.url} aria-label={t("admin.users.resetPassword")} className="min-w-0 flex-1 rounded-lg bg-[var(--admin-input)] px-3 py-2 text-xs" />
+              <CopyButton text={resetLink.url} />
+              <button type="button" onClick={() => setResetLink(null)} className="text-xs">{t("admin.chrome.close")}</button>
+            </div>
+          </div>
+        ) : null}
         {tab === "usage" ? <AdminUsagePanel /> : null}
 
         {tab === "knowledge" ? (
@@ -1478,6 +1508,11 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                               >
                                 <Trash2 size={14} />
                                 {t("admin.chrome.delete")}
+                              </button>
+                              <button type="button" disabled={isBusy || user.is_active !== 1}
+                                onClick={() => void handleResetPassword(user)}
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-[var(--hover)] disabled:opacity-40">
+                                <KeyRound size={14} /> {t("admin.users.resetPassword")}
                               </button>
                             </div>
                           </td>

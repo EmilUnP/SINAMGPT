@@ -47,7 +47,8 @@ export const DEFAULT_API_GATEWAY: ApiGatewaySettings = {
   enabled: true,
   maxKeysPerUser: 5,
   maxRequestsPerMinute: 30,
-  maxChars: 32000,
+  // Fits coding clients (system prompt + tool schemas + history) in a 32k-token context.
+  maxChars: 100_000,
   corsOrigins: [],
 };
 
@@ -102,7 +103,7 @@ export const getApiGatewaySettings = (): ApiGatewaySettings => {
       ),
       maxChars: Math.max(
         500,
-        Math.min(32000, Number(parsed.maxChars) || 32000),
+        Math.min(1_000_000, Number(parsed.maxChars) || DEFAULT_API_GATEWAY.maxChars),
       ),
       corsOrigins: origins,
     };
@@ -130,7 +131,7 @@ export const setApiGatewaySettings = (
     ),
     maxChars: Math.max(
       500,
-      Math.min(32000, Math.floor(next.maxChars ?? current.maxChars)),
+      Math.min(1_000_000, Math.floor(next.maxChars ?? current.maxChars)),
     ),
     corsOrigins: Array.isArray(next.corsOrigins)
       ? next.corsOrigins

@@ -14,6 +14,7 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:vllm": "node scripts/vllm-check.mjs",
     "test:vllm:load": "node scripts/vllm-load-test.mjs",
+    "test:api": "node scripts/test-developer-api.mjs",
     "test:chat": "node scripts/deep-chat-test.mjs"
   },
   "dependencies": {

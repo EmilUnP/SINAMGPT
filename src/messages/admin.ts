@@ -88,6 +88,8 @@ export const adminEn = {
     liveCount: "{n} live",
   },
   users: {
+    resetPassword: "Reset password",
+    resetLinkHint: "This link expires in one hour. Verify the account owner before sharing it privately. Creating a new link invalidates the previous one.",
     allUsers: "All users",
     subtitle:
       "Search, filter, disable login, or delete accounts and chats",
@@ -715,6 +717,8 @@ export const adminAz: AdminMessages = {
     liveCount: "{n} canlı",
   },
   users: {
+    resetPassword: "Şifrəni sıfırla",
+    resetLinkHint: "Bu keçid bir saatdan sonra bitir. Onu məxfi paylaşmazdan əvvəl hesab sahibini yoxlayın. Yeni keçid əvvəlkini etibarsız edir.",
     allUsers: "Bütün istifadəçilər",
     subtitle: "Axtar, filtrlə, girişi bağla və ya hesabları və söhbətləri sil",
     showing: " · {total} içindən {start}–{end} göstərilir",
@@ -1337,6 +1341,8 @@ export const adminRu: AdminMessages = {
     liveCount: "{n} живых",
   },
   users: {
+    resetPassword: "Сбросить пароль",
+    resetLinkHint: "Ссылка действует один час. Проверьте владельца учётной записи перед личной передачей. Новая ссылка отменяет предыдущую.",
     allUsers: "Все пользователи",
     subtitle:
       "Поиск, фильтр, отключение входа или удаление аккаунтов и чатов",

@@ -17,7 +17,7 @@ const settingsSchema = z.object({
   enabled: z.boolean().optional(),
   maxKeysPerUser: z.number().int().min(1).max(20).optional(),
   maxRequestsPerMinute: z.number().int().min(1).max(300).optional(),
-  maxChars: z.number().int().min(500).max(32000).optional(),
+  maxChars: z.number().int().min(500).max(1_000_000).optional(),
   corsOrigins: z.array(z.string().trim().max(200)).max(40).optional(),
 });
 

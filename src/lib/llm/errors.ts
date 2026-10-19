@@ -1,6 +1,18 @@
+export class ModelServerError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "ModelServerError";
+  }
+}
+
+export class ModelBusyError extends Error {
+  readonly status = 503;
+}
+
 /** Connection-level failures that may retry on a fallback provider. HTTP errors do not. */
 export const isUnreachableError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
+  if (error instanceof ModelServerError || error instanceof ModelBusyError) return false;
   if (error.name === "AbortError") return false;
   const cause =
     error.cause instanceof Error
