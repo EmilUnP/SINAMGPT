@@ -157,6 +157,12 @@ const toNativeMessages = (messages: ChatMessage[]) =>
     ...(message.toolCallId ? { tool_call_id: message.toolCallId } : {}),
   }));
 
+/** Room for tool schemas + fetched page text alongside the system prompt. */
+const TOOL_TURN_NUM_CTX = 8192;
+
+const messagesHaveToolResults = (messages: ChatMessage[]): boolean =>
+  messages.some((message) => message.role === "tool");
+
 const nativeChatBody = (
   model: string,
   messages: ChatMessage[],
@@ -173,6 +179,17 @@ const nativeChatBody = (
   }
   if (hasAudio) {
     ollamaOptions.num_ctx = 8192;
+  }
+  // Tool turns carry the tool schemas plus fetched page text on top of the
+  // system prompt and knowledge block. Ollama's default window is small enough
+  // that this overflows and gets truncated from the front — which silently
+  // drops the system rules or the search results and looks like the model
+  // ignoring them.
+  if (options?.tools?.length || messagesHaveToolResults(messages)) {
+    ollamaOptions.num_ctx = Math.max(
+      Number(ollamaOptions.num_ctx ?? 0),
+      TOOL_TURN_NUM_CTX,
+    );
   }
   return {
     model,

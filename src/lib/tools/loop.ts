@@ -3,6 +3,7 @@ import type { ToolTraceEntry } from "@/lib/types";
 import type { ToolLoopOptions, ToolLoopResult } from "./types";
 import { boundToolTrace, serializeTraceValue } from "./trace";
 import { MAX_TOOL_PAYLOAD_BYTES } from "./validation";
+import { boundActivityLabel, boundActivitySites } from "./sse";
 
 export const DEFAULT_MAX_TOOL_ITERATIONS = 8;
 export const DEFAULT_TOOL_CALL_TIMEOUT_MS = 15_000;
@@ -86,7 +87,7 @@ export const runToolLoop = async (
   const messages = [...options.messages];
   const trace: ToolTraceEntry[] = [];
   const emit = options.onEvent;
-  const pushTrace = (entry: ToolTraceEntry) => {
+  const pushTrace = (entry: ToolTraceEntry, sites?: string[]) => {
     trace.push(entry);
     emit?.({
       event: "tool_end",
@@ -95,22 +96,38 @@ export const runToolLoop = async (
         toolName: entry.toolName,
         status: entry.status,
         durationMs: entry.durationMs,
+        ...(sites?.length ? { sites } : {}),
       },
     });
     options.onTrace?.(boundToolTrace(trace));
   };
 
-  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
-    if (options.deferFinalStream && trace.length > 0) {
-      return {
-        content: "",
-        messages,
-        trace: boundToolTrace(trace),
-        reachedCap: false,
-        needsFinalStream: true,
-      };
+  /**
+   * Activity summaries are best-effort decoration for the live strip. A tool
+   * that throws while describing itself must not fail the call, and `label`
+   * runs before schema validation, so it sees unvalidated model output.
+   */
+  const activityLabel = (name: string, args: unknown): string | undefined => {
+    try {
+      const derive = options.registry.get(name)?.definition.activity?.label;
+      if (!derive) return undefined;
+      return boundActivityLabel(derive(args as never) ?? "");
+    } catch {
+      return undefined;
     }
+  };
 
+  const activitySites = (name: string, output: unknown): string[] | undefined => {
+    try {
+      const derive = options.registry.get(name)?.definition.activity?.sites;
+      if (!derive) return undefined;
+      return boundActivitySites(derive(output as never) ?? []);
+    } catch {
+      return undefined;
+    }
+  };
+
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
     let completion: { content: string; toolCalls: LlmToolCall[] } | null = null;
     // Preempt high-confidence search intents; otherwise ask the model first.
     let toolCalls: LlmToolCall[] =
@@ -138,12 +155,23 @@ export const runToolLoop = async (
     }
 
     if (!toolCalls.length) {
+      /*
+       * The model is done calling tools, so this is the answer turn. When the
+       * caller streams the final answer we discard this non-streamed content
+       * and let it re-ask with the full transcript.
+       *
+       * Returning here — rather than at the top of the loop after the first
+       * tool — is what makes this an agent loop instead of a fixed pipeline:
+       * the model sees each tool's results and may search again with better
+       * terms, or follow up with web_fetch, before it commits to an answer.
+       */
+      const deferred = Boolean(options.deferFinalStream) && trace.length > 0;
       return {
-        content: completion?.content ?? "",
+        content: deferred ? "" : (completion?.content ?? ""),
         messages,
         trace: boundToolTrace(trace),
         reachedCap: false,
-        needsFinalStream: false,
+        needsFinalStream: deferred,
       };
     }
 
@@ -155,9 +183,14 @@ export const runToolLoop = async (
 
     for (const call of toolCalls) {
       const started = Date.now();
+      const label = activityLabel(call.name, call.arguments);
       emit?.({
         event: "tool_start",
-        data: { callId: call.id, toolName: call.name },
+        data: {
+          callId: call.id,
+          toolName: call.name,
+          ...(label ? { label } : {}),
+        },
       });
       const serializedInput = serializeTraceValue(call.arguments);
       const inputGuard = await options.inspectPayload(
@@ -218,6 +251,24 @@ export const runToolLoop = async (
           registered.definition.handler(input, {
             signal: handlerSignal,
             userId: options.userId,
+            onProgress: (update) => {
+              const stage = boundActivityLabel(update.stage ?? "");
+              if (!stage) return;
+              emit?.({
+                event: "tool_progress",
+                data: {
+                  callId: `${call.id}:${stage}`,
+                  toolName: call.name,
+                  stage,
+                  ...(update.label
+                    ? { label: boundActivityLabel(update.label) }
+                    : {}),
+                  ...(update.sites
+                    ? { sites: boundActivitySites(update.sites) }
+                    : {}),
+                },
+              });
+            },
           }),
           handlerSignal,
         );
@@ -273,14 +324,17 @@ export const runToolLoop = async (
         continue;
       }
 
-      pushTrace({
-        callId: call.id,
-        toolName: call.name,
-        status: "completed",
-        input: serializedInput,
-        output: serializedOutput,
-        durationMs: Date.now() - started,
-      });
+      pushTrace(
+        {
+          callId: call.id,
+          toolName: call.name,
+          status: "completed",
+          input: serializedInput,
+          output: serializedOutput,
+          durationMs: Date.now() - started,
+        },
+        activitySites(call.name, output),
+      );
       messages.push(toolResultMessage(call, output));
     }
   }

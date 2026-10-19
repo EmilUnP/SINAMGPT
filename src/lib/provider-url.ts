@@ -1,9 +1,37 @@
 const stripHostDecorators = (hostname: string): string =>
   hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
 
+/**
+ * IPv4-mapped IPv6 → dotted quad. WHATWG `new URL()` rewrites
+ * `[::ffff:127.0.0.1]` to `[::ffff:7f00:1]`, so the hex form has to be decoded
+ * or loopback and RFC1918 addresses slip past the string checks below.
+ * Handles `::ffff:a.b.c.d`, `::ffff:7f00:1`, and the expanded `0:0:0:0:0:ffff:…`.
+ */
+const mappedIpv4 = (hostname: string): string | null => {
+  const host = stripHostDecorators(hostname);
+  if (!host.includes(":")) return null;
+
+  const tail = host
+    .replace(/^0{0,4}(:0{0,4}){0,4}:ffff:/, "")
+    .replace(/^::ffff:/, "");
+  if (tail === host) return null;
+
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(tail)) return tail;
+
+  const hex = tail.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hex) return null;
+  const high = Number.parseInt(hex[1]!, 16);
+  const low = Number.parseInt(hex[2]!, 16);
+  if (!Number.isFinite(high) || !Number.isFinite(low)) return null;
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+};
+
 /** Cloud instance-metadata hosts, including common encodings. */
 export const isCloudMetadataHostname = (hostname: string): boolean => {
   const host = stripHostDecorators(hostname);
+
+  const mapped = mappedIpv4(host);
+  if (mapped && mapped !== host) return isCloudMetadataHostname(mapped);
   if (
     host === "metadata.google.internal" ||
     host.endsWith(".metadata.google.internal")
@@ -44,6 +72,9 @@ export const isPrivateOrLocalHostname = (hostname: string): boolean => {
   ) {
     return true;
   }
+
+  const mapped = mappedIpv4(host);
+  if (mapped && mapped !== host) return isPrivateOrLocalHostname(mapped);
 
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4) {

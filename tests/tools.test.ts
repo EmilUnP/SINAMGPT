@@ -1,3 +1,9 @@
+import {
+  boundActivityLabel,
+  boundActivitySites,
+  MAX_ACTIVITY_LABEL_CHARS,
+  MAX_ACTIVITY_SITES,
+} from "@/lib/tools/sse";
 import { describe, expect, it, vi } from "vitest";
 import type { LlmCompletion } from "@/lib/llm";
 import {
@@ -264,7 +270,11 @@ describe("runToolLoop", () => {
 
   it("defers the final completion so the caller can stream", async () => {
     const events: string[] = [];
-    const complete = vi.fn().mockResolvedValueOnce(toolCall());
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce(toolCall())
+      // Second turn: the model has seen the tool result and is ready to answer.
+      .mockResolvedValueOnce({ content: "draft answer", toolCalls: [] });
     const result = await runToolLoop({
       messages: [{ role: "user", content: "news" }],
       registry: new ToolRegistry([makeTool()]),
@@ -276,8 +286,9 @@ describe("runToolLoop", () => {
     });
 
     expect(result.needsFinalStream).toBe(true);
+    // The draft is discarded so the caller can re-ask and stream the answer.
     expect(result.content).toBe("");
-    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(2);
     expect(events).toEqual(["tool_start", "tool_end"]);
     expect(result.messages.some((message) => message.role === "tool")).toBe(true);
   });
@@ -285,7 +296,8 @@ describe("runToolLoop", () => {
   it("recovers tool calls when the model answers without calling tools", async () => {
     const complete = vi
       .fn()
-      .mockResolvedValueOnce({ content: "I cannot search", toolCalls: [] });
+      .mockResolvedValueOnce({ content: "I cannot search", toolCalls: [] })
+      .mockResolvedValueOnce({ content: "now I can answer", toolCalls: [] });
     const handler = vi.fn(async () => ({ answer: "from tool" }));
     const result = await runToolLoop({
       messages: [{ role: "user", content: "weather" }],
@@ -298,7 +310,7 @@ describe("runToolLoop", () => {
           ? [{ id: "forced", name: "echo", arguments: { value: "hello" } }]
           : [],
     });
-    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(2);
     expect(handler).toHaveBeenCalled();
     expect(result.needsFinalStream).toBe(true);
     expect(result.trace[0]?.status).toBe("completed");
@@ -307,7 +319,8 @@ describe("runToolLoop", () => {
   it("asks the model first; recover only runs after a no-tool reply", async () => {
     const complete = vi
       .fn()
-      .mockResolvedValueOnce({ content: "plain answer", toolCalls: [] });
+      .mockResolvedValueOnce({ content: "plain answer", toolCalls: [] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [] });
     const handler = vi.fn(async () => ({ answer: "from tool" }));
     const result = await runToolLoop({
       messages: [{ role: "user", content: "weather" }],
@@ -320,13 +333,15 @@ describe("runToolLoop", () => {
           ? [{ id: "forced", name: "echo", arguments: { value: "hello" } }]
           : [],
     });
-    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(2);
     expect(handler).toHaveBeenCalled();
     expect(result.needsFinalStream).toBe(true);
   });
 
   it("can preempt tools before the first model call", async () => {
-    const complete = vi.fn();
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce({ content: "answering now", toolCalls: [] });
     const handler = vi.fn(async () => ({ answer: "from tool" }));
     const result = await runToolLoop({
       messages: [{ role: "user", content: "weather" }],
@@ -339,7 +354,9 @@ describe("runToolLoop", () => {
           ? []
           : [{ id: "forced", name: "echo", arguments: { value: "hello" } }],
     });
-    expect(complete).not.toHaveBeenCalled();
+    // Preempt skips the FIRST model call; the model is still consulted after
+    // the tool runs, which is what lets it search again or answer.
+    expect(complete).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalled();
     expect(result.needsFinalStream).toBe(true);
   });
@@ -372,5 +389,164 @@ describe("tool trace redaction", () => {
     expect(trace).not.toContain("also-secret");
     expect(trace).not.toContain("sk-abcdefghijklmnopqrstuvwxyz");
     expect(trace).toContain("[REDACTED]");
+  });
+});
+
+describe("activity strip payloads", () => {
+  it("bounds a model-supplied label", () => {
+    expect(boundActivityLabel("  weather   baku  ")).toBe("weather baku");
+    expect(boundActivityLabel("   ")).toBeUndefined();
+    expect(boundActivityLabel("")).toBeUndefined();
+    const long = boundActivityLabel("x".repeat(500));
+    expect(long).toHaveLength(MAX_ACTIVITY_LABEL_CHARS);
+    expect(long?.endsWith("…")).toBe(true);
+    // Newlines would break the SSE framing if they ever reached the wire.
+    expect(boundActivityLabel("a\nb\r\nc")).toBe("a b c");
+  });
+
+  it("dedupes and caps the site chips", () => {
+    expect(boundActivitySites(["a.com", "a.com", "b.com"])).toEqual([
+      "a.com",
+      "b.com",
+    ]);
+    expect(boundActivitySites([])).toBeUndefined();
+    expect(boundActivitySites(["", "  "])).toBeUndefined();
+    expect(
+      boundActivitySites(Array.from({ length: 40 }, (_, i) => `host${i}.com`)),
+    ).toHaveLength(MAX_ACTIVITY_SITES);
+  });
+});
+
+describe("live activity events", () => {
+  const runWith = async (tool: ToolDefinition) => {
+    const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+    await runToolLoop({
+      messages: [{ role: "user", content: "test" }],
+      registry: new ToolRegistry([tool]),
+      complete: vi
+        .fn()
+        .mockResolvedValueOnce(toolCall())
+        .mockResolvedValueOnce({ content: "done", toolCalls: [] }),
+      inspectPayload: allow,
+      onEvent: (event) =>
+        events.push({ event: event.event, data: event.data as never }),
+    });
+    return events;
+  };
+
+  it("carries the label on start and the sites on end", async () => {
+    const events = await runWith({
+      ...makeTool(),
+      activity: {
+        label: (input) => (input as { value: string }).value,
+        sites: () => ["a.example", "b.example"],
+      },
+    });
+    const start = events.find((e) => e.event === "tool_start");
+    const end = events.find((e) => e.event === "tool_end");
+    expect(start?.data.label).toBe("hello");
+    expect(end?.data.sites).toEqual(["a.example", "b.example"]);
+  });
+
+  it("emits a sub-step when the handler reports progress mid-call", async () => {
+    // web_search reads pages inside one call; without this the slow half of a
+    // search is invisible.
+    const events = await runWith({
+      ...makeTool(async (_input, context) => {
+        context.onProgress?.({ stage: "reading", sites: ["x.example"] });
+        return { answer: "ok" };
+      }),
+    });
+    const progress = events.find((e) => e.event === "tool_progress");
+    expect(progress?.data).toMatchObject({
+      callId: "call-1:reading",
+      toolName: "echo",
+      stage: "reading",
+      sites: ["x.example"],
+    });
+    // Order matters: the sub-step must arrive before the call settles.
+    expect(events.map((e) => e.event)).toEqual([
+      "tool_start",
+      "tool_progress",
+      "tool_end",
+    ]);
+  });
+
+  it("never fails a call because its activity hook threw", async () => {
+    const events = await runWith({
+      ...makeTool(),
+      activity: {
+        label: () => {
+          throw new Error("boom");
+        },
+        sites: () => {
+          throw new Error("boom");
+        },
+      },
+    });
+    const end = events.find((e) => e.event === "tool_end");
+    expect(end?.data.status).toBe("completed");
+    expect(end?.data.sites).toBeUndefined();
+  });
+});
+
+describe("multi-round agent behaviour", () => {
+  it("lets the model search again after seeing weak results", async () => {
+    // This is the loop the app was missing: the first search returns nothing
+    // useful, the model reads that, reformulates, searches again, and only
+    // then answers. Previously deferFinalStream returned after round one, so
+    // a bad first query was final.
+    const queries: string[] = [];
+    const handler = vi.fn(async (input: unknown) => {
+      const value = (input as { value: string }).value;
+      queries.push(value);
+      return { answer: value === "second" ? "found it" : "nothing useful" };
+    });
+
+    const call = (value: string): LlmCompletion => ({
+      content: "",
+      toolCalls: [{ id: `c-${value}`, name: "echo", arguments: { value } }],
+    });
+
+    const complete = vi
+      .fn()
+      .mockResolvedValueOnce(call("first"))
+      .mockResolvedValueOnce(call("second"))
+      .mockResolvedValueOnce({ content: "draft", toolCalls: [] });
+
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "who is X" }],
+      registry: new ToolRegistry([makeTool(handler)]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+    });
+
+    expect(queries).toEqual(["first", "second"]);
+    expect(complete).toHaveBeenCalledTimes(3);
+    expect(result.trace).toHaveLength(2);
+    expect(result.needsFinalStream).toBe(true);
+    // Every tool result stays in the transcript the final answer is built from.
+    expect(
+      result.messages.filter((message) => message.role === "tool"),
+    ).toHaveLength(2);
+  });
+
+  it("still stops at maxIterations so a looping model cannot run forever", async () => {
+    const complete = vi.fn(async () => ({
+      content: "",
+      toolCalls: [{ id: "c", name: "echo", arguments: { value: "again" } }],
+    }));
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "loop" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      maxIterations: 3,
+    });
+    expect(complete).toHaveBeenCalledTimes(3);
+    expect(result.reachedCap).toBe(true);
+    expect(result.needsFinalStream).toBe(true);
   });
 });

@@ -7,6 +7,7 @@ import {
   assertPublicHttpUrl,
   citationsFromSearchMessages,
   createSearchTools,
+  fetchPublicPage,
   htmlToText,
   hostMatchesDeny,
   isJunkHost,
@@ -56,6 +57,25 @@ describe("inverted SSRF", () => {
     expect(() =>
       assertPublicHttpUrl("https://blocked.example/x", ["blocked.example"]),
     ).toThrow(PublicUrlError);
+  });
+
+  it("rejects IPv4-mapped IPv6 loopback and RFC1918 in hex form", () => {
+    // `new URL()` rewrites [::ffff:127.0.0.1] to [::ffff:7f00:1], so the hex
+    // form has to be decoded or a model-supplied URL reaches the LAN.
+    for (const raw of [
+      "http://[::ffff:127.0.0.1]/",
+      "http://[::ffff:10.0.0.1]/",
+      "http://[::ffff:192.168.1.8]/",
+      "http://[0:0:0:0:0:ffff:7f00:1]/",
+      "http://[::ffff:169.254.169.254]/latest",
+    ]) {
+      expect(() => assertPublicHttpUrl(raw)).toThrow(PublicUrlError);
+    }
+  });
+
+  it("still allows public IPv6 and decimal-encoded public IPv4", () => {
+    expect(assertPublicHttpUrl("http://[2606:4700:4700::1111]/")).toContain("2606");
+    expect(assertPublicHttpUrl("http://1.1.1.1/")).toContain("1.1.1.1");
   });
 
   it("lets SearXNG live on the LAN but not on metadata hosts", () => {
@@ -353,8 +373,18 @@ describe("search tool registry", () => {
       "web_search",
       "web_fetch",
     ]);
-    vi.spyOn(settings, "modelSupportsTools").mockReturnValue(false);
+  });
+
+  it("follows the model catalog rather than the model name", () => {
+    // The catalog is synced from the provider, so it is the truth. A name
+    // heuristic here would re-enable tools the runtime denied and push a
+    // model like gemma3 into a loop it cannot complete.
+    vi.spyOn(searchSettings, "isWebSearchEnabled").mockReturnValue(true);
+    vi.spyOn(settings, "modelSupportsTools").mockReturnValue(true);
     expect(shouldUseToolRuntime("gemma4:e2b")).toBe(true);
+    vi.spyOn(settings, "modelSupportsTools").mockReturnValue(false);
+    expect(shouldUseToolRuntime("gemma4:e2b")).toBe(false);
+    expect(shouldUseToolRuntime("gemma3:4b")).toBe(false);
   });
 
   it("registers web_search and web_fetch with strict schemas", () => {
@@ -366,5 +396,79 @@ describe("search tool registry", () => {
       "web_search",
       "web_fetch",
     ]);
+  });
+});
+
+describe("redirect following", () => {
+  const respond = (
+    status: number,
+    headers: Record<string, string>,
+    body = "",
+  ) => new Response(body, { status, headers });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("follows a normal redirect and returns the final page", async () => {
+    const seen: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        seen.push(String(input));
+        if (seen.length === 1) {
+          return respond(301, { location: "https://example.com/final" });
+        }
+        return respond(
+          200,
+          { "content-type": "text/html" },
+          "<title>Final</title><p>hello world</p>",
+        );
+      }),
+    );
+    const page = await fetchPublicPage("http://example.com/start", {
+      denyHosts: [],
+      maxChars: 500,
+    });
+    expect(seen).toEqual([
+      "http://example.com/start",
+      "https://example.com/final",
+    ]);
+    expect(page.url).toBe("https://example.com/final");
+    expect(page.title).toBe("Final");
+    expect(page.text).toContain("hello world");
+  });
+
+  it("re-validates each hop, so a public URL cannot bounce to the LAN", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        respond(302, { location: "http://169.254.169.254/latest/meta-data/" }),
+      ),
+    );
+    await expect(
+      fetchPublicPage("https://example.com/open-redirect", {
+        denyHosts: [],
+        maxChars: 500,
+      }),
+    ).rejects.toBeInstanceOf(PublicUrlError);
+  });
+
+  it("stops after a bounded number of hops", async () => {
+    let n = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        n += 1;
+        return respond(302, { location: `https://example.com/hop${n}` });
+      }),
+    );
+    await expect(
+      fetchPublicPage("https://example.com/loop", {
+        denyHosts: [],
+        maxChars: 500,
+      }),
+    ).rejects.toThrow(/Too many redirects/);
+    expect(n).toBeLessThanOrEqual(6);
   });
 });

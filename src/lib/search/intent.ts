@@ -18,7 +18,9 @@ If company knowledge is empty, weak, or does not contain the specific name/fact,
 How to search:
 1) Infer intent from the conversation (including the previous user turn if this turn is only "search online").
 2) Call web_search with a short keyword query (names, company, role) — never paste the full chat sentence; never write tool names in your reply instead of calling the tool.
-3) Answer from tool results and cite URLs.
+3) Read the results. If they are empty, off-topic, or do not contain the fact asked for, call web_search AGAIN with different keywords (try the name alone, add the city or company, or drop words). You may search up to 3 times.
+4) Use web_fetch on a result URL when the snippet looks right but is too short.
+5) Answer from tool results and cite URLs. If after searching you still have nothing solid, say so plainly instead of inventing details.
 
 Forbidden: claiming you cannot search; describing web_search/web_fetch without calling them; answering "no internal data" / "verilən məlumatlarda yoxdur" when a web search would help.`;
 

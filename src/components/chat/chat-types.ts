@@ -24,10 +24,28 @@ export type PendingAudio = {
   previewUrl: string;
 };
 
+/**
+ * One live tool step, shown while the answer is still being produced. Kept off
+ * `content` so the reply text is never a status string — the previous version
+ * wrote "Searching…" into content and string-compared it away on the first
+ * token, which broke if the model happened to open with that word.
+ */
+export type ToolActivity = {
+  callId: string;
+  toolName: string;
+  /** Sub-step reported mid-handler, e.g. "reading" while pages are fetched. */
+  stage?: string;
+  /** Search query, or the host being fetched. Model-supplied; already bounded. */
+  label?: string;
+  status: "running" | "done" | "failed";
+  sites?: string[];
+};
+
 export type UiMessage = Message & {
   isStreaming?: boolean;
   localImages?: ChatImagePayload[];
   localAudio?: PendingAudio;
+  toolActivity?: ToolActivity[];
 };
 
 export type ShareMenuPosition = {

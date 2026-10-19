@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ArrowDown, X } from "lucide-react";
 import type { useLocale } from "@/components/LocaleProvider";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ChatMessageList } from "./ChatMessageList";
@@ -37,11 +37,24 @@ export const ChatConversationPanel = ({
   modelState,
   stream,
 }: ChatConversationPanelProps) => {
-  const { scrollerRef, scrollerProps } = useStickToBottomScroll(
-    conversations.messages.length,
-    conversations.lastAssistantMessage?.content ?? "",
-    conversations.activeId,
-  );
+  const lastAssistant = conversations.lastAssistantMessage;
+  /*
+   * During a web search the reply text stays empty for tens of seconds while
+   * the activity strip grows — steps appear, site chips land, the skeleton
+   * shows. Keying only on `content` meant the scroller was never told anything
+   * changed, so the view sat still while the bubble grew off screen.
+   */
+  const activityKey =
+    lastAssistant?.toolActivity
+      ?.map((step) => `${step.callId}:${step.status}:${step.sites?.length ?? 0}`)
+      .join("|") ?? "";
+
+  const { scrollerRef, scrollerProps, isAtBottom, scrollToBottom } =
+    useStickToBottomScroll(
+      conversations.messages.length,
+      `${lastAssistant?.content ?? ""}|${activityKey}`,
+      conversations.activeId,
+    );
 
   return (
     <>
@@ -64,6 +77,7 @@ export const ChatConversationPanel = ({
           </div>
         </div>
       )}
+      <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollerRef}
         className="chat-scroll min-h-0 flex-1 overflow-y-auto"
@@ -120,6 +134,18 @@ export const ChatConversationPanel = ({
             t={t}
           />
         )}
+        </div>
+
+        {!isAtBottom && conversations.messages.length > 0 ? (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-[12px] text-[var(--text)] shadow-lg transition hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            <ArrowDown size={13} aria-hidden="true" />
+            {t("chat.jumpToLatest")}
+          </button>
+        ) : null}
       </div>
     </>
   );

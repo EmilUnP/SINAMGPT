@@ -2,6 +2,7 @@ import { isCannedVoicePrompt } from "@/lib/media/voice-prompt";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageAudio } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";
+import { SearchActivity } from "./SearchActivity";
 import { messageAudioItems, messageImageItems } from "./message-attachments";
 import type { UiMessage } from "./chat-types";
 
@@ -33,7 +34,26 @@ export const ChatMessageContent = ({
     );
   }
 
-  if (message.content) return <MarkdownMessage content={message.content} />;
+  const steps = message.toolActivity;
+  const hasContent = Boolean(message.content);
+
+  if (steps?.length) {
+    return (
+      <div>
+        <SearchActivity
+          steps={steps}
+          awaitingAnswer={!hasContent && steps.every((s) => s.status !== "running")}
+        />
+        {hasContent ? (
+          <div className="mt-3">
+            <MarkdownMessage content={message.content} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (hasContent) return <MarkdownMessage content={message.content} />;
 
   return (
     <div className="flex items-center gap-1.5 text-[var(--text-muted)]">

@@ -32,6 +32,12 @@ html {
   --chip-info-text: #1d4ed8;
   --code-inline-bg: rgba(37, 99, 235, 0.1);
   --code-inline-fg: #1d4ed8;
+  --code-block-bg: #0f1218;
+  --code-block-fg: #e8edf5;
+  --code-block-chrome: rgba(232, 237, 245, 0.08);
+  --code-block-label: rgba(232, 237, 245, 0.55);
+  --table-head-bg: #eef3fb;
+  --table-stripe: rgba(37, 99, 235, 0.035);
   --select-bg: #ffffff;
   --menu-bg: #ffffff;
   --menu-border: rgba(15, 23, 42, 0.08);
@@ -132,6 +138,12 @@ html[data-theme="dark"] {
   --chip-info-text: #7dd3fc;
   --code-inline-bg: rgba(56, 189, 248, 0.12);
   --code-inline-fg: #7dd3fc;
+  --code-block-bg: #0a0f18;
+  --code-block-fg: #e2e8f0;
+  --code-block-chrome: rgba(148, 163, 184, 0.12);
+  --code-block-label: rgba(148, 163, 184, 0.7);
+  --table-head-bg: rgba(148, 163, 184, 0.08);
+  --table-stripe: rgba(148, 163, 184, 0.04);
   --select-bg: #0e1624;
   --menu-bg: #101827;
   --menu-border: rgba(148, 163, 184, 0.14);
@@ -300,6 +312,229 @@ html[data-theme="dark"] ::selection {
   padding-left: 0.9rem;
   border-left: 3px solid var(--border);
   color: var(--text-muted);
+}
+
+/*
+ * Headings, tables, and list rhythm. GFM tables already parsed but had no
+ * styling at all, so a model answering with structured data produced a
+ * borderless run of text — the densest, most useful replies looked the worst.
+ */
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin: 1.4em 0 0.5em;
+  font-weight: 650;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+/* Chat answers sit inside a bubble — browser default h1 sizing blows it out. */
+.markdown-body h1 {
+  font-size: 1.3em;
+}
+.markdown-body h2 {
+  font-size: 1.15em;
+}
+.markdown-body h3 {
+  font-size: 1.05em;
+}
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  font-size: 1em;
+  color: var(--text-muted);
+}
+
+.markdown-body h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-body li {
+  margin: 0.25em 0;
+}
+
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: 0.25em 0 0;
+}
+
+.markdown-body li::marker {
+  color: var(--text-muted);
+}
+
+/* GFM task lists: drop the bullet so the checkbox is the marker. */
+.markdown-body li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.1rem;
+}
+
+.markdown-body input[type="checkbox"] {
+  margin-right: 0.45em;
+  accent-color: var(--accent);
+}
+
+.markdown-body hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Wrapper is added by MarkdownMessage so a wide table scrolls itself. */
+.markdown-table-scroll {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  /* Numbers in a column only read as a column when they align. */
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-body thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-head-bg);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.markdown-body tbody tr:nth-child(even) {
+  background: var(--table-stripe);
+}
+
+.markdown-body tbody tr:last-child th,
+.markdown-body tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Long URLs and identifiers must not push the bubble sideways. */
+.markdown-body a,
+.markdown-body :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Loading skeletons for the live search strip. A shimmer reads as "working"
+ * where a static grey bar reads as "broken".
+ */
+.skeleton-line,
+.skeleton-chip {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    var(--bg-elevated) 50%,
+    var(--border) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 0.55rem;
+}
+
+.skeleton-chip {
+  height: 0.9rem;
+  border-radius: 999px;
+}
+
+@keyframes skeleton-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .skeleton-chip {
+    animation: none;
+    background: var(--border);
+  }
+}
+
+/* Code block chrome: language label + copy, like every modern chat surface. */
+.markdown-code {
+  margin: 0.9em 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--code-block-bg);
+}
+
+.markdown-code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+  border-bottom: 1px solid var(--code-block-chrome);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--code-block-label);
+}
+
+.markdown-code pre {
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.markdown-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  /* Do not rely on Tailwind preflight to strip the UA button chrome — this
+     block also renders in previews and exports without it. */
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 0.4rem;
+  color: var(--code-block-label);
+  text-transform: none;
+  letter-spacing: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.markdown-code-copy:hover {
+  background: var(--code-block-chrome);
+  color: var(--code-block-fg);
+}
+
+.markdown-code-copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Theme toggle */

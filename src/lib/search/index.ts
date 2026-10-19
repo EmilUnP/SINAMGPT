@@ -25,3 +25,4 @@ export {
 } from "./ssrf";
 export { recoverLiveSearchCalls, looksLikeLiveWebQuery, buildLiveSearchQuery, compactToolMessagesForModel, withPostSearchAnswerHint, SEARCH_SYSTEM_RULES, POST_SEARCH_ANSWER_RULES } from "./intent";
 export { createSearchTools, SEARCH_TOOL_TIMEOUT_MS } from "./tools";
+export { fetchPublicPage } from "./fetch-page";

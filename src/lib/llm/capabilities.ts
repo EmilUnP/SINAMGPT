@@ -45,7 +45,10 @@ export const inferCapabilities = (name: string): ModelCapabilities => {
   const gemma4Audio = gemma4HasAudio(id);
   return {
     vision,
-    tools: TOOLS_RE.test(id) || /gemma[34]/i.test(id),
+    // Gemma 4 advertises `tools`; Gemma 3 does not (`/api/show` on gemma3:4b
+    // returns ["completion","vision"]). Claiming tools for Gemma 3 sends tool
+    // definitions to a model that cannot emit tool_calls.
+    tools: TOOLS_RE.test(id) || /gemma-?4/i.test(id),
     audio: gemma4Audio ?? AUDIO_RE.test(id),
     tts: TTS_RE.test(id) || /omni/i.test(id),
     video: VIDEO_RE.test(id),
@@ -63,7 +66,10 @@ export const parseOllamaCapabilities = (
     .map((item) => item.toLowerCase());
   return {
     vision: caps.includes("vision") || heuristic.vision,
-    tools: caps.includes("tools") || heuristic.tools,
+    // When Ollama answered with a capability list it is authoritative for
+    // tools: a name heuristic must not add a capability the runtime denied,
+    // or the tool loop runs against a model that cannot call tools.
+    tools: caps.includes("tools"),
     audio: caps.includes("audio") || heuristic.audio,
     tts: caps.includes("tts") || heuristic.tts,
     // Ollama has no video capability flag yet — name heuristic only.

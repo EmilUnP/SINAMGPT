@@ -151,12 +151,91 @@ export const useChatStream = ({
             );
           }
           if (parsed.event === "tool_start") {
-            const toolName = (parsed.data as { toolName?: string }).toolName;
-            if (toolName === "web_search" || toolName === "web_fetch") {
+            const { callId, toolName, label } = parsed.data as {
+              callId?: string;
+              toolName?: string;
+              label?: string;
+            };
+            if (callId && toolName) {
               setMessages((current) =>
                 current.map((message) =>
-                  message.id === tempAssistantId && !message.content
-                    ? { ...message, content: t("chat.searching") }
+                  message.id === tempAssistantId
+                    ? {
+                        ...message,
+                        toolActivity: [
+                          ...(message.toolActivity ?? []).filter(
+                            (step) => step.callId !== callId,
+                          ),
+                          { callId, toolName, label, status: "running" },
+                        ],
+                      }
+                    : message,
+                ),
+              );
+            }
+          }
+          if (parsed.event === "tool_progress") {
+            const { callId, toolName, stage, label, sites } = parsed.data as {
+              callId?: string;
+              toolName?: string;
+              stage?: string;
+              label?: string;
+              sites?: string[];
+            };
+            if (callId && toolName) {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === tempAssistantId
+                    ? {
+                        ...message,
+                        toolActivity: [
+                          ...(message.toolActivity ?? []).filter(
+                            (step) => step.callId !== callId,
+                          ),
+                          {
+                            callId,
+                            toolName,
+                            stage,
+                            label,
+                            sites,
+                            status: "running",
+                          },
+                        ],
+                      }
+                    : message,
+                ),
+              );
+            }
+          }
+          if (parsed.event === "tool_end") {
+            const { callId, status, sites } = parsed.data as {
+              callId?: string;
+              status?: string;
+              sites?: string[];
+            };
+            if (callId) {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === tempAssistantId
+                    ? {
+                        ...message,
+                        toolActivity: (message.toolActivity ?? []).map((step) =>
+                          // Sub-steps are keyed "<callId>:<stage>", so they
+                          // settle when their parent call finishes.
+                          step.callId === callId ||
+                          step.callId.startsWith(`${callId}:`)
+                            ? {
+                                ...step,
+                                status:
+                                  status === "completed" ? "done" : "failed",
+                                sites:
+                                  step.callId === callId && sites?.length
+                                    ? sites
+                                    : step.sites,
+                              }
+                            : step,
+                        ),
+                      }
                     : message,
                 ),
               );
@@ -165,15 +244,11 @@ export const useChatStream = ({
           if (parsed.event === "token") {
             const token = (parsed.data as { content: string }).content;
             setMessages((current) =>
-              current.map((message) => {
-                if (message.id !== tempAssistantId) return message;
-                const searching = t("chat.searching");
-                const nextContent =
-                  message.content === searching
-                    ? token
-                    : message.content + token;
-                return { ...message, content: nextContent };
-              }),
+              current.map((message) =>
+                message.id === tempAssistantId
+                  ? { ...message, content: message.content + token }
+                  : message,
+              ),
             );
           }
           if (parsed.event === "done") {

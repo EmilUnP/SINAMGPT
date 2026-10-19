@@ -17,6 +17,16 @@ export type ToolContext = {
   signal: AbortSignal;
   /** Signed-in user id; used by quota-gated tools such as web_search. */
   userId?: string;
+  /**
+   * Report a sub-step while the handler is still running. `web_search` reads
+   * several pages inside one call, so without this the reading phase — the
+   * slowest part — is invisible to the user. Best-effort decoration only.
+   */
+  onProgress?: (update: {
+    stage: string;
+    label?: string;
+    sites?: string[];
+  }) => void;
 };
 
 export type ToolDefinition<
@@ -28,6 +38,17 @@ export type ToolDefinition<
   inputSchema: AnySchema;
   resultSchema: AnySchema;
   handler: (input: TInput, context: ToolContext) => Promise<TResult>;
+  /**
+   * Optional summaries for the live activity strip. The loop stays
+   * tool-agnostic: a tool decides what is safe to show, so raw payloads never
+   * reach the browser. Both are bounded again by the loop before emitting.
+   */
+  activity?: {
+    /** One short line describing the call, e.g. the search query. */
+    label?: (input: TInput) => string;
+    /** Hostnames the call touched, shown as chips. */
+    sites?: (result: TResult) => string[];
+  };
 };
 
 export type ToolPayloadGuard = (

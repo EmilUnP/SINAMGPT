@@ -347,6 +347,13 @@ const streamAssistantReply = async (input: {
             signal: abort.signal,
             userId,
             deferFinalStream: true,
+            /*
+             * Each round is another non-streaming model turn, and a local
+             * model can spend 40s+ on one. Three is enough for the useful
+             * pattern — search, see weak results, search again, answer — and
+             * bounds the worst case for a model that keeps calling tools.
+             */
+            maxIterations: 3,
             callTimeoutMs: SEARCH_TOOL_TIMEOUT_MS,
             onEvent: (event) => {
               controller.enqueue(encodeToolSseEvent(event));
