@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  AdminEmptyState,
   AdminHint,
   AdminPageHeader,
   AdminPanelCard,
@@ -491,7 +492,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     ? t("admin.guardrails.turnOff")
                     : t("admin.guardrails.turnOn")
                 }
-                className="inline-flex min-w-0 items-center gap-1.5 px-2 py-1 text-left transition hover:opacity-90 disabled:opacity-50"
+                className="touch-target inline-flex min-w-0 items-center gap-1.5 px-2 py-1 text-left transition hover:opacity-90 disabled:opacity-50 pointer-coarse:py-2.5"
               >
                 <span className="shrink-0 font-semibold">
                   {on
@@ -506,7 +507,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 onClick={() => onRemove(item)}
                 title={t("admin.guardrails.remove")}
                 aria-label={t("admin.guardrails.remove")}
-                className="shrink-0 rounded-r-lg px-1.5 py-1 text-[var(--admin-muted)] transition hover:bg-[var(--status-bad-bg)] hover:text-[var(--status-bad-fg)] disabled:opacity-50"
+                className="touch-target shrink-0 self-stretch rounded-r-lg px-1.5 py-1 text-[var(--admin-muted)] transition hover:bg-[var(--status-bad-bg)] hover:text-[var(--status-bad-fg)] disabled:opacity-50 pointer-coarse:px-3"
               >
                 <X size={12} />
               </button>
@@ -552,10 +553,10 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
     }
   };
 
-  if (isLoading || !draft) {
+  if (!draft) {
     return (
-      <AdminPanelCard className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-        {t("admin.guardrails.loading")}
+      <AdminPanelCard>
+        <AdminEmptyState>{t("admin.guardrails.loading")}</AdminEmptyState>
       </AdminPanelCard>
     );
   }
@@ -563,8 +564,8 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
   const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
 
   const saveBar = (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--admin-border)] px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-1">
+    <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="flex min-w-0 flex-col items-start gap-1">
         <button
           type="button"
           disabled={isSaving}
@@ -573,7 +574,14 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
         >
           {t("admin.guardrails.resetDefaults")}
         </button>
-        <p className="max-w-md text-[11px] text-[var(--admin-muted)]">
+        <p
+          aria-live="polite"
+          className={`max-w-md text-[11px] ${
+            isDirty
+              ? "font-medium text-[var(--status-warn-fg)]"
+              : "text-[var(--admin-muted)]"
+          }`}
+        >
           {isDirty
             ? t("admin.guardrails.unsavedHint")
             : t("admin.guardrails.liveHint")}
@@ -671,8 +679,8 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
               />
             </AdminStatGrid>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-3.5">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.guardrails.stackCoverage")}
                 </h3>
@@ -727,17 +735,20 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 </ul>
               </div>
 
-              <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
+              <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-3.5">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                     {t("admin.guardrails.topMatched")}
                   </h3>
                   <button
                     type="button"
+                    disabled={isLoading}
                     onClick={() => void load()}
-                    className="text-xs text-[var(--accent)] hover:underline"
+                    className="touch-target rounded text-xs text-[var(--accent)] hover:underline disabled:opacity-60"
                   >
-                    {t("admin.chrome.refresh")}
+                    {isLoading
+                      ? t("admin.chrome.loading")
+                      : t("admin.chrome.refresh")}
                   </button>
                 </div>
                 <p className="mt-0.5 text-xs text-[var(--admin-muted)]">
@@ -757,7 +768,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                         key={r.title}
                         className="flex items-center justify-between gap-2 py-2 text-sm"
                       >
-                        <span className="truncate text-[var(--admin-fg)]">
+                        <span className="min-w-0 truncate text-[var(--admin-fg)]">
                           {r.title}
                         </span>
                         <span className="tabular-nums text-[var(--admin-muted)]">
@@ -770,7 +781,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
+            <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.guardrails.policySnapshot")}
@@ -778,7 +789,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 <button
                   type="button"
                   onClick={() => setTab("policy")}
-                  className="text-xs text-[var(--accent)] hover:underline"
+                  className="touch-target rounded text-xs text-[var(--accent)] hover:underline"
                 >
                   {t("admin.guardrails.editPolicy")}
                 </button>
@@ -888,8 +899,8 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 {t("admin.guardrails.toggleLegend")}
               </p>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-[var(--admin-border)] p-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-4">
                   <div className="mb-2">
                     <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                       {t("admin.guardrails.canHelp")}
@@ -955,7 +966,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--admin-border)] p-4">
+                <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-4">
                   <div className="mb-2">
                     <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                       {t("admin.guardrails.mustRefuse")}
@@ -1022,7 +1033,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[var(--admin-border)] p-4">
+              <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-4">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
@@ -1098,8 +1109,8 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-[var(--admin-border)] p-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-4">
                   <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                     {t("admin.guardrails.refusalMessage")}
                   </h3>
@@ -1113,7 +1124,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                     className={`${adminFieldClass} resize-y`}
                   />
                 </div>
-                <div className="rounded-xl border border-[var(--admin-border)] p-4">
+                <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-4">
                   <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                     {t("admin.guardrails.extraRules")}
                   </h3>
@@ -1132,8 +1143,9 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
               <div className="rounded-xl border border-[var(--admin-border)]">
                 <button
                   type="button"
+                  aria-expanded={showPromptPreview}
                   onClick={() => setShowPromptPreview((v) => !v)}
-                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3 text-left transition hover:bg-[var(--hover)]"
                 >
                   <span>
                     <span className="block text-sm font-semibold text-[var(--admin-fg)]">
@@ -1165,7 +1177,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
         {tab === "detectors" ? (
           <>
             <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <AdminToggleCard
                   emphasize
                   checked={draft.enabled}
@@ -1191,7 +1203,7 @@ export const AdminGuardrailsPanel = ({ onNotice, onError }: Props) => {
                 <h3 className="mb-2 text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.guardrails.specialDetectors")}
                 </h3>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <AdminToggleCard
                     checked={draft.detectPromptInjection}
                     onChange={(v) => update("detectPromptInjection", v)}

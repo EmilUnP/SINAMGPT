@@ -862,15 +862,15 @@ html[data-theme="dark"] .admin-card {
 }
 
 .admin-table th {
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 0.875rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .admin-table td {
-  padding: 0.7rem 1rem;
+  padding: 0.7rem 0.875rem;
   border-top: 1px solid var(--admin-border);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .admin-table tbody tr:hover {
@@ -879,6 +879,131 @@ html[data-theme="dark"] .admin-card {
 
 .admin-table tbody tr:first-child td {
   border-top: none;
+}
+
+.admin-table tbody tr[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/*
+ * Phones and tablets: a 7–9 column table only fits by scrolling sideways,
+ * which hides the row actions. Below lg each row becomes a card: the first
+ * cell is the card title, the other cells sit two (phone) or four (tablet)
+ * per line with their column name (data-label) above the value, and the
+ * actions cell spans the full width.
+ */
+@media (max-width: 1023.98px) {
+  .admin-table-stack {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-table-stack tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table-stack tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 1rem;
+    padding: 0.85rem 1rem;
+    border-top: 1px solid var(--admin-border);
+  }
+
+  .admin-table-stack tbody tr:first-child {
+    border-top: none;
+  }
+
+  @media (min-width: 640px) {
+    .admin-table-stack tbody tr {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .admin-table-stack td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    border-top: none;
+    text-align: left;
+  }
+
+  .admin-table-stack td > * {
+    max-width: 100%;
+  }
+
+  .admin-table-stack td[data-label]::before {
+    content: attr(data-label);
+    color: var(--admin-muted);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  /* Title, wide controls, actions and empty rows take the whole line. */
+  .admin-table-stack td.admin-cell-primary,
+  .admin-table-stack td.admin-cell-block,
+  .admin-table-stack td.admin-cell-actions,
+  .admin-table-stack td[colspan] {
+    grid-column: 1 / -1;
+  }
+
+  .admin-table-stack td.admin-cell-primary,
+  .admin-table-stack td.admin-cell-block {
+    display: block;
+  }
+
+  .admin-table-stack td.admin-cell-block::before {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Short fields pair up first; wide fields and actions follow them. */
+  .admin-table-stack td.admin-cell-block {
+    order: 1;
+  }
+
+  .admin-table-stack td.admin-cell-actions {
+    order: 2;
+  }
+
+  .admin-table-stack td.admin-cell-actions {
+    display: block;
+    padding-top: 0.15rem;
+  }
+
+  .admin-table-stack td.admin-cell-actions > * {
+    flex-wrap: wrap;
+  }
+
+  .admin-table-stack td[colspan] {
+    display: block;
+    text-align: center;
+  }
+}
+
+/* Keyboard focus for ad-hoc admin buttons and links (inputs use their ring). */
+.admin-shell :is(button, a, [role="tab"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .admin-bar {
@@ -1044,6 +1169,12 @@ html:not([data-theme="dark"]) .suggestion-tile:hover:not(:disabled) {
 
 .animate-fade-up {
   animation: fade-up 0.28s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+  }
 }
 
 @keyframes pulse-dot {

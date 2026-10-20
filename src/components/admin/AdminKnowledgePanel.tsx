@@ -3,27 +3,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   Library,
   Pencil,
   Plus,
-  Search,
   Settings2,
   Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import {
+  AdminEmptyState,
+  AdminField,
   AdminHint,
   AdminPageHeader,
+  AdminPager,
   AdminPanelCard,
+  AdminRowsSelect,
+  AdminSearchInput,
   AdminStatCard,
   AdminStatGrid,
   AdminSubtabs,
   AdminToggleCard,
+  adminBtnDanger,
   adminBtnGhost,
   adminBtnPrimary,
+  adminBtnRow,
+  adminBtnRowDanger,
+  adminControlClass,
   adminFieldClass,
 } from "./AdminChrome";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -85,7 +91,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<KnowledgeSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [busyDocId, setBusyDocId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -125,6 +133,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
       onError(t("admin.chrome.networkError"));
     } finally {
       setIsLoading(false);
+      setHasLoaded(true);
     }
   }, [onError, t]);
 
@@ -328,16 +337,23 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
   };
 
   const handleToggle = async (doc: KnowledgeDoc) => {
-    const res = await fetch(`/api/admin/knowledge/${doc.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_enabled: doc.is_enabled !== 1 }),
-    });
-    if (!res.ok) {
-      onError(t("admin.knowledge.couldNotSave"));
-      return;
+    setBusyDocId(doc.id);
+    try {
+      const res = await fetch(`/api/admin/knowledge/${doc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_enabled: doc.is_enabled !== 1 }),
+      });
+      if (!res.ok) {
+        onError(t("admin.knowledge.couldNotSave"));
+        return;
+      }
+      await load();
+    } catch {
+      onError(t("admin.chrome.networkError"));
+    } finally {
+      setBusyDocId(null);
     }
-    await load();
   };
 
   const handleSaveSettings = async () => {
@@ -427,10 +443,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !hasLoaded) {
     return (
-      <AdminPanelCard className="px-4 py-10 text-center text-sm text-[var(--admin-muted)]">
-        {t("admin.knowledge.loading")}
+      <AdminPanelCard>
+        <AdminEmptyState>{t("admin.knowledge.loading")}</AdminEmptyState>
       </AdminPanelCard>
     );
   }
@@ -499,8 +515,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               />
             </AdminStatGrid>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-3.5">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.knowledge.coverage")}
                 </h3>
@@ -522,7 +538,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                               changeCategoryFilter(row.category);
                               setTab("library");
                             }}
-                            className="font-medium text-[var(--admin-fg)] hover:text-[var(--accent)]"
+                            className="touch-target rounded font-medium text-[var(--admin-fg)] hover:text-[var(--accent)]"
                           >
                             {t(CATEGORY_KEYS[row.category])}
                           </button>
@@ -542,7 +558,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </ul>
               </div>
 
-              <div className="rounded-xl border border-[var(--admin-border)] p-3.5">
+              <div className="min-w-0 rounded-xl border border-[var(--admin-border)] p-3.5">
                 <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.knowledge.highestPriority")}
                 </h3>
@@ -560,7 +576,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                         <button
                           type="button"
                           onClick={() => openEdit(doc)}
-                          className="flex w-full items-center justify-between gap-2 py-2 text-left hover:opacity-90"
+                          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg py-2 text-left transition hover:bg-[var(--hover)] md:min-h-0"
                         >
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-medium text-[var(--admin-fg)]">
@@ -595,9 +611,9 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
 
         {tab === "library" ? (
           <div className="border-t border-[var(--admin-border)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div>
-                <h3 className="text-sm font-semibold">
+            <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
                   {t("admin.knowledge.libraryTitle", {
                     n:
                       filteredDocs.length !== docs.length
@@ -614,27 +630,22 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     : t("admin.knowledge.noMatches")}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search
-                    size={14}
-                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--admin-muted)]"
-                  />
-                  <input
-                    value={query}
-                    onChange={(e) => changeQuery(e.target.value)}
-                    placeholder={t("admin.knowledge.search")}
-                    className="w-48 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--accent)]/50"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                <AdminSearchInput
+                  value={query}
+                  onChange={changeQuery}
+                  placeholder={t("admin.knowledge.search")}
+                  className="col-span-2 sm:w-56"
+                />
                 <select
                   value={categoryFilter}
+                  aria-label={t("admin.knowledge.colCategory")}
                   onChange={(e) =>
                     changeCategoryFilter(
                       e.target.value as "all" | KnowledgeCategory,
                     )
                   }
-                  className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2.5 py-1.5 text-sm outline-none"
+                  className={`${adminControlClass} w-full sm:w-auto`}
                 >
                   <option value="all">{t("admin.knowledge.allCategories")}</option>
                   {categories.map((c) => (
@@ -645,37 +656,23 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </select>
                 <select
                   value={filter}
+                  aria-label={t("admin.knowledge.colStatus")}
                   onChange={(e) =>
                     changeFilter(
                       e.target.value as "all" | "enabled" | "disabled",
                     )
                   }
-                  className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2.5 py-1.5 text-sm outline-none"
+                  className={`${adminControlClass} w-full sm:w-auto`}
                 >
                   <option value="all">{t("admin.knowledge.allStatus")}</option>
                   <option value="enabled">{t("admin.knowledge.enabled")}</option>
                   <option value="disabled">{t("admin.knowledge.disabled")}</option>
                 </select>
-                <select
-                  value={pageSize}
-                  onChange={(e) =>
-                    changePageSize(
-                      Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
-                    )
-                  }
-                  className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-input)] px-2 py-1.5 text-sm outline-none"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {size} {t("admin.chrome.rows")}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="admin-table">
+            <div className="overflow-x-auto border-t border-[var(--admin-border)]">
+              <table className="admin-table admin-table-stack">
                 <thead>
                   <tr>
                     <th>{t("admin.knowledge.colTitle")}</th>
@@ -689,23 +686,25 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 <tbody>
                   {filteredDocs.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-10 text-center text-[var(--admin-muted)]"
-                      >
-                        {docs.length === 0
-                          ? t("admin.knowledge.noDocs")
-                          : t("admin.knowledge.noMatches")}
+                      <td colSpan={6}>
+                        <AdminEmptyState>
+                          {docs.length === 0
+                            ? t("admin.knowledge.noDocs")
+                            : t("admin.knowledge.noMatches")}
+                        </AdminEmptyState>
                       </td>
                     </tr>
                   ) : (
                     pagedDocs.map((doc) => (
                       <tr
                         key={doc.id}
-                        className="border-b border-[var(--admin-border)] last:border-0"
+                        aria-busy={busyDocId === doc.id || undefined}
                       >
-                        <td className="px-4 py-2.5">
-                          <p className="max-w-[200px] truncate font-medium">
+                        <td className="admin-cell-primary">
+                          <p
+                            className="font-medium text-[var(--admin-fg)] [overflow-wrap:anywhere] lg:max-w-[220px] lg:truncate"
+                            title={doc.title}
+                          >
                             {doc.title}
                           </p>
                           <div className="mt-0.5 flex flex-wrap gap-1">
@@ -721,18 +720,27 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-xs text-[var(--admin-muted)]">
+                        <td
+                          data-label={t("admin.knowledge.colCategory")}
+                          className="text-xs text-[var(--admin-muted)]"
+                        >
                           {t(CATEGORY_KEYS[doc.category])}
                         </td>
-                        <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--admin-muted)]">
+                        <td
+                          data-label={t("admin.knowledge.colPriority")}
+                          className="text-xs tabular-nums text-[var(--admin-muted)]"
+                        >
                           {doc.priority}
                         </td>
-                        <td className="max-w-[280px] px-4 py-2.5">
+                        <td
+                          data-label={t("admin.knowledge.colPreview")}
+                          className="admin-cell-block lg:max-w-[280px]"
+                        >
                           <p className="line-clamp-2 text-xs text-[var(--admin-muted)]">
                             {doc.content}
                           </p>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td data-label={t("admin.knowledge.colStatus")}>
                           <span
                             className={`status-pill ${
                               doc.is_enabled === 1 ? "status-ok" : "status-bad"
@@ -743,30 +751,35 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                               : t("admin.chrome.off")}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-1">
+                        <td className="admin-cell-actions">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => openEdit(doc)}
-                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--admin-fg)] hover:bg-[var(--hover)]"
+                              className={`${adminBtnRow} whitespace-nowrap`}
                             >
                               <Pencil size={12} />
                               {t("admin.knowledge.editEntry")}
                             </button>
                             <button
                               type="button"
+                              disabled={busyDocId === doc.id}
                               onClick={() => void handleToggle(doc)}
-                              className="rounded-lg px-2 py-1 text-xs text-[var(--admin-muted)] hover:bg-[var(--hover)]"
+                              className={`${adminBtnRow} whitespace-nowrap`}
                             >
-                              {doc.is_enabled === 1
-                                ? t("admin.chrome.disable")
-                                : t("admin.chrome.enable")}
+                              {busyDocId === doc.id
+                                ? t("admin.chrome.saving")
+                                : doc.is_enabled === 1
+                                  ? t("admin.chrome.disable")
+                                  : t("admin.chrome.enable")}
                             </button>
                             <button
                               type="button"
+                              disabled={isSaving}
                               onClick={() => void handleDelete(doc)}
-                              className="rounded-lg p-1 text-[var(--status-bad-fg)] hover:bg-red-500/10"
-                              aria-label={t("admin.chrome.delete")}
+                              className={`${adminBtnRowDanger} min-w-11 lg:min-w-8`}
+                              aria-label={`${t("admin.chrome.delete")}: ${doc.title}`}
+                              title={t("admin.chrome.delete")}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -779,37 +792,23 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               </table>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
-              <p className="text-xs text-[var(--admin-muted)]">
-                {safePage} / {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage(safePage - 1)}
-                  className={adminBtnGhost}
-                >
-                  <ChevronLeft size={14} />
-                  {t("admin.chrome.prev")}
-                </button>
-                <button
-                  type="button"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage(safePage + 1)}
-                  className={adminBtnGhost}
-                >
-                  {t("admin.chrome.next")}
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            <AdminPager
+              page={safePage}
+              totalPages={totalPages}
+              onPage={setPage}
+            >
+              <AdminRowsSelect
+                value={pageSize}
+                options={PAGE_SIZE_OPTIONS}
+                onChange={changePageSize}
+              />
+            </AdminPager>
           </div>
         ) : null}
 
         {tab === "settings" && settings ? (
           <div className="space-y-4 border-t border-[var(--admin-border)] px-4 py-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AdminToggleCard
                 emphasize
                 checked={settings.enabled}
@@ -821,25 +820,24 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 checked={settings.showCitations}
                 onChange={(v) => setSettings({ ...settings, showCitations: v })}
                 label={t("admin.knowledge.showCitations")}
-                hint={t("admin.knowledge.showCitations")}
               />
               <AdminToggleCard
                 checked={settings.applyToUsers}
                 onChange={(v) => setSettings({ ...settings, applyToUsers: v })}
                 label={t("admin.knowledge.applyToUsers")}
-                hint={t("admin.knowledge.applyToUsers")}
               />
               <AdminToggleCard
                 checked={settings.applyToGuests}
                 onChange={(v) => setSettings({ ...settings, applyToGuests: v })}
                 label={t("admin.knowledge.applyToGuests")}
-                hint={t("admin.knowledge.applyToGuests")}
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm text-[var(--admin-fg)]">
-                {t("admin.knowledge.maxDocs")}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <AdminField
+                label={t("admin.knowledge.maxDocs")}
+                hint={t("admin.knowledge.maxDocsHint")}
+              >
                 <input
                   type="number"
                   min={1}
@@ -853,12 +851,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   }
                   className={adminFieldClass}
                 />
-                <span className="mt-1 block text-xs text-[var(--admin-muted)]">
-                  {t("admin.knowledge.maxDocsHint")}
-                </span>
-              </label>
-              <label className="block text-sm text-[var(--admin-fg)]">
-                {t("admin.knowledge.maxChars")}
+              </AdminField>
+              <AdminField
+                label={t("admin.knowledge.maxChars")}
+                hint={t("admin.knowledge.maxCharsHint")}
+              >
                 <input
                   type="number"
                   min={500}
@@ -872,17 +869,14 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   }
                   className={adminFieldClass}
                 />
-                <span className="mt-1 block text-xs text-[var(--admin-muted)]">
-                  {t("admin.knowledge.maxCharsHint")}
-                </span>
-              </label>
+              </AdminField>
             </div>
 
             <AdminHint>
               <strong className="text-[var(--admin-fg)]">
                 {t("admin.knowledge.starterPack")}
               </strong>{" "}
-              (from{" "}
+              (
               <a
                 href="https://sinam.net"
                 target="_blank"
@@ -915,7 +909,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 type="button"
                 disabled={isSaving}
                 onClick={() => void handleSeed("refresh")}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 px-3.5 py-2 text-sm text-[var(--status-warn-fg)] transition hover:bg-amber-500/10 disabled:opacity-60"
+                className={`${adminBtnGhost} border-[var(--status-warn-border)] text-[var(--status-warn-fg)] hover:bg-[var(--status-warn-bg)]`}
               >
                 {t("admin.knowledge.refreshPack")}
               </button>
@@ -923,7 +917,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 type="button"
                 disabled={isSaving}
                 onClick={() => void handleSeed("replace")}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--status-bad-border)] px-3.5 py-2 text-sm text-[var(--status-bad-fg)] transition hover:bg-[var(--status-bad-bg)] disabled:opacity-60"
+                className={adminBtnDanger}
               >
                 {t("admin.knowledge.replaceAll")}
               </button>
@@ -942,11 +936,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="knowledge-modal-title"
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
+            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
-              <div>
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
+              <div className="min-w-0">
                 <h3
                   id="knowledge-modal-title"
                   className="text-sm font-semibold"
@@ -962,7 +956,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
+                className="touch-target shrink-0 rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
                 aria-label={t("admin.chrome.close")}
               >
                 <X size={16} />
@@ -970,8 +964,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
             </div>
 
             <div className="space-y-3 px-4 py-4">
-              <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
-                <label className="block text-sm text-[var(--admin-fg)]">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+                <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                   {t("admin.knowledge.titleField")}
                   <input
                     value={form.title}
@@ -983,7 +977,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     autoFocus
                   />
                 </label>
-                <label className="block text-sm text-[var(--admin-fg)]">
+                <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                   {t("admin.knowledge.category")}
                   <select
                     value={form.category}
@@ -1004,7 +998,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </label>
               </div>
 
-              <label className="block text-sm text-[var(--admin-fg)]">
+              <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                 {t("admin.knowledge.content")}
                 <textarea
                   value={form.content}
@@ -1017,8 +1011,8 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 />
               </label>
 
-              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_120px]">
-                <label className="block text-sm text-[var(--admin-fg)]">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px]">
+                <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                   {t("admin.knowledge.tags")}
                   <input
                     value={form.tags}
@@ -1029,7 +1023,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     placeholder={t("admin.knowledge.tagsPlaceholder")}
                   />
                 </label>
-                <label className="block text-sm text-[var(--admin-fg)]">
+                <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                   {t("admin.knowledge.project")}
                   <select
                     value={form.project_id}
@@ -1046,7 +1040,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                     ))}
                   </select>
                 </label>
-                <label className="block text-sm text-[var(--admin-fg)]">
+                <label className="block min-w-0 text-sm text-[var(--admin-fg)]">
                   {t("admin.knowledge.priority")}
                   <input
                     type="number"
@@ -1061,10 +1055,11 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 </label>
               </div>
 
-              <div className="flex flex-wrap gap-4 text-sm text-[var(--admin-fg)]">
-                <label className="inline-flex items-center gap-2">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--admin-fg)]">
+                <label className="inline-flex min-h-11 items-center gap-2 sm:min-h-0">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 accent-[var(--accent)]"
                     checked={form.always_include}
                     onChange={(e) =>
                       setForm({ ...form, always_include: e.target.checked })
@@ -1072,9 +1067,10 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                   />
                   {t("admin.knowledge.alwaysIncludeFlag")}
                 </label>
-                <label className="inline-flex items-center gap-2">
+                <label className="inline-flex min-h-11 items-center gap-2 sm:min-h-0">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 accent-[var(--accent)]"
                     checked={form.is_enabled}
                     onChange={(e) =>
                       setForm({ ...form, is_enabled: e.target.checked })
@@ -1085,7 +1081,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
               </div>
             </div>
 
-            <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 backdrop-blur">
+            <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
               <button type="button" onClick={closeModal} className={adminBtnGhost}>
                 {t("admin.chrome.close")}
               </button>
@@ -1095,7 +1091,7 @@ export const AdminKnowledgePanel = ({ onNotice, onError }: Props) => {
                 onClick={() => void handleSaveDoc()}
                 className={adminBtnPrimary}
               >
-                <Plus size={14} />
+                {editingId ? null : <Plus size={14} />}
                 {isSaving
                   ? t("admin.chrome.saving")
                   : editingId

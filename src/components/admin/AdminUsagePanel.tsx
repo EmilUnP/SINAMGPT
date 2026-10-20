@@ -4,8 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Radio,
   Server,
@@ -13,12 +11,15 @@ import {
   X,
 } from "lucide-react";
 import {
+  AdminEmptyState,
   AdminPageHeader,
+  AdminPager,
   AdminPanelCard,
+  AdminRowsSelect,
+  AdminSectionHeader,
   AdminStatCard,
   AdminStatGrid,
   adminBtnGhost,
-  adminFieldClass,
 } from "./AdminChrome";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useLocale } from "@/components/LocaleProvider";
@@ -140,11 +141,6 @@ type SourceFilter = "all" | "app" | "api";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
-const fmtNum = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return "—";
-  return String(value);
-};
-
 const fmtTime = (value: string, locale: AppLocale) => {
   const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
   const date = new Date(normalized);
@@ -160,17 +156,25 @@ const statusTone = (status: string) => {
   return "status-pill status-warn";
 };
 
-export const AdminUsagePanel = () => {
+type Props = {
+  onNotice: (message: string) => void;
+  onError: (message: string) => void;
+};
+
+export const AdminUsagePanel = ({ onNotice, onError }: Props) => {
   const { locale, t } = useLocale();
   const confirm = useConfirm();
+  const fmtNum = (value: number | null | undefined) => {
+    if (value == null || Number.isNaN(value)) return "—";
+    return value.toLocaleString(LOCALE_BCP47[locale]);
+  };
   const fmtMs = (value: number | null | undefined) => {
     if (value == null || Number.isNaN(value)) return "—";
     if (value < 1000) return t("common.ms", { n: Math.round(value) });
     return t("common.sec", { n: (value / 1000).toFixed(1) });
   };
   const [data, setData] = useState<UsagePayload | null>(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
   const [page, setPage] = useState(1);
@@ -253,16 +257,16 @@ export const AdminUsagePanel = () => {
       });
       const json = (await res.json()) as UsagePayload & { error?: string };
       if (!res.ok) {
-        setError(json.error || t("admin.usage.failedLoad"));
+        setLoadError(json.error || t("admin.usage.failedLoad"));
         return;
       }
       setData(json);
       if (json.recentPage?.page && json.recentPage.page !== page) {
         setPage(json.recentPage.page);
       }
-      setError("");
+      setLoadError("");
     } catch {
-      setError(t("admin.usage.networkLoad"));
+      setLoadError(t("admin.usage.networkLoad"));
     } finally {
       setIsLoading(false);
     }
@@ -294,7 +298,12 @@ export const AdminUsagePanel = () => {
       if (e.key === "Escape") closeDetail();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
   }, [selectedId, closeDetail]);
 
   useEffect(() => {
@@ -335,21 +344,19 @@ export const AdminUsagePanel = () => {
     if (!ok) return;
 
     setIsClearing(true);
-    setError("");
-    setNotice("");
     try {
       const res = await fetch("/api/admin/usage", { method: "DELETE" });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error || t("admin.usage.clearFailed"));
+        onError(json.error || t("admin.usage.clearFailed"));
         return;
       }
       closeDetail();
       setPage(1);
-      setNotice(t("admin.usage.cleared"));
+      onNotice(t("admin.usage.cleared"));
       await load();
     } catch {
-      setError(t("admin.usage.clearFailed"));
+      onError(t("admin.usage.clearFailed"));
     } finally {
       setIsClearing(false);
     }
@@ -400,14 +407,12 @@ export const AdminUsagePanel = () => {
 
   return (
     <div className="space-y-4 animate-fade-up">
-      {error ? (
-        <p className="rounded-2xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]">
-          {error}
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-2.5 text-sm text-[var(--status-ok-fg)]">
-          {notice}
+      {loadError ? (
+        <p
+          role="alert"
+          className="rounded-xl border border-[var(--status-bad-border)] bg-[var(--status-bad-bg)] px-4 py-2.5 text-sm text-[var(--status-bad-fg)]"
+        >
+          {loadError}
         </p>
       ) : null}
 
@@ -434,6 +439,7 @@ export const AdminUsagePanel = () => {
                 ).map((b) => (
                   <span
                     key={b.backend}
+                    title={b.error}
                     className={`status-pill ${b.ok ? "status-ok" : "status-bad"}`}
                   >
                     <Server size={12} />
@@ -512,7 +518,11 @@ export const AdminUsagePanel = () => {
               }
             />
           </AdminStatGrid>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div
+            role="group"
+            aria-label={t("admin.usage.filterSource")}
+            className="flex flex-wrap items-center gap-2 pt-1"
+          >
             <span className="text-xs font-medium text-[var(--admin-muted)]">
               {t("admin.usage.filterSource")}
             </span>
@@ -526,11 +536,12 @@ export const AdminUsagePanel = () => {
               <button
                 key={id}
                 type="button"
+                aria-pressed={sourceFilter === id}
                 onClick={() => handleSourceFilter(id)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                className={`touch-target rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${
                   sourceFilter === id
-                    ? "bg-[var(--accent)] text-white"
-                    : "border border-[var(--admin-border)] text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    : "border-[var(--admin-border)] text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"
                 }`}
               >
                 {label}
@@ -541,17 +552,13 @@ export const AdminUsagePanel = () => {
       </AdminPanelCard>
 
       <AdminPanelCard>
-        <div className="border-b border-[var(--admin-border)] px-4 py-3">
-          <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-            {t("admin.usage.liveProcess")}
-          </h3>
-          <p className="text-xs text-[var(--admin-muted)]">
-            {t("admin.usage.streamingNow")}
-          </p>
-        </div>
+        <AdminSectionHeader
+          title={t("admin.usage.liveProcess")}
+          description={t("admin.usage.streamingNow")}
+        />
         {data?.live.length ? (
           <div className="overflow-x-auto">
-            <table className="admin-table">
+            <table className="admin-table admin-table-stack">
               <thead>
                 <tr>
                   <th>{t("admin.usage.colWho")}</th>
@@ -582,28 +589,47 @@ export const AdminUsagePanel = () => {
                     tabIndex={0}
                     title={t("admin.usage.detailTitle")}
                   >
-                    <td>
-                      <span className="font-medium text-[var(--admin-fg)]">
+                    <td className="admin-cell-primary">
+                      <span className="font-medium text-[var(--admin-fg)] [overflow-wrap:anywhere]">
                         {row.username}
                       </span>
                       <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
                         {sourceLabel(row.source)}
                       </span>
                     </td>
-                    <td className="text-[var(--admin-fg)]">{row.model}</td>
-                    <td className="max-w-[220px] truncate text-[var(--admin-muted)]">
-                      {row.promptPreview}
+                    <td
+                      data-label={t("admin.usage.colModel")}
+                      className="text-[var(--admin-fg)] [overflow-wrap:anywhere]"
+                    >
+                      {row.model}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
+                    <td
+                      data-label={t("admin.usage.colPrompt")}
+                      className="text-[var(--admin-muted)]"
+                    >
+                      <span className="block min-w-0 truncate lg:max-w-[220px]">
+                        {row.promptPreview}
+                      </span>
+                    </td>
+                    <td
+                      data-label={t("admin.usage.colElapsed")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
                       {fmtMs(row.elapsedMs)}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
+                    <td
+                      data-label={t("admin.usage.colTtft")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
                       {fmtMs(row.ttftMs)}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
-                      {row.responseChars}
+                    <td
+                      data-label={t("admin.usage.colOutChars")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
+                      {fmtNum(row.responseChars)}
                     </td>
-                    <td>
+                    <td data-label={t("admin.usage.colStatus")}>
                       <span className={statusTone(row.status)}>
                         {t("admin.usage.streaming")}
                       </span>
@@ -614,9 +640,11 @@ export const AdminUsagePanel = () => {
             </table>
           </div>
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-[var(--admin-muted)]">
-            {t("admin.usage.noLive")}
-          </p>
+          <AdminEmptyState className="py-8">
+            {isLoading && !data
+              ? t("admin.chrome.loading")
+              : t("admin.usage.noLive")}
+          </AdminEmptyState>
         )}
       </AdminPanelCard>
 
@@ -704,17 +732,17 @@ export const AdminUsagePanel = () => {
               data?.analytics.topUsers.map((row) => (
                 <div
                   key={`${row.source}-${row.username}`}
-                  className="flex items-center justify-between rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-2"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-[var(--admin-fg)]">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--admin-fg)]">
                       {row.username}
                     </p>
                     <p className="text-[11px] text-[var(--admin-muted)]">
                       {sourceLabel(row.source)}
                     </p>
                   </div>
-                  <div className="text-right text-sm text-[var(--admin-fg)]">
+                  <div className="shrink-0 text-right text-sm text-[var(--admin-fg)]">
                     <p className="tabular-nums">
                       {t("admin.usage.reqs", { n: row.requests })}
                     </p>
@@ -761,7 +789,7 @@ export const AdminUsagePanel = () => {
             ].map((cell) => (
               <div
                 key={cell.label}
-                className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-3"
+                className="min-w-0 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)] px-3 py-3"
               >
                 <p className="text-xs text-[var(--admin-muted)]">{cell.label}</p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--admin-fg)]">
@@ -774,43 +802,20 @@ export const AdminUsagePanel = () => {
       </div>
 
       <AdminPanelCard>
-        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
-          <div>
-            <h3 className="text-sm font-semibold text-[var(--admin-fg)]">
-              {t("admin.usage.pastUsage")}
-            </h3>
-            <p className="text-xs text-[var(--admin-muted)]">
-              {t("admin.usage.pastSubtitle")}
-              {totalRows
-                ? t("admin.usage.showing", {
-                    start: rangeStart,
-                    end: rangeEnd,
-                    total: totalRows,
-                  })
-                : ""}
-            </p>
-          </div>
-          <label className="flex items-center gap-2 text-xs text-[var(--admin-muted)]">
-            {t("admin.chrome.rows")}
-            <select
-              value={pageSize}
-              onChange={(e) =>
-                handlePageSizeChange(
-                  Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number],
-                )
-              }
-              className={`${adminFieldClass} mt-0 w-auto py-1.5`}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <AdminSectionHeader
+          title={t("admin.usage.pastUsage")}
+          description={`${t("admin.usage.pastSubtitle")}${
+            totalRows
+              ? t("admin.usage.showing", {
+                  start: rangeStart,
+                  end: rangeEnd,
+                  total: totalRows,
+                })
+              : ""
+          }`}
+        />
         <div className="overflow-x-auto">
-          <table className="admin-table">
+          <table className="admin-table admin-table-stack">
             <thead>
               <tr>
                 <th>{t("admin.usage.colWhen")}</th>
@@ -844,40 +849,64 @@ export const AdminUsagePanel = () => {
                     tabIndex={0}
                     title={t("admin.usage.detailTitle")}
                   >
-                    <td className="whitespace-nowrap text-[var(--admin-muted)]">
+                    <td className="admin-cell-primary whitespace-nowrap text-xs text-[var(--admin-muted)] lg:text-sm">
                       {fmtTime(row.created_at, locale)}
                     </td>
-                    <td>
-                      <span className="font-medium text-[var(--admin-fg)]">
-                        {row.username}
-                      </span>
-                      <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
-                        {sourceLabel(row.source)}
+                    <td data-label={t("admin.usage.colWho")}>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        <span className="font-medium text-[var(--admin-fg)]">
+                          {row.username}
+                        </span>
+                        <span className="ml-2 text-[11px] text-[var(--admin-muted)]">
+                          {sourceLabel(row.source)}
+                        </span>
                       </span>
                     </td>
-                    <td className="text-[var(--admin-fg)]">{row.model}</td>
-                    <td className="max-w-[200px] truncate text-[var(--admin-muted)]">
-                      {row.prompt_preview}
+                    <td
+                      data-label={t("admin.usage.colModel")}
+                      className="text-[var(--admin-fg)] [overflow-wrap:anywhere]"
+                    >
+                      {row.model}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
+                    <td
+                      data-label={t("admin.usage.colPrompt")}
+                      className="text-[var(--admin-muted)]"
+                    >
+                      <span className="block min-w-0 truncate lg:max-w-[200px]">
+                        {row.prompt_preview}
+                      </span>
+                    </td>
+                    <td
+                      data-label={t("admin.usage.colTtft")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
                       {fmtMs(row.ttft_ms)}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
+                    <td
+                      data-label={t("admin.usage.colTotal")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
                       {fmtMs(row.duration_ms)}
                     </td>
-                    <td className="tabular-nums text-[var(--admin-fg)]">
+                    <td
+                      data-label={t("admin.usage.colSpeed")}
+                      className="tabular-nums text-[var(--admin-fg)]"
+                    >
                       {row.tokens_per_sec != null
                         ? t("admin.overview.tokPerSec", {
                             n: row.tokens_per_sec,
                           })
                         : "—"}
                     </td>
-                    <td className="text-[var(--admin-muted)]">
+                    <td
+                      data-label={t("admin.usage.colTokens")}
+                      className="whitespace-nowrap tabular-nums text-[var(--admin-muted)]"
+                    >
                       {row.tokens_eval != null
                         ? `${row.tokens_prompt ?? "—"}→${row.tokens_eval}`
                         : `${row.prompt_chars}/${row.response_chars}c`}
                     </td>
-                    <td>
+                    <td data-label={t("admin.usage.colStatus")}>
                       <span className={statusTone(row.status)}>
                         {statusLabel(row.status)}
                       </span>
@@ -886,47 +915,29 @@ export const AdminUsagePanel = () => {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={9}
-                    className="!border-0 px-4 py-10 text-center text-[var(--admin-muted)]"
-                  >
-                    {isLoading
-                      ? t("admin.chrome.loading")
-                      : t("admin.usage.noPastUsage")}
+                  <td colSpan={9} className="!border-0">
+                    <AdminEmptyState>
+                      {isLoading
+                        ? t("admin.chrome.loading")
+                        : t("admin.usage.noPastUsage")}
+                    </AdminEmptyState>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
-          <p className="text-xs text-[var(--admin-muted)]">
-            {t("admin.users.pageOf", {
-              page: Math.min(page, totalPages),
-              total: totalPages,
-            })}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className={adminBtnGhost}
-            >
-              <ChevronLeft size={14} />
-              {t("admin.chrome.prev")}
-            </button>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className={adminBtnGhost}
-            >
-              {t("admin.chrome.next")}
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
+        <AdminPager
+          page={Math.min(page, totalPages)}
+          totalPages={totalPages}
+          onPage={setPage}
+        >
+          <AdminRowsSelect
+            value={pageSize}
+            options={PAGE_SIZE_OPTIONS}
+            onChange={handlePageSizeChange}
+          />
+        </AdminPager>
       </AdminPanelCard>
 
       {selectedId ? (
@@ -939,7 +950,7 @@ export const AdminUsagePanel = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="usage-detail-title"
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
+            className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-[var(--admin-border)] px-4 py-3">
@@ -1005,7 +1016,7 @@ export const AdminUsagePanel = () => {
               <button
                 type="button"
                 onClick={closeDetail}
-                className="rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
+                className="touch-target shrink-0 rounded-lg p-1.5 text-[var(--admin-muted)] transition hover:bg-[var(--hover)] hover:text-[var(--admin-fg)]"
                 aria-label={t("admin.chrome.close")}
               >
                 <X size={16} />
@@ -1024,7 +1035,10 @@ export const AdminUsagePanel = () => {
               </p>
             ) : null}
 
-            <div className="flex gap-1 border-b border-[var(--admin-border)] px-4">
+            <div
+              role="tablist"
+              className="flex gap-1 overflow-x-auto border-b border-[var(--admin-border)] px-4 [scrollbar-width:none]"
+            >
               {(
                 [
                   ["sent", "admin.usage.detailSent"],
@@ -1038,7 +1052,7 @@ export const AdminUsagePanel = () => {
                   role="tab"
                   aria-selected={detailPane === id}
                   onClick={() => setDetailPane(id)}
-                  className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+                  className={`-mb-px min-h-11 shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition sm:min-h-0 ${
                     detailPane === id
                       ? "border-[var(--accent)] text-[var(--admin-fg)]"
                       : "border-transparent text-[var(--admin-muted)] hover:text-[var(--admin-fg)]"

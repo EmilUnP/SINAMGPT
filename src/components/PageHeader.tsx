@@ -96,7 +96,7 @@ export const PageHeader = ({
               key={href}
               href={href}
               title={label}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-2.5 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)] sm:px-3"
+              className="touch-target inline-flex items-center gap-1.5 rounded-xl border border-[var(--admin-border)] px-2.5 py-2 text-sm text-[var(--admin-fg)] transition hover:bg-[var(--hover)] sm:px-3"
             >
               {LinkIcon ? <LinkIcon size={14} /> : null}
               <span className="hidden md:inline">{label}</span>

@@ -22,6 +22,9 @@ export const adminEn = {
     rows: "Rows",
     loading: "Loading…",
     networkError: "Network error",
+    sections: "Admin sections",
+    unsavedChanges: "Unsaved changes",
+    allSaved: "All changes saved",
   },
   tabs: {
     overview: "Overview",
@@ -134,6 +137,7 @@ export const adminEn = {
     empty:
       "No models found. Start vLLM, test its connection in Providers, then sync models.",
     colId: "Model id",
+    colTask: "Task",
     colBackend: "Backend",
     colCaps: "Capabilities",
     colSize: "Size",
@@ -150,6 +154,7 @@ export const adminEn = {
     nowEnabled: "{name} is now available to all users",
     nowDisabled: "{name} is no longer available to users",
     resetToId: "Reset “{name}” to its model id",
+    renamed: "“{name}” will show as “{label}”",
     vision: "Vision",
     tools: "Functions",
     visionHint: "Can read images you attach or paste.",
@@ -196,6 +201,8 @@ export const adminEn = {
     fallback: "Fallback provider",
     fallbackNone: "None",
     maxConcurrent: "Max concurrent (0 = unlimited)",
+    failedLoad: "Could not load providers",
+    updateFailed: "Provider update failed",
   },
   settings: {
     title: "App settings",
@@ -654,6 +661,9 @@ export const adminAz: AdminMessages = {
     rows: "Sətir",
     loading: "Yüklənir…",
     networkError: "Şəbəkə xətası",
+    sections: "Admin bölmələri",
+    unsavedChanges: "Yadda saxlanmamış dəyişikliklər var",
+    allSaved: "Bütün dəyişikliklər yadda saxlanılıb",
   },
   tabs: {
     overview: "Ümumi baxış",
@@ -765,6 +775,7 @@ export const adminAz: AdminMessages = {
     empty:
       "Model tapılmadı. vLLM serverini başladın və modelləri sinxronlaşdırın.",
     colId: "Model id",
+    colTask: "Tapşırıq",
     colBackend: "Backend",
     colCaps: "İmkanlar",
     colSize: "Ölçü",
@@ -781,6 +792,7 @@ export const adminAz: AdminMessages = {
     nowEnabled: "{name} indi bütün istifadəçilər üçün əlçatandır",
     nowDisabled: "{name} artıq istifadəçilər üçün əlçatan deyil",
     resetToId: "“{name}” model id-yə sıfırlandı",
+    renamed: "“{name}” artıq “{label}” kimi görünəcək",
     vision: "Görüntü",
     tools: "Funksiya",
     visionHint: "Əlavə etdiyiniz və ya yapışdırdığınız şəkilləri oxuya bilər.",
@@ -828,6 +840,8 @@ export const adminAz: AdminMessages = {
     fallback: "Ehtiyat provayder",
     fallbackNone: "Yoxdur",
     maxConcurrent: "Maks. eyni vaxtda (0 = limitsiz)",
+    failedLoad: "Provayderləri yükləmək mümkün olmadı",
+    updateFailed: "Provayderi yeniləmək mümkün olmadı",
   },
   settings: {
     title: "Tətbiq parametrləri",
@@ -1281,6 +1295,9 @@ export const adminRu: AdminMessages = {
     rows: "Строк",
     loading: "Загрузка…",
     networkError: "Ошибка сети",
+    sections: "Разделы админки",
+    unsavedChanges: "Есть несохранённые изменения",
+    allSaved: "Все изменения сохранены",
   },
   tabs: {
     overview: "Обзор",
@@ -1393,6 +1410,7 @@ export const adminRu: AdminMessages = {
     empty:
       "Модели не найдены. Запустите vLLM и синхронизируйте модели.",
     colId: "ID модели",
+    colTask: "Задача",
     colBackend: "Бэкенд",
     colCaps: "Возможности",
     colSize: "Размер",
@@ -1409,6 +1427,7 @@ export const adminRu: AdminMessages = {
     nowEnabled: "{name} теперь доступна всем пользователям",
     nowDisabled: "{name} больше недоступна пользователям",
     resetToId: "Сбросить «{name}» к ID модели",
+    renamed: "«{name}» будет показываться как «{label}»",
     vision: "Изображения",
     tools: "Функции",
     visionHint: "Может читать прикреплённые или вставленные изображения.",
@@ -1455,6 +1474,8 @@ export const adminRu: AdminMessages = {
     fallback: "Резервный провайдер",
     fallbackNone: "Нет",
     maxConcurrent: "Макс. параллельно (0 = без лимита)",
+    failedLoad: "Не удалось загрузить провайдеров",
+    updateFailed: "Не удалось обновить провайдера",
   },
   settings: {
     title: "Настройки приложения",

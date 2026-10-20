@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   Bot,
   MessageSquare,
@@ -11,9 +11,11 @@ import {
   Users,
 } from "lucide-react";
 import {
+  AdminField as Field,
   AdminHint,
   AdminPageHeader,
   AdminPanelCard,
+  AdminSection as SectionCard,
   AdminSubtabs,
   AdminToggleCard,
   adminBtnPrimary,
@@ -61,50 +63,9 @@ type Props = {
   models: ModelOption[];
   savedDefaultModel?: string;
   isSaving: boolean;
+  isDirty: boolean;
   onSave: () => void;
 };
-
-const Field = ({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) => (
-  <label className="block">
-    <span className="text-sm font-medium text-[var(--admin-fg)]">{label}</span>
-    {children}
-    {hint ? (
-      <span className="mt-1.5 block text-xs leading-relaxed text-[var(--admin-muted)]">
-        {hint}
-      </span>
-    ) : null}
-  </label>
-);
-
-const SectionCard = ({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) => (
-  <div className="rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface-soft)]/60 p-4">
-    <div className="mb-3">
-      <h3 className="text-sm font-semibold text-[var(--admin-fg)]">{title}</h3>
-      {description ? (
-        <p className="mt-0.5 text-xs leading-relaxed text-[var(--admin-muted)]">
-          {description}
-        </p>
-      ) : null}
-    </div>
-    {children}
-  </div>
-);
 
 export const AdminSettingsPanel = ({
   draft,
@@ -112,6 +73,7 @@ export const AdminSettingsPanel = ({
   models,
   savedDefaultModel,
   isSaving,
+  isDirty,
   onSave,
 }: Props) => {
   const t = useTranslations();
@@ -175,14 +137,14 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.guestTitle")}
             description={t("admin.settings.guestDesc")}
           >
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_repeat(3,minmax(0,1fr))]">
-              <AdminToggleCard
-                emphasize
-                checked={draft.guestEnabled}
-                onChange={(v) => patch({ guestEnabled: v })}
-                label={t("admin.settings.guestEnabled")}
-                hint={t("admin.settings.guestEnabledHint")}
-              />
+            <AdminToggleCard
+              emphasize
+              checked={draft.guestEnabled}
+              onChange={(v) => patch({ guestEnabled: v })}
+              label={t("admin.settings.guestEnabled")}
+              hint={t("admin.settings.guestEnabledHint")}
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field
                 label={t("admin.settings.dailyMessages")}
                 hint={t("admin.settings.dailyHint")}
@@ -228,7 +190,7 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.accountsTitle")}
             description={t("admin.settings.accountsDesc")}
           >
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <AdminToggleCard
                 emphasize
                 checked={draft.registrationEnabled}
@@ -287,7 +249,7 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.contextTitle")}
             description={t("admin.settings.contextDesc")}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field
                 label={t("admin.settings.userMaxChars")}
                 hint={t("admin.settings.userMaxCharsHint")}
@@ -341,7 +303,7 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.sampling")}
             description={t("admin.settings.samplingDesc")}
           >
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field
                 label={t("admin.settings.temperature")}
                 hint={t("admin.settings.temperatureHint")}
@@ -402,7 +364,7 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.featuresTitle")}
             description={t("admin.settings.featuresDesc")}
           >
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <AdminToggleCard
                 emphasize
                 checked={draft.developerApiEnabled}
@@ -423,7 +385,7 @@ export const AdminSettingsPanel = ({
             title={t("admin.settings.chatInputsTitle")}
             description={t("admin.settings.chatInputsDesc")}
           >
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <AdminToggleCard
                 emphasize
                 checked={draft.fileUploadEnabled}
@@ -458,7 +420,7 @@ export const AdminSettingsPanel = ({
               label={t("admin.settings.webSearch")}
               hint={t("admin.settings.webSearchHint")}
             />
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <Field
                 label={t("admin.settings.webSearchEngine")}
                 hint={t("admin.settings.webSearchEngineHint")}
@@ -559,18 +521,38 @@ export const AdminSettingsPanel = ({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--admin-border)] px-4 py-3">
-        <p className="text-xs text-[var(--admin-muted)]">
-          {t("admin.settings.savedDefault")}{" "}
-          <span className="font-medium text-[var(--admin-fg)]">
-            {savedDefaultModel || t("admin.settings.envFirst")}
-          </span>
-        </p>
+      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-[var(--admin-border)] bg-[var(--admin-surface)]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <div className="min-w-0 text-xs">
+          <p
+            aria-live="polite"
+            className={`flex items-center gap-1.5 font-medium ${
+              isDirty
+                ? "text-[var(--status-warn-fg)]"
+                : "text-[var(--admin-muted)]"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                isDirty ? "bg-[var(--status-warn-fg)]" : "bg-[var(--status-ok-fg)]"
+              }`}
+            />
+            {isDirty
+              ? t("admin.chrome.unsavedChanges")
+              : t("admin.chrome.allSaved")}
+          </p>
+          <p className="mt-0.5 hidden text-[var(--admin-muted)] sm:block">
+            {t("admin.settings.savedDefault")}{" "}
+            <span className="font-medium text-[var(--admin-fg)] [overflow-wrap:anywhere]">
+              {savedDefaultModel || t("admin.settings.envFirst")}
+            </span>
+          </p>
+        </div>
         <button
           type="button"
           disabled={isSaving}
           onClick={onSave}
-          className={adminBtnPrimary}
+          className={`${adminBtnPrimary} shrink-0`}
         >
           {isSaving ? t("admin.chrome.saving") : t("admin.chrome.saveSettings")}
         </button>
