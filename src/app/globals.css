@@ -685,6 +685,17 @@ html[data-theme="dark"] ::selection {
   font-weight: 600;
 }
 
+/*
+ * A native dropdown list takes its colours from its <select>. A select with a
+ * transparent background (the chat header project picker) opened as a light
+ * grey list with light text in dark mode. Every list uses the menu colours.
+ */
+select option,
+select optgroup {
+  background-color: var(--select-bg);
+  color: var(--text);
+}
+
 .model-picker-trigger {
   border: 1px solid var(--border);
   background: var(--select-bg);
