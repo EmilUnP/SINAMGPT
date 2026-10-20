@@ -70,6 +70,12 @@ export const useChatStream = ({
   t,
 }: UseChatStreamOptions) => {
   const abortRef = useRef<AbortController | null>(null);
+
+  /** Thinking is over once text or a tool step arrives; freeze its timer. */
+  const endThinking = (message: UiMessage): UiMessage =>
+    message.reasoning && message.reasoningMs == null && message.reasoningStartedAt
+      ? { ...message, reasoningMs: Date.now() - message.reasoningStartedAt }
+      : message;
   const sendLockRef = useRef(false);
 
   const runChatRequest = async (options: {
@@ -168,7 +174,7 @@ export const useChatStream = ({
                 current.map((message) =>
                   message.id === tempAssistantId
                     ? {
-                        ...message,
+                        ...endThinking(message),
                         toolActivity: [
                           ...(message.toolActivity ?? []).filter(
                             (step) => step.callId !== callId,
@@ -258,12 +264,36 @@ export const useChatStream = ({
               );
             }
           }
+          if (parsed.event === "reasoning") {
+            const piece = (parsed.data as { content?: string }).content ?? "";
+            if (piece) {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === tempAssistantId
+                    ? {
+                        ...message,
+                        reasoning: (message.reasoning ?? "") + piece,
+                        reasoningStartedAt: message.reasoningStartedAt ?? Date.now(),
+                      }
+                    : message,
+                ),
+              );
+            }
+          }
+          if (parsed.event === "reset") {
+            // The streamed text was not the answer (the model chose to search).
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === tempAssistantId ? { ...message, content: "" } : message,
+              ),
+            );
+          }
           if (parsed.event === "token") {
             const token = (parsed.data as { content: string }).content;
             setMessages((current) =>
               current.map((message) =>
                 message.id === tempAssistantId
-                  ? { ...message, content: message.content + token }
+                  ? { ...endThinking(message), content: message.content + token }
                   : message,
               ),
             );
@@ -271,11 +301,21 @@ export const useChatStream = ({
           if (parsed.event === "done") {
             const data = parsed.data as { assistantMessage: Message };
             setMessages((current) =>
-              current.map((message) =>
-                message.id === tempAssistantId
-                  ? { ...data.assistantMessage }
-                  : message,
-              ),
+              current.map((message) => {
+                if (message.id !== tempAssistantId) return message;
+                // The saved message has no reasoning; keep this reply's.
+                const thought = endThinking(message);
+                return {
+                  ...data.assistantMessage,
+                  ...(thought.reasoning
+                    ? {
+                        reasoning: thought.reasoning,
+                        reasoningStartedAt: thought.reasoningStartedAt,
+                        reasoningMs: thought.reasoningMs,
+                      }
+                    : {}),
+                };
+              }),
             );
             if (conversationId) void loadConversations(search);
           }

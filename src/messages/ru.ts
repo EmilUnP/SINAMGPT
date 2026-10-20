@@ -255,6 +255,10 @@ export const ru: Messages = {
     jumpToLatest: "К последнему",
     stepSearching: "Поиск",
     stepReading: "Чтение",
+    thinking: "Думает…",
+    thoughtFor: "Думал {n} с",
+    thinkingShow: "Показать рассуждения",
+    thinkingHide: "Скрыть рассуждения",
     sendMessage: "Отправить сообщение",
     footerHint:
       "Enter — отправить · Shift+Enter — новая строка · Безлимит · Сохраняется на этом ПК",

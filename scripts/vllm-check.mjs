@@ -131,6 +131,7 @@ const readAssistant = async (body) => {
       } catch {
         continue;
       }
+      if (event === "reset") assistant = "";
       if (event === "token" && typeof data.content === "string") {
         assistant += data.content;
       }

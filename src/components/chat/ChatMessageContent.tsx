@@ -3,6 +3,7 @@ import { MarkdownMessage } from "./MarkdownMessage";
 import { MessageAudio } from "./MessageAudio";
 import { MessageImages } from "./MessageImages";
 import { SearchActivity } from "./SearchActivity";
+import { ThinkingBlock } from "./ThinkingBlock";
 import { messageAudioItems, messageImageItems } from "./message-attachments";
 import type { UiMessage } from "./chat-types";
 
@@ -36,10 +37,21 @@ export const ChatMessageContent = ({
 
   const steps = message.toolActivity;
   const hasContent = Boolean(message.content);
+  const thinking = message.reasoning?.trim() ? (
+    <div className="mb-2">
+      <ThinkingBlock
+        reasoning={message.reasoning}
+        active={Boolean(message.isStreaming) && message.reasoningMs == null}
+        startedAt={message.reasoningStartedAt}
+        durationMs={message.reasoningMs}
+      />
+    </div>
+  ) : null;
 
   if (steps?.length) {
     return (
       <div>
+        {thinking}
         <SearchActivity
           steps={steps}
           awaitingAnswer={!hasContent && steps.every((s) => s.status !== "running")}
@@ -53,7 +65,19 @@ export const ChatMessageContent = ({
     );
   }
 
-  if (hasContent) return <MarkdownMessage content={message.content} sources={message.sources} />;
+  if (hasContent) {
+    return thinking ? (
+      <div>
+        {thinking}
+        <MarkdownMessage content={message.content} sources={message.sources} />
+      </div>
+    ) : (
+      <MarkdownMessage content={message.content} sources={message.sources} />
+    );
+  }
+
+  // Thinking replaces the typing dots: the user can see the model working.
+  if (thinking) return thinking;
 
   return (
     <div className="flex items-center gap-1.5 text-[var(--text-muted)]">

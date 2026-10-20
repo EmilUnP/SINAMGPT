@@ -203,6 +203,8 @@ const readSseChat = async (body, { timeoutMs = 120_000 } = {}) => {
       if (event === "meta") {
         conversationId = data.conversationId ?? conversationId;
         if (Array.isArray(data.sources)) sources = data.sources;
+      } else if (event === "reset") {
+        assistant = "";
       } else if (event === "token") {
         assistant += data.content || "";
       } else if (event === "done") {

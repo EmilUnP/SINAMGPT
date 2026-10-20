@@ -538,6 +538,11 @@ export const ModelLab = ({ admin, devLabEnabled = false }: Props) => {
             flush(true);
           }
         }
+        if (parsed.event === "reset") {
+          // Streamed text that turned into a tool call; the answer follows.
+          reply = "";
+          flush();
+        }
         if (parsed.event === "token") {
           const token = (parsed.data as { content?: string }).content || "";
           if (ttftMs == null) ttftMs = Math.round(performance.now() - started);

@@ -560,6 +560,69 @@ describe("multi-round agent behaviour", () => {
     expect(result.reachedCap).toBe(false);
   });
 
+  it("streams the first turn when it is the answer", async () => {
+    // With search on, an ordinary answer used to be generated off-screen and
+    // shown all at once.
+    const complete = vi.fn();
+    const streamFirstTurn = vi.fn(async () => ({ content: "Hello there", toolCalls: [] }));
+    const onDiscardStreamed = vi.fn();
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "hi" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      streamFirstTurn,
+      onDiscardStreamed,
+      inspectPayload: allow,
+      deferFinalStream: true,
+    });
+    expect(streamFirstTurn).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+    expect(onDiscardStreamed).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ content: "Hello there", streamed: true, needsFinalStream: false });
+  });
+
+  it("clears the streamed text when the first turn calls a tool", async () => {
+    const streamFirstTurn = vi.fn(async () => ({
+      content: "Let me check.",
+      toolCalls: [{ id: "c1", name: "echo", arguments: { value: "hello" } }],
+    }));
+    const complete = vi.fn().mockResolvedValueOnce({ content: "draft", toolCalls: [] });
+    const onDiscardStreamed = vi.fn();
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      streamFirstTurn,
+      onDiscardStreamed,
+      inspectPayload: allow,
+      deferFinalStream: true,
+    });
+    expect(onDiscardStreamed).toHaveBeenCalledTimes(1);
+    // Only the first turn streams; the decision after the tool does not.
+    expect(streamFirstTurn).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(result.streamed).toBe(false);
+    expect(result.needsFinalStream).toBe(true);
+  });
+
+  it("clears the streamed text when recovery forces a search after it", async () => {
+    // The model streamed "I cannot browse"; recovery then searches anyway.
+    const streamFirstTurn = vi.fn(async () => ({ content: "I cannot browse.", toolCalls: [] }));
+    const onDiscardStreamed = vi.fn();
+    await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete: vi.fn().mockResolvedValue({ content: "draft", toolCalls: [] }),
+      streamFirstTurn,
+      onDiscardStreamed,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      recoverToolCalls: async (_messages, content) =>
+        content ? [{ id: "forced", name: "echo", arguments: { value: "hello" } }] : [],
+    });
+    expect(onDiscardStreamed).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps asking the model when the tool round was not good enough", async () => {
     const complete = vi.fn().mockResolvedValueOnce({ content: "draft", toolCalls: [] });
     const result = await runToolLoop({

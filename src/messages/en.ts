@@ -246,6 +246,10 @@ export const en = {
     jumpToLatest: "Jump to latest",
     stepSearching: "Searching",
     stepReading: "Reading",
+    thinking: "Thinking…",
+    thoughtFor: "Thought for {n}s",
+    thinkingShow: "Show thinking",
+    thinkingHide: "Hide thinking",
     sendMessage: "Send message",
     footerHint:
       "Enter to send · Shift+Enter for new line · Unlimited · Saved on this Server",

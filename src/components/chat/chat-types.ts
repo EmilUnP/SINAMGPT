@@ -45,6 +45,11 @@ export type ToolActivity = {
 
 export type UiMessage = Message & {
   isStreaming?: boolean;
+  /** Live reasoning of a thinking model. Not saved; gone after a reload. */
+  reasoning?: string;
+  reasoningStartedAt?: number;
+  /** Set when the answer (or a tool step) begins, i.e. thinking ended. */
+  reasoningMs?: number;
   localImages?: ChatImagePayload[];
   localAudio?: PendingAudio;
   toolActivity?: ToolActivity[];

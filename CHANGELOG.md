@@ -13,6 +13,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Provider tool calling requires server configuration confirmation. Native model ids, `/v1` URLs and image/audio inputs use the OpenAI-compatible protocol.
 - OpenCode works with default settings: the Developer API prompt budget defaults to 100,000 characters (installs still on the old 16,000/32,000 default are raised once; other admin values are kept), the production vLLM context is 32,768 tokens (standalone example 16,384), and the generated OpenCode config defaults to 32,768 context / 4,096 output.
 
+### Changed — faster, livelier replies
+- **Every answer streams again.** With internet search on, the first model turn used to run off-screen (it might call a tool), so an ordinary answer appeared all at once after it was fully written. That turn now streams; if it turns into a search, its text is cleared (`reset` event) and the search runs.
+- **Live “Thinking…”.** Reasoning models (Qwen 3, Gemma 4) think before answering, and that text was dropped, so the screen stayed blank. It now shows live with a timer, then folds into “Thought for Ns” that opens on click. Reasoning is not saved with the chat.
+- Hidden tool-decision turns after a search no longer think, which shortens the wait before the answer.
+
 ### Changed — smarter internet search
 - **Query planning.** Before a forced search, the chat model turns the conversation into 1–3 short keyword queries (follow-ups resolved, one English plus one local-language query, today's date and the admin's default place in view) — the approach Open WebUI and Perplexica use. A rule-based query is the fallback. Removes the hard-coded "Baku Absheron", "SINAM CEO" and "Azerbaijan news" queries; "bu gün sumqayıtda hava" now searches Sumqayıt.
 - **Reads the page, not the menu.** Pages are extracted with [Defuddle](https://github.com/kepano/defuddle) (main content as Markdown, tables kept), in a background worker so one search does not stall other users' replies. The model then gets the best-matching passages of each page (BM25), not the first 2 400 characters.

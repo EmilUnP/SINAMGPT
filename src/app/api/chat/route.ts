@@ -18,6 +18,7 @@ import {
   streamChat,
   type ChatMessage,
 } from "@/lib/llm";
+import { readModelStream, type ModelStreamResult } from "@/lib/llm/stream-turn";
 import {
   SSE_HEADERS,
   startSseKeepalive,
@@ -267,7 +268,6 @@ const streamAssistantReply = async (input: {
   let tokensPrompt: number | null = null;
   let evalDurationNs: number | null = null;
   let toolTrace: Message["tool_trace"] = null;
-  let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -285,64 +285,25 @@ const streamAssistantReply = async (input: {
       });
 
       const stopKeepalive = startSseKeepalive(controller, encoder);
-      const decoder = new TextDecoder();
-      let buffer = "";
       let replySources: KnowledgeCitation[] = knowledgeSources;
 
+      // Answer text goes out as "token", thinking as "reasoning", as it arrives.
+      const forward = {
+        onContent: (piece: string) => {
+          assistantText += piece;
+          markUsageToken(usageId, piece);
+          send("token", { content: piece });
+        },
+        onReasoning: (piece: string) => send("reasoning", { content: piece }),
+        signal: abort.signal,
+      };
+      const recordUsage = (turn: ModelStreamResult) => {
+        if (turn.evalCount != null) tokensEval = turn.evalCount;
+        if (turn.promptEvalCount != null) tokensPrompt = turn.promptEvalCount;
+        if (turn.evalDurationNs != null) evalDurationNs = turn.evalDurationNs;
+      };
       const pumpModelNdjson = async (body: ReadableStream<Uint8Array>) => {
-        upstreamReader = body.getReader();
-        buffer = "";
-        while (true) {
-          const { done, value } = await upstreamReader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            let chunk: {
-              message?: { content?: string };
-              done?: boolean;
-              error?: string;
-              eval_count?: number;
-              prompt_eval_count?: number;
-              eval_duration?: number;
-            };
-
-            try {
-              chunk = JSON.parse(trimmed);
-            } catch {
-              continue;
-            }
-
-            if (chunk.error) {
-              throw new Error(chunk.error);
-            }
-
-            const piece = chunk.message?.content ?? "";
-            if (piece) {
-              assistantText += piece;
-              markUsageToken(usageId, piece);
-              send("token", { content: piece });
-            }
-
-            if (chunk.done) {
-              if (typeof chunk.eval_count === "number") {
-                tokensEval = chunk.eval_count;
-              }
-              if (typeof chunk.prompt_eval_count === "number") {
-                tokensPrompt = chunk.prompt_eval_count;
-              }
-              if (typeof chunk.eval_duration === "number") {
-                evalDurationNs = chunk.eval_duration;
-              }
-            }
-          }
-        }
+        recordUsage(await readModelStream(body, forward));
       };
 
       try {
@@ -387,6 +348,28 @@ const streamAssistantReply = async (input: {
             // Readable sources in hand: stream the answer instead of asking
             // the model again (and generating the answer twice).
             stopAfterTools: hasEnoughSearchResults,
+            // The first turn is the answer for most messages, so the user sees
+            // it (and the model's thinking) as it is written. It still may
+            // call web_search; then its text is cleared and the search runs.
+            streamFirstTurn: async (messages, options) => {
+              const upstreamRes = await streamChat(model, messages, {
+                temperature: runtime.temperature,
+                numPredict: runtime.numPredict,
+                topP: runtime.topP,
+                signal: options.signal,
+                tools: options.tools,
+              });
+              const turn = await readModelStream(upstreamRes.body!, forward);
+              recordUsage(turn);
+              return turn;
+            },
+            onDiscardStreamed: () => {
+              if (!assistantText) return;
+              assistantText = "";
+              send("reset", {});
+            },
+            // Later turns only decide whether to call more tools; their text
+            // is never shown, so thinking there would only add wait.
             complete: (messages, options) =>
               completeToolChat(model, messages, {
                 temperature: runtime.temperature,
@@ -395,6 +378,7 @@ const streamAssistantReply = async (input: {
                 signal: options.signal,
                 timeoutMs: options.timeoutMs,
                 tools: options.tools,
+                think: false,
               }),
           });
           toolTrace = result.trace.length ? result.trace : null;
@@ -427,7 +411,7 @@ const streamAssistantReply = async (input: {
               },
             );
             await pumpModelNdjson(upstreamRes.body!);
-          } else if (result.content) {
+          } else if (result.content && !result.streamed) {
             assistantText = result.content;
             markUsageToken(usageId, assistantText);
             send("token", { content: assistantText });
@@ -514,14 +498,13 @@ const streamAssistantReply = async (input: {
         send("error", { error: errMsg });
         controller.close();
       } finally {
-        await upstreamReader?.cancel().catch(() => undefined);
         stopKeepalive();
         clientSignal?.removeEventListener("abort", onClientAbort);
       }
     },
     cancel() {
+      // Aborting also cancels the model stream inside readModelStream.
       abort.abort();
-      upstreamReader?.cancel().catch(() => undefined);
       finishUsage(usageId, {
         responseChars: assistantText.length,
         status: "aborted",

@@ -77,6 +77,19 @@ export type ToolLoopOptions = {
   callTimeoutMs?: number;
   /** Timeout for each non-streaming model completion in the loop. */
   completionTimeoutMs?: number;
+  /**
+   * Streams the first model turn to the user while it is generated. Without
+   * it, an ordinary answer with no tool call was produced off-screen and
+   * shown all at once at the end. Same contract as `complete`; the caller
+   * forwards text inside it.
+   */
+  streamFirstTurn?: ToolCompletion;
+  /**
+   * The streamed first turn turned out not to be the answer (it called a
+   * tool, or the search recovery overrode it): the caller should clear the
+   * text it already showed.
+   */
+  onDiscardStreamed?: () => void;
   userId?: string;
   onEvent?: (event: import("./sse").ToolSseEvent) => void;
   onTrace?: (trace: ToolTraceEntry[]) => void;
@@ -107,4 +120,6 @@ export type ToolLoopResult = {
   trace: ToolTraceEntry[];
   reachedCap: boolean;
   needsFinalStream: boolean;
+  /** `content` was already streamed to the user by `streamFirstTurn`. */
+  streamed?: boolean;
 };

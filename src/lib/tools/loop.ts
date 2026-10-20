@@ -135,13 +135,18 @@ export const runToolLoop = async (
         ? ((await options.recoverToolCalls?.(messages, "")) ?? [])
         : [];
 
+    let streamedTurn = false;
     if (!toolCalls.length) {
       const completionSignal = combinedSignal(
         options.signal,
         completionTimeoutMs,
       );
+      // Only the first turn is streamed: it is the answer for most messages.
+      // Later turns decide on more tools and are followed by a streamed final.
+      const turn = iteration === 0 ? options.streamFirstTurn : undefined;
+      streamedTurn = Boolean(turn);
       completion = await withAbort(
-        options.complete(messages, {
+        (turn ?? options.complete)(messages, {
           tools,
           signal: completionSignal,
           timeoutMs: completionTimeoutMs,
@@ -152,6 +157,7 @@ export const runToolLoop = async (
         completion.toolCalls.length > 0
           ? completion.toolCalls
           : ((await options.recoverToolCalls?.(messages, completion.content)) ?? []);
+      if (streamedTurn && toolCalls.length) options.onDiscardStreamed?.();
     }
 
     if (!toolCalls.length) {
@@ -172,6 +178,7 @@ export const runToolLoop = async (
         trace: boundToolTrace(trace),
         reachedCap: false,
         needsFinalStream: deferred,
+        streamed: streamedTurn && !deferred,
       };
     }
 

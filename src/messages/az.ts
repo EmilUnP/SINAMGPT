@@ -256,6 +256,10 @@ export const az: Messages = {
     jumpToLatest: "Ən sona keç",
     stepSearching: "Axtarılır",
     stepReading: "Oxunur",
+    thinking: "Düşünür…",
+    thoughtFor: "{n} san. düşündü",
+    thinkingShow: "Düşüncəni göstər",
+    thinkingHide: "Düşüncəni gizlət",
     sendMessage: "Mesaj göndər",
     footerHint:
       "Enter — göndər · Shift+Enter — yeni sətir · Limitsiz · Bu Server-də saxlanılır",
