@@ -46,14 +46,14 @@ export const ChatMessageContent = ({
         />
         {hasContent ? (
           <div className="mt-3">
-            <MarkdownMessage content={message.content} />
+            <MarkdownMessage content={message.content} sources={message.sources} />
           </div>
         ) : null}
       </div>
     );
   }
 
-  if (hasContent) return <MarkdownMessage content={message.content} />;
+  if (hasContent) return <MarkdownMessage content={message.content} sources={message.sources} />;
 
   return (
     <div className="flex items-center gap-1.5 text-[var(--text-muted)]">

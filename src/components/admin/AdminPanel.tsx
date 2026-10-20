@@ -132,6 +132,7 @@ type AppSettings = {
   webSearchMaxResults: number;
   webSearchDenyHosts: string;
   webSearchDailyQuota: number;
+  webSearchDefaultLocation: string;
 };
 
 type TabId =
@@ -237,6 +238,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     webSearchMaxResults: "5",
     webSearchDenyHosts: "",
     webSearchDailyQuota: "30",
+    webSearchDefaultLocation: "",
   });
   const [userQuery, setUserQuery] = useState("");
   const [userFilter, setUserFilter] = useState<"all" | "active" | "disabled" | "admin">(
@@ -360,6 +362,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           webSearchMaxResults: String(s.webSearchMaxResults ?? 5),
           webSearchDenyHosts: s.webSearchDenyHosts ?? "",
           webSearchDailyQuota: String(s.webSearchDailyQuota ?? 30),
+          webSearchDefaultLocation: s.webSearchDefaultLocation ?? "",
         });
       }
 
@@ -804,6 +807,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           webSearchMaxResults: Math.floor(webSearchMaxResults),
           webSearchDenyHosts: settingsDraft.webSearchDenyHosts,
           webSearchDailyQuota: Math.floor(webSearchDailyQuota),
+          webSearchDefaultLocation: settingsDraft.webSearchDefaultLocation.trim(),
         }),
       });
       const data = (await res.json()) as {
@@ -841,6 +845,7 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
           webSearchMaxResults: String(s.webSearchMaxResults ?? 5),
           webSearchDenyHosts: s.webSearchDenyHosts ?? "",
           webSearchDailyQuota: String(s.webSearchDailyQuota ?? 30),
+          webSearchDefaultLocation: s.webSearchDefaultLocation ?? "",
         });
       }
       setNotice(t("admin.settings.saved"));

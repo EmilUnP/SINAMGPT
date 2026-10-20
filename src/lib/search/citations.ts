@@ -1,67 +1,22 @@
 import type { ChatMessage } from "@/lib/llm";
 import type { KnowledgeCitation } from "@/lib/types";
-
-type SearchResultRow = {
-  title?: unknown;
-  url?: unknown;
-  snippet?: unknown;
-};
-
-const asCitation = (
-  url: string,
-  title: string,
-  seen: Set<string>,
-): KnowledgeCitation | null => {
-  if (!url.startsWith("http://") && !url.startsWith("https://")) return null;
-  if (seen.has(url)) return null;
-  seen.add(url);
-  return {
-    id: url,
-    title: title.trim() || url,
-    category: "web",
-    url,
-  };
-};
+import { collectWebSources } from "./sources";
 
 /** Collect public result URLs from web_search / web_fetch tool messages. */
 export const citationsFromSearchMessages = (
   messages: ChatMessage[],
-): KnowledgeCitation[] => {
-  const seen = new Set<string>();
-  const out: KnowledgeCitation[] = [];
-  for (const message of messages) {
-    if (message.role !== "tool" || !message.content) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(message.content) as unknown;
-    } catch {
-      continue;
-    }
-    if (!parsed || typeof parsed !== "object") continue;
-    const body = parsed as {
-      results?: unknown;
-      url?: unknown;
-      title?: unknown;
-    };
-    if (Array.isArray(body.results)) {
-      for (const row of body.results as SearchResultRow[]) {
-        const url = typeof row.url === "string" ? row.url : "";
-        const title = typeof row.title === "string" ? row.title : url;
-        const citation = asCitation(url, title, seen);
-        if (citation) out.push(citation);
-      }
-    }
-    if (typeof body.url === "string") {
-      const citation = asCitation(
-        body.url,
-        typeof body.title === "string" ? body.title : body.url,
-        seen,
-      );
-      if (citation) out.push(citation);
-    }
-  }
-  return out.slice(0, 8);
-};
+): KnowledgeCitation[] =>
+  collectWebSources(messages).map((source) => ({
+    id: source.url,
+    title: source.title,
+    category: "web",
+    url: source.url,
+    // The number the model was told to cite; the reply's "[n]" links use it.
+    ref: source.ref,
+  }));
+
+/** Room for a full knowledge pack plus every numbered web source. */
+const MAX_CITATIONS = 16;
 
 export const mergeCitations = (
   knowledge: KnowledgeCitation[],
@@ -75,5 +30,13 @@ export const mergeCitations = (
     if (item.url) seen.add(item.url);
     merged.push(item);
   }
-  return merged.slice(0, 12);
+  // Web sources go last, so trimming the tail would break "[n]" numbering:
+  // trim knowledge first when the list is too long.
+  const overflow = merged.length - MAX_CITATIONS;
+  if (overflow <= 0) return merged;
+  const webCount = merged.length - knowledge.length;
+  return [
+    ...knowledge.slice(0, Math.max(0, knowledge.length - overflow)),
+    ...merged.slice(knowledge.length, knowledge.length + webCount),
+  ].slice(0, MAX_CITATIONS);
 };

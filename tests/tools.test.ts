@@ -537,6 +537,45 @@ describe("multi-round agent behaviour", () => {
     ).toHaveLength(2);
   });
 
+  it("streams the answer right after a tool round that was good enough", async () => {
+    // Asking the model again after good results meant a full non-streamed
+    // answer that was thrown away and generated a second time.
+    const complete = vi.fn();
+    const handler = vi.fn(async () => ({ answer: "found it" }));
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool(handler)]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      // Async, like the planner-backed search recovery.
+      recoverToolCalls: async (_messages, content) =>
+        content ? [] : [{ id: "forced", name: "echo", arguments: { value: "hello" } }],
+      stopAfterTools: (messages) =>
+        messages.some((message) => message.role === "tool" && message.content.includes("found")),
+    });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+    expect(result.needsFinalStream).toBe(true);
+    expect(result.reachedCap).toBe(false);
+  });
+
+  it("keeps asking the model when the tool round was not good enough", async () => {
+    const complete = vi.fn().mockResolvedValueOnce({ content: "draft", toolCalls: [] });
+    const result = await runToolLoop({
+      messages: [{ role: "user", content: "weather" }],
+      registry: new ToolRegistry([makeTool()]),
+      complete,
+      inspectPayload: allow,
+      deferFinalStream: true,
+      recoverToolCalls: async (_messages, content) =>
+        content ? [] : [{ id: "forced", name: "echo", arguments: { value: "hello" } }],
+      stopAfterTools: () => false,
+    });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(result.needsFinalStream).toBe(true);
+  });
+
   it("still stops at maxIterations so a looping model cannot run forever", async () => {
     const complete = vi.fn(async () => ({
       content: "",

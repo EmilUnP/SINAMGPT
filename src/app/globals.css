@@ -429,6 +429,33 @@ html[data-theme="dark"] ::selection {
   border-bottom: 0;
 }
 
+/* "[2]" in a search answer: a small badge that opens web source 2. */
+.markdown-body a.markdown-cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.05rem;
+  margin: 0 0.1rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: 0.15em;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.markdown-body a.markdown-cite:hover,
+.markdown-body a.markdown-cite:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Long URLs and identifiers must not push the bubble sideways. */
 .markdown-body a,
 .markdown-body :not(pre) > code {

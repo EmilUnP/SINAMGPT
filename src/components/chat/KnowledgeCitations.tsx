@@ -72,7 +72,12 @@ export const selectVisibleSources = (
   hiddenCount: number;
 } => {
   const knowledge = sources.filter((source) => source.category !== "web");
-  const web = sources.filter((source) => source.category === "web");
+  // Numbered web sources keep citation order, so chip 2 is "[2]" in the text.
+  const web = sources
+    .filter((source) => source.category === "web")
+    .map((source, index) => ({ source, index }))
+    .sort((a, b) => (a.source.ref ?? a.index + 1000) - (b.source.ref ?? b.index + 1000))
+    .map(({ source }) => source);
   const ordered = [...knowledge, ...web];
 
   if (expanded || ordered.length <= limit) {
@@ -140,7 +145,8 @@ export const KnowledgeCitations = ({
                     backgroundColor: `hsl(${hueOf(domain)} 55% 45%)`,
                   }}
                 >
-                  {monogramOf(domain)}
+                  {/* The number the answer cites as "[n]"; older replies have none. */}
+                  {source.ref ?? monogramOf(domain)}
                 </span>
               ) : (
                 <BookMarked

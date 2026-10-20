@@ -1,15 +1,23 @@
 "use client";
 
-import { isValidElement, memo, useState, type ReactNode } from "react";
+import { isValidElement, memo, useMemo, useState, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTranslations } from "@/components/LocaleProvider";
 import { copyText } from "@/lib/ui";
+import type { KnowledgeCitation } from "@/lib/types";
+import {
+  CITATION_TITLE_PREFIX,
+  citationUrls,
+  linkCitations,
+} from "./citation-links";
 
 type MarkdownMessageProps = {
   content: string;
+  /** Web sources of this reply; "[n]" in the text links to source n. */
+  sources?: KnowledgeCitation[] | null;
 };
 
 const ALLOWED_PROTOCOLS = /^(https?:|mailto:)/i;
@@ -74,15 +82,35 @@ const CodeBlock = ({ children }: { children?: ReactNode }) => {
 };
 
 const components: Components = {
-  a: ({ href, children, ...props }) => {
+  a: ({ href, children, title, ...props }) => {
     const safe = href ? safeUrl(href) : "";
     if (!safe) {
       return <span {...props}>{children}</span>;
+    }
+    if (title?.startsWith(CITATION_TITLE_PREFIX) && /^https?:/i.test(safe)) {
+      let host = safe;
+      try {
+        host = new URL(safe).hostname.replace(/^www\./, "");
+      } catch {
+        // keep the URL as the tooltip
+      }
+      return (
+        <a
+          href={safe}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={host}
+          className="markdown-cite"
+        >
+          {children}
+        </a>
+      );
     }
     const external = /^https?:/i.test(safe);
     return (
       <a
         {...props}
+        title={title}
         href={safe}
         {...(external
           ? { target: "_blank", rel: "noopener noreferrer" }
@@ -106,7 +134,11 @@ const components: Components = {
   ),
 };
 
-export const MarkdownMessage = memo(({ content }: MarkdownMessageProps) => {
+export const MarkdownMessage = memo(({ content, sources }: MarkdownMessageProps) => {
+  const text = useMemo(
+    () => linkCitations(content, citationUrls(sources)),
+    [content, sources],
+  );
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -114,7 +146,7 @@ export const MarkdownMessage = memo(({ content }: MarkdownMessageProps) => {
         urlTransform={safeUrl}
         components={components}
       >
-        {content}
+        {text}
       </ReactMarkdown>
     </div>
   );

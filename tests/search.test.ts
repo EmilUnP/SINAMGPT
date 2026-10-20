@@ -179,6 +179,7 @@ describe("search parsers", () => {
         title: "Paris - Wikipedia",
         category: "web",
         url: "https://en.wikipedia.org/wiki/Paris",
+        ref: 1,
       },
     ]);
   });
@@ -202,38 +203,43 @@ describe("live search intent", () => {
     );
     expect(looksLikeLiveWebQuery("who is the CEO of SINAM")).toBe(true);
     expect(looksLikeLiveWebQuery("internetdə axtar")).toBe(true);
+    expect(looksLikeLiveWebQuery("dollar manat kursu nə qədərdir")).toBe(true);
     expect(looksLikeLiveWebQuery("how do I write a for loop")).toBe(false);
+    // "kurs" alone is a training course, not an exchange rate.
+    expect(looksLikeLiveWebQuery("python kursu üçün plan yaz")).toBe(false);
   });
 
-  it("recovers a web_search call when the model skipped tools", () => {
-    const calls = recoverLiveSearchCalls(
+  const queryOf = (calls: Awaited<ReturnType<typeof recoverLiveSearchCalls>>) =>
+    String((calls[0]?.arguments as { query?: string } | undefined)?.query ?? "");
+
+  it("recovers a web_search call when the model skipped tools", async () => {
+    const calls = await recoverLiveSearchCalls(
       [{ role: "user", content: "bu gün hava nece olacaq ?" }],
       "I cannot provide real-time weather.",
+      { defaultLocation: "Baku, Azerbaijan" },
     );
     expect(calls).toHaveLength(1);
     expect(calls[0]?.name).toBe("web_search");
     expect(calls[0]?.id).toBe("forced-web-search");
-    const query = String(
-      (calls[0]?.arguments as { query?: string } | undefined)?.query ?? "",
-    );
-    expect(query.toLowerCase()).toContain("baku");
-    expect(query.toLowerCase()).toContain("weather");
-    expect(query).not.toBe("bu gün hava nece olacaq ?");
+    const query = queryOf(calls).toLowerCase();
+    expect(query).toContain("baku");
+    expect(query).toContain("weather");
+    expect(query).not.toContain("nece");
     // Preempt: weather/person/leadership search before the model speaks
     expect(
-      recoverLiveSearchCalls(
+      await recoverLiveSearchCalls(
         [{ role: "user", content: "bu gün hava nece olacaq ?" }],
         "",
       ),
     ).toHaveLength(1);
     expect(
-      recoverLiveSearchCalls(
+      await recoverLiveSearchCalls(
         [{ role: "user", content: "sinam şirkətinin rəhbəri kimdi ?" }],
         "",
       ),
     ).toHaveLength(1);
     expect(
-      recoverLiveSearchCalls(
+      await recoverLiveSearchCalls(
         [
           { role: "user", content: "bu gün hava nece olacaq ?" },
           {
@@ -247,28 +253,37 @@ describe("live search intent", () => {
     ).toEqual([]);
   });
 
-  it("forces search for person questions and follow-up 'search online'", () => {
-    const person = recoverLiveSearchCalls(
+  it("searches the city the user named, not the default one", async () => {
+    // The old builder searched "Baku Absheron" for this.
+    const calls = await recoverLiveSearchCalls(
+      [{ role: "user", content: "bu gün sumqayitda hava necə olacaq" }],
+      "",
+      { defaultLocation: "Baku, Azerbaijan" },
+    );
+    const query = queryOf(calls).toLowerCase();
+    expect(query).toContain("sumqayit");
+    expect(query).not.toContain("baku");
+  });
+
+  it("forces search for person questions and follow-up 'search online'", async () => {
+    const person = await recoverLiveSearchCalls(
       [{ role: "user", content: "emil talıbov kimdir ?" }],
       "I don't know who that is in my database.",
     );
     expect(person).toHaveLength(1);
-    expect(
-      String((person[0]?.arguments as { query?: string }).query ?? "").toLowerCase(),
-    ).toContain("emil");
+    expect(queryOf(person).toLowerCase()).toContain("emil");
+    expect(queryOf(person).toLowerCase()).not.toContain("kimdir");
 
-    const about = recoverLiveSearchCalls(
+    const about = await recoverLiveSearchCalls(
       [{ role: "user", content: "Elçin Əliyev haqqında məlumat ver" }],
       "No specific information in my internal data.",
     );
     expect(about).toHaveLength(1);
-    const aboutQuery = String(
-      (about[0]?.arguments as { query?: string }).query ?? "",
-    );
-    expect(aboutQuery.toLowerCase()).toMatch(/el[çc]in/);
-    expect(aboutQuery.toLowerCase()).not.toContain("məlumat");
+    const aboutQuery = queryOf(about).toLowerCase();
+    expect(aboutQuery).toMatch(/el[çc]in/);
+    expect(aboutQuery).not.toContain("məlumat");
 
-    const followUp = recoverLiveSearchCalls(
+    const followUp = await recoverLiveSearchCalls(
       [
         { role: "user", content: "emil talıbov kimdir ?" },
         { role: "assistant", content: "I don't know him." },
@@ -277,31 +292,91 @@ describe("live search intent", () => {
       "I have tools but cannot search the internet myself.",
     );
     expect(followUp).toHaveLength(1);
-    const q = String(
-      (followUp[0]?.arguments as { query?: string }).query ?? "",
-    ).toLowerCase();
+    const q = queryOf(followUp).toLowerCase();
     expect(q).toContain("emil");
     expect(q).not.toContain("internetdə");
   });
 
-  it("recovers web search when leadership question got a weak knowledge dodge", () => {
-    const calls = recoverLiveSearchCalls(
+  it("recovers web search when leadership question got a weak knowledge dodge", async () => {
+    const calls = await recoverLiveSearchCalls(
       [{ role: "user", content: "sinam şirkətinin rəhbəri kimdi ?" }],
       "SINAM MMC-nin rəhbərliyi haqqında mənə verilən məlumatlarda spesifik rəhbərinin kim olduğu barədə",
     );
     expect(calls).toHaveLength(1);
-    expect(
-      String((calls[0]?.arguments as { query?: string }).query ?? ""),
-    ).toMatch(/SINAM/i);
+    expect(queryOf(calls)).toMatch(/SINAM/i);
   });
 
-  it("builds focused weather queries instead of raw user text", async () => {
+  it("plans queries with the model and passes them all to web_search", async () => {
+    const complete = vi.fn(async () =>
+      'Sure!\n```json\n{"queries": ["Sumqayit weather forecast 10 day", "Sumqayıt hava proqnozu"], "news": false}\n```',
+    );
+    const calls = await recoverLiveSearchCalls(
+      [
+        { role: "user", content: "bakıda hava necədir?" },
+        { role: "assistant", content: "Bakıda 21°C." },
+        { role: "user", content: "bəs sumqayıtda 1 həftəlik hava cədvəl kimi?" },
+      ],
+      "",
+      { complete, defaultLocation: "Baku, Azerbaijan" },
+    );
+    expect(complete).toHaveBeenCalledTimes(1);
+    // The planner sees today's date, the default place and the whole thread.
+    const prompt = (complete.mock.calls[0] as unknown as [Array<{ content: string }>])[0];
+    expect(prompt[0]!.content).toMatch(/Today is \w+day, \d+ \w+ 20\d\d/);
+    expect(prompt[0]!.content).toContain("Baku, Azerbaijan");
+    expect(prompt[1]!.content).toContain("bakıda hava");
+    expect(calls[0]?.arguments).toEqual({
+      query: "Sumqayit weather forecast 10 day",
+      queries: ["Sumqayıt hava proqnozu"],
+    });
+  });
+
+  it("searches any question when the user turned on Search the web", async () => {
+    const question = [{ role: "user" as const, content: "what is a kettlebell" }];
+    // Not a live-looking question: no forced search on its own.
+    expect(await recoverLiveSearchCalls(question, "")).toEqual([]);
+    const forced = await recoverLiveSearchCalls(question, "", { force: true });
+    expect(forced).toHaveLength(1);
+    expect(queryOf(forced).toLowerCase()).toContain("kettlebell");
+
+    // A bare "search online" with the toggle still searches the earlier topic.
+    const followUp = await recoverLiveSearchCalls(
+      [
+        { role: "user", content: "what is a kettlebell" },
+        { role: "assistant", content: "A cast-iron weight." },
+        { role: "user", content: "search online" },
+      ],
+      "",
+      { force: true },
+    );
+    expect(queryOf(followUp).toLowerCase()).toContain("kettlebell");
+
+    // Once a search ran in this turn, the toggle does not repeat it.
+    expect(
+      await recoverLiveSearchCalls(
+        [...question, { role: "tool", toolName: "web_search", content: "{}" }],
+        "done",
+        { force: true },
+      ),
+    ).toEqual([]);
+  });
+
+  it("falls back to the rule-based query when the planner fails", async () => {
+    const calls = await recoverLiveSearchCalls(
+      [{ role: "user", content: "Elçin Əliyev kimdir?" }],
+      "",
+      { complete: async () => { throw new Error("model busy"); } },
+    );
+    expect(queryOf(calls)).toMatch(/Elçin Əliyev/);
+  });
+
+  it("formats search results as one numbered SOURCES block", async () => {
     const {
       buildLiveSearchQuery,
       compactToolMessagesForModel,
       withPostSearchAnswerHint,
     } = await import("@/lib/search/intent");
-    expect(buildLiveSearchQuery("bu gün hava nece olacaq ?")).toMatch(
+    expect(buildLiveSearchQuery("bu gün hava nece olacaq ?", "Baku, Azerbaijan")).toMatch(
       /Baku.*weather/i,
     );
     const slim = compactToolMessagesForModel([
@@ -310,26 +385,47 @@ describe("live search intent", () => {
         toolName: "web_search",
         content: JSON.stringify({
           engine: "duckduckgo",
+          queries: ["q"],
           results: [
             {
-              title: "t",
-              url: "https://example.com",
+              id: 1,
+              title: "First",
+              url: "https://example.com/a",
               snippet: "s".repeat(500),
-              page_text: "p".repeat(5000),
+              content: "p".repeat(5000),
             },
+            { id: 2, title: "Second", url: "https://other.example/b", snippet: "short" },
+          ],
+        }),
+      },
+      {
+        role: "tool",
+        toolName: "web_search",
+        content: JSON.stringify({
+          engine: "duckduckgo",
+          queries: ["q2"],
+          // Same page as [1] through a tracking link, plus a new one.
+          results: [
+            { id: 1, title: "First again", url: "https://www.example.com/a?utm_source=x", snippet: "" },
+            { id: 2, title: "Third", url: "https://third.example/c", snippet: "third" },
           ],
         }),
       },
     ]);
-    const parsed = JSON.parse(slim[0]!.content) as {
-      results: Array<{ snippet: string; page_text: string }>;
-    };
-    expect(parsed.results[0]!.snippet.length).toBeLessThanOrEqual(320);
-    expect(parsed.results[0]!.page_text.length).toBeLessThanOrEqual(1800);
+    const block = slim[0]!.content;
+    expect(block).toMatch(/^SOURCES/);
+    expect(block).toContain("[1] First — example.com");
+    expect(block).toContain("[2] Second");
+    expect(block).toContain("[3] Third");
+    expect(block).not.toContain("First again");
+    expect(block).toContain("p".repeat(1800));
+    expect(block).not.toContain("p".repeat(1801));
+    expect(slim[1]!.content).toMatch(/merged into SOURCES/);
 
     const hinted = withPostSearchAnswerHint(slim);
     expect(hinted.at(-1)?.role).toBe("system");
     expect(hinted.at(-1)?.content).toMatch(/already ran/i);
+    expect(hinted.at(-1)?.content).toMatch(/\[1\]/);
   });
 });
 

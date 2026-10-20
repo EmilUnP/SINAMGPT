@@ -78,6 +78,7 @@ export type AppSettings = {
   webSearchMaxResults: number;
   webSearchDenyHosts: string;
   webSearchDailyQuota: number;
+  webSearchDefaultLocation: string;
 };
 
 const getSetting = (key: string): string | null => {
@@ -273,6 +274,7 @@ export const getAppSettings = (): AppSettings => {
     webSearchMaxResults: webSearch.maxResults,
     webSearchDenyHosts: denyHostsToText(webSearch.denyHosts),
     webSearchDailyQuota: webSearch.dailyQuota,
+    webSearchDefaultLocation: webSearch.defaultLocation,
   };
 };
 

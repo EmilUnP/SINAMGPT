@@ -297,7 +297,7 @@ export const adminEn = {
       "Off by default. On registers web_search and web_fetch for tool-capable models.",
     webSearchEngine: "Search engine",
     webSearchEngineHint:
-      "DuckDuckGo works with no extra server. SearXNG keeps queries on a machine you run.",
+      "DuckDuckGo works with no extra server. SearXNG (recommended for a team) asks Google, Bing and others at once from a machine you run; if it is down, search falls back to DuckDuckGo.",
     webSearchDuckDuckGo: "DuckDuckGo (default)",
     webSearchSearxng: "SearXNG",
     webSearchSearxngUrl: "SearXNG URL",
@@ -307,6 +307,9 @@ export const adminEn = {
     webSearchMaxResultsHint: "1–10 snippets returned to the model (default 5).",
     webSearchQuota: "Daily quota per user",
     webSearchQuotaHint: "0 = unlimited. Counts web_search calls, not page fetches.",
+    webSearchLocation: "Default location",
+    webSearchLocationHint:
+      "Used when a question needs a place and names none (“will it rain today?”). Leave empty to search without one.",
     webSearchDeny: "Blocked hosts",
     webSearchDenyHint:
       "One host per line. Matching result URLs are dropped before fetch.",
@@ -926,7 +929,7 @@ export const adminAz: AdminMessages = {
       "Standart olaraq sönülüdür. Açıldıqda alət qabiliyyətli modellər üçün web_search və web_fetch qeydə alınır.",
     webSearchEngine: "Axtarış mühərriki",
     webSearchEngineHint:
-      "DuckDuckGo əlavə server tələb etmir. SearXNG sorğuları sizin maşında saxlayır.",
+      "DuckDuckGo əlavə server tələb etmir. SearXNG (komanda üçün tövsiyə olunur) sizin maşından eyni anda Google, Bing və başqalarından axtarır; işləməsə, axtarış DuckDuckGo-ya keçir.",
     webSearchDuckDuckGo: "DuckDuckGo (standart)",
     webSearchSearxng: "SearXNG",
     webSearchSearxngUrl: "SearXNG URL",
@@ -936,6 +939,9 @@ export const adminAz: AdminMessages = {
     webSearchMaxResultsHint: "Modelə qaytarılan 1–10 snippet (standart 5).",
     webSearchQuota: "İstifadəçi üzrə gündəlik kvota",
     webSearchQuotaHint: "0 = limitsiz. web_search çağırışlarını sayır, səhifə yükləmələrini yox.",
+    webSearchLocation: "Standart məkan",
+    webSearchLocationHint:
+      "Sual yer tələb edəndə, amma yer adı çəkilməyəndə istifadə olunur (“bu gün yağış yağacaq?”). Boş qoysanız, yersiz axtarılır.",
     webSearchDeny: "Bloklanmış hostlar",
     webSearchDenyHint:
       "Hər sətirdə bir host. Uyğun nəticə URL-ləri yükləmədən əvvəl atılır.",
@@ -1550,7 +1556,7 @@ export const adminRu: AdminMessages = {
       "По умолчанию выключен. Включает web_search и web_fetch для моделей с поддержкой инструментов.",
     webSearchEngine: "Поисковый движок",
     webSearchEngineHint:
-      "DuckDuckGo не требует отдельного сервера. SearXNG оставляет запросы на вашей машине.",
+      "DuckDuckGo не требует отдельного сервера. SearXNG (рекомендуется для команды) ищет сразу в Google, Bing и других с вашей машины; если он недоступен, поиск переключается на DuckDuckGo.",
     webSearchDuckDuckGo: "DuckDuckGo (по умолчанию)",
     webSearchSearxng: "SearXNG",
     webSearchSearxngUrl: "URL SearXNG",
@@ -1560,6 +1566,9 @@ export const adminRu: AdminMessages = {
     webSearchMaxResultsHint: "1–10 сниппетов модели (по умолчанию 5).",
     webSearchQuota: "Дневная квота на пользователя",
     webSearchQuotaHint: "0 = без лимита. Считает вызовы web_search, не загрузки страниц.",
+    webSearchLocation: "Местоположение по умолчанию",
+    webSearchLocationHint:
+      "Используется, когда вопросу нужно место, а оно не указано («будет ли сегодня дождь?»). Оставьте пустым, чтобы искать без него.",
     webSearchDeny: "Заблокированные хосты",
     webSearchDenyHint:
       "По одному хосту в строке. Совпадающие URL отбрасываются до загрузки.",

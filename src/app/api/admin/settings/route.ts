@@ -50,6 +50,7 @@ const patchSchema = z.object({
   webSearchMaxResults: z.number().int().min(1).max(10).optional(),
   webSearchDenyHosts: z.string().max(4000).optional(),
   webSearchDailyQuota: z.number().int().min(0).max(500).optional(),
+  webSearchDefaultLocation: z.string().trim().max(80).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -120,7 +121,8 @@ export async function PATCH(request: Request) {
     d.webSearchSearxngUrl !== undefined ||
     d.webSearchMaxResults !== undefined ||
     d.webSearchDenyHosts !== undefined ||
-    d.webSearchDailyQuota !== undefined
+    d.webSearchDailyQuota !== undefined ||
+    d.webSearchDefaultLocation !== undefined
   ) {
     try {
       setAppWebSearchSettings({
@@ -139,6 +141,9 @@ export async function PATCH(request: Request) {
           : {}),
         ...(d.webSearchDailyQuota !== undefined
           ? { dailyQuota: d.webSearchDailyQuota }
+          : {}),
+        ...(d.webSearchDefaultLocation !== undefined
+          ? { defaultLocation: d.webSearchDefaultLocation }
           : {}),
       });
     } catch (error) {

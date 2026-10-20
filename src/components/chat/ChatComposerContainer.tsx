@@ -18,6 +18,9 @@ type ChatComposerContainerProps = {
   canUseMic: boolean;
   canAttachImages: boolean;
   canImportImages: boolean;
+  canSearchWeb: boolean;
+  webSearchOn: boolean;
+  onToggleWebSearch: () => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   fileInputRef: RefObject<HTMLInputElement | null>;
   toolSections: ComposerToolSection[];
@@ -35,6 +38,9 @@ export const ChatComposerContainer = ({
   canUseMic,
   canAttachImages,
   canImportImages,
+  canSearchWeb,
+  webSearchOn,
+  onToggleWebSearch,
   textareaRef,
   fileInputRef,
   toolSections,
@@ -76,6 +82,9 @@ export const ChatComposerContainer = ({
       canUseMic={canUseMic}
       canAttachImages={canAttachImages}
       canImportImages={canImportImages}
+      canSearchWeb={canSearchWeb}
+      webSearchOn={webSearchOn}
+      onToggleWebSearch={onToggleWebSearch}
       model={modelState.model}
       models={modelState.models}
       toolSections={toolSections}

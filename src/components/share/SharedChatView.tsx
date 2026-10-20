@@ -136,7 +136,7 @@ export const SharedChatView = ({
                           ) : null}
                         </div>
                       ) : (
-                        <MarkdownMessage content={message.content} />
+                        <MarkdownMessage content={message.content} sources={message.sources} />
                       )}
                     </div>
                     {!isUser ? (

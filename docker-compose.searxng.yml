@@ -1,0 +1,21 @@
+# Private SearXNG for internet search. See docs/SERVER-DEPLOYMENT.md#internet-search-searxng.
+#   SEARXNG_SECRET=$(openssl rand -hex 32) docker compose -f docker-compose.searxng.yml up -d
+# Then Admin -> Settings -> Internet search -> Engine: SearXNG, URL: http://127.0.0.1:8888
+name: sinamgpt-search
+services:
+  searxng:
+    # Upstream ships engine fixes almost daily (search sites change their HTML),
+    # so it recommends tracking latest. Pin with SEARXNG_VERSION if you must.
+    image: docker.io/searxng/searxng:${SEARXNG_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET (openssl rand -hex 32)}
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    # Loopback only: the app is the sole client; never expose this publicly.
+    ports:
+      - "127.0.0.1:8888:8080"
+
+volumes:
+  searxng-cache:

@@ -5,9 +5,24 @@ const DECODE: Record<string, string> = {
   quot: '"',
   apos: "'",
   nbsp: " ",
+  thinsp: " ",
+  ensp: " ",
+  emsp: " ",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  laquo: "«",
+  raquo: "»",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  deg: "°",
+  middot: "·",
+  copy: "©",
 };
 
-const decodeEntities = (value: string): string =>
+export const decodeEntities = (value: string): string =>
   value
     .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => {
       const code = Number.parseInt(hex, 16);

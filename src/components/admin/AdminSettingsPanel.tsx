@@ -44,6 +44,7 @@ export type SettingsDraft = {
   webSearchMaxResults: string;
   webSearchDenyHosts: string;
   webSearchDailyQuota: string;
+  webSearchDefaultLocation: string;
 };
 
 type ModelOption = {
@@ -507,6 +508,21 @@ export const AdminSettingsPanel = ({
                   onChange={(e) =>
                     patch({ webSearchDailyQuota: e.target.value })
                   }
+                  className={adminFieldClass}
+                />
+              </Field>
+              <Field
+                label={t("admin.settings.webSearchLocation")}
+                hint={t("admin.settings.webSearchLocationHint")}
+              >
+                <input
+                  type="text"
+                  maxLength={80}
+                  value={draft.webSearchDefaultLocation}
+                  onChange={(e) =>
+                    patch({ webSearchDefaultLocation: e.target.value })
+                  }
+                  placeholder="Baku, Azerbaijan"
                   className={adminFieldClass}
                 />
               </Field>

@@ -11,6 +11,8 @@ export type ChatAppProps = {
     fileUpload: boolean;
     fileImport: boolean;
     microphone: boolean;
+    /** Admin internet search is on (the composer may offer "Search the web"). */
+    webSearch?: boolean;
   };
 };
 

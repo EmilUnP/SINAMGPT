@@ -354,6 +354,9 @@ export const az: Messages = {
     visionRequired:
       "Bu model şəkilləri dəstəkləmir. Görüntü modelini seçin.",
     toolsMenu: "Alətlər",
+    webSearchToggle: "Axtarış",
+    webSearchOff: "Bu mesaj üçün internetdə axtar",
+    webSearchOn: "İnternet axtarışı açıqdır: mesajlar internetdə axtarılır. Bağlamaq üçün klikləyin.",
     closeTools: "Alətləri bağla",
     uploadImageHint: "JPEG, PNG, WebP və ya GIF",
     uploadImageNeedVision: "Şəkil oxuya bilən model seçin.",

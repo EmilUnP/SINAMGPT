@@ -38,6 +38,8 @@ export type KnowledgeCitation = {
   category: string;
   /** Public page URL for internet-search citations. */
   url?: string;
+  /** Web sources only: the number the answer cites as "[n]". */
+  ref?: number;
 };
 
 export type MessageAttachment = {

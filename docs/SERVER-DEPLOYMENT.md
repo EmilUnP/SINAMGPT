@@ -55,6 +55,27 @@ The build needs access to npm; font files are bundled locally. First vLLM startu
 
 Password recovery is administrator-assisted. **Admin > Users > Reset password** creates a one-hour, single-use link for either username or email accounts. Verify the user and deliver it privately. Creating another link invalidates the previous one. The public forgot-password endpoint cannot issue or reveal tokens. Automated verified-email recovery remains future work.
 
+## Internet search (SearXNG)
+
+Internet search works out of the box with DuckDuckGo. For a team, run the private [SearXNG](https://docs.searxng.org/) metasearch engine as well: it asks Google, Bing, DuckDuckGo, Brave, Wikipedia and others at once, gives better and fresher results, and is not throttled the way one shared DuckDuckGo address is. Queries go from your server to those engines; no third-party AI service sees them.
+
+1. Put a new random value in `.env.production`: `SEARXNG_SECRET=` (`openssl rand -hex 32`).
+2. Start it with the rest of the stack:
+
+   ```bash
+   docker compose --env-file .env.production -f docker-compose.production.yml --profile search up -d
+   ```
+
+3. In **Admin > Settings > Internet search**, set **Engine** to SearXNG and the URL to `http://searxng:8080`. Set **Default location** (default `Baku, Azerbaijan`) for questions like "will it rain today?" that name no place.
+
+If SearXNG is down or returns nothing, search falls back to DuckDuckGo automatically. Engine settings live in `deploy/searxng/settings.yml`; JSON output must stay enabled there.
+
+Without the full production stack (for example on the current host install), run SearXNG alone and use `http://127.0.0.1:8888` as the URL:
+
+```bash
+SEARXNG_SECRET=$(openssl rand -hex 32) docker compose -f docker-compose.searxng.yml up -d
+```
+
 ## Connect OpenCode and other products
 
 See [DEVELOPER-API.md](./DEVELOPER-API.md) for the copyable OpenCode configuration and protocol details. Developer > How to call also generates a configuration using the selected activated model. Use the **app's** `/api/v1` base URL and the user's **Developer key**, never the private vLLM key.

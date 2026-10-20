@@ -13,6 +13,7 @@ import {
   withSystemPrompt,
 } from "@/lib/guardrails";
 import {
+  completeChat,
   completeToolChat,
   streamChat,
   type ChatMessage,
@@ -56,6 +57,8 @@ import {
 import {
   citationsFromSearchMessages,
   compactToolMessagesForModel,
+  getWebSearchSettings,
+  hasEnoughSearchResults,
   mergeCitations,
   recoverLiveSearchCalls,
   SEARCH_TOOL_TIMEOUT_MS,
@@ -88,6 +91,8 @@ const schema = z
     editMessageId: z.string().min(1).optional(),
     rewrite: z.enum(["shorter", "formal", "continue"]).optional(),
     locale: z.enum(["en", "az", "ru"]).optional(),
+    /** "Search the web" toggle in the composer: search this turn regardless of intent. */
+    webSearch: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     const text = data.message?.trim() ?? "";
@@ -209,6 +214,7 @@ const streamAssistantReply = async (input: {
   userMessage: Message;
   history: ChatMessage[];
   uiLocale?: "en" | "az" | "ru";
+  forceSearch?: boolean;
   signal?: AbortSignal;
 }) => {
   const {
@@ -221,6 +227,7 @@ const streamAssistantReply = async (input: {
     userMessage,
     history,
     uiLocale,
+    forceSearch = false,
     signal: clientSignal,
   } = input;
 
@@ -361,7 +368,25 @@ const streamAssistantReply = async (input: {
             onTrace: (trace) => {
               attachUsageToolTrace(usageId, trace);
             },
-            recoverToolCalls: recoverLiveSearchCalls,
+            recoverToolCalls: (messages, content) =>
+              recoverLiveSearchCalls(messages, content, {
+                force: forceSearch,
+                defaultLocation: getWebSearchSettings().defaultLocation,
+                signal: abort.signal,
+                // Query planning: the chat model turns the conversation into
+                // 1–3 keyword queries before a forced search.
+                complete: (planMessages, options) =>
+                  completeChat(model, planMessages, {
+                    temperature: 0,
+                    numPredict: 160,
+                    think: false,
+                    signal: options.signal,
+                    timeoutMs: options.timeoutMs,
+                  }),
+              }),
+            // Readable sources in hand: stream the answer instead of asking
+            // the model again (and generating the answer twice).
+            stopAfterTools: hasEnoughSearchResults,
             complete: (messages, options) =>
               completeToolChat(model, messages, {
                 temperature: runtime.temperature,
@@ -377,6 +402,10 @@ const streamAssistantReply = async (input: {
             knowledgeSources,
             citationsFromSearchMessages(result.messages),
           );
+          if (replySources.length > knowledgeSources.length) {
+            // Before the answer streams, so its "[n]" links work while typing.
+            send("sources", { sources: replySources });
+          }
           if (result.needsFinalStream) {
             // After search, keep the final answer bounded — small models can
             // hang for the full route maxDuration (5 min) on huge page dumps.
@@ -549,6 +578,7 @@ export async function POST(request: Request) {
 
     const mode = parsed.data.mode;
     const uiLocale = parsed.data.locale;
+    const forceSearch = parsed.data.webSearch === true;
     const model = resolveModelName(parsed.data.model);
     const maxChars = getUserMaxCharsSetting();
     const db = getDb();
@@ -811,6 +841,7 @@ export async function POST(request: Request) {
         userMessage,
         history,
         uiLocale,
+        forceSearch,
         signal: request.signal,
       });
     }
@@ -957,6 +988,7 @@ export async function POST(request: Request) {
         userMessage,
         history,
         uiLocale,
+        forceSearch,
         signal: request.signal,
       });
     }
@@ -1122,6 +1154,7 @@ export async function POST(request: Request) {
       userMessage,
       history,
       uiLocale,
+      forceSearch,
       signal: request.signal,
     });
   } catch (error) {

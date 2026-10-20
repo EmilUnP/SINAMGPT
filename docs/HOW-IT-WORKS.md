@@ -75,7 +75,16 @@ You type a question (any language)  + optional image or short voice clip
 
 **If step 3 finds nothing (or the question is not about the company):** the model still answers like a normal assistant. It should not invent SINAM numbers or products that are not in the notes. The “From: …” line appears only when company notes were actually used.
 
-**If Admin turned on Internet search (signed-in only):** a live question (weather, news, today’s facts) looks up public pages before the model answers. Guests never get that step. Fetched pages are treated as data, not as instructions, and the app will not fetch your LAN or cloud-metadata addresses.
+**If Admin turned on Internet search (signed-in only):** a live question (weather, news, prices, a person, “search online”) looks up public pages before the model answers. Guests never get that step. Fetched pages are treated as data, not as instructions, and the app will not fetch your LAN or cloud-metadata addresses.
+
+To search for any question, turn on the globe **Search** button next to **+** in the chat box. It stays on for the next messages until you click it again. It shows only when Admin search is on and the selected model can call tools.
+
+How one search runs:
+
+1. **Plan.** The model reads the chat and writes 1–3 short search queries — for example `Sumqayit weather forecast` and `Sumqayıt hava proqnozu` for “bəs sumqayıtda?”. If the question needs a place and names none, the Admin **default location** is used.
+2. **Search.** All queries run at once (DuckDuckGo, or your SearXNG). Results that several queries agree on rank first; duplicates are merged.
+3. **Read.** The top four pages are opened in parallel. Menus, ads and footers are removed (Defuddle), and only the paragraphs that match the question are kept.
+4. **Answer.** The model gets numbered sources and writes the answer with `[1]`, `[2]` after each fact. Those numbers are links to the source chips under the reply.
 
 **Large models:** Llama 4 Scout (and bigger) can take **a minute or two** before the first word appears. Leave the chat open — the reply streams in when the model is ready.
 

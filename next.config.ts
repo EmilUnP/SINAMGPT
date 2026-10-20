@@ -4,7 +4,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingExcludes: { "/*": ["./data/**/*", "./.env*"] },
   outputFileTracingIncludes: { "/*": ["./node_modules/better-sqlite3/build/Release/*.node"] },
-  serverExternalPackages: ["better-sqlite3"],
+  // defuddle/linkedom load at runtime (and inside the page-reader worker),
+  // so they must stay real node_modules packages in the standalone output.
+  serverExternalPackages: ["better-sqlite3", "defuddle", "linkedom"],
   async headers() {
     return [
       {

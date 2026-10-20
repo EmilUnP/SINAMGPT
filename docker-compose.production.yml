@@ -6,6 +6,21 @@ services:
       file: docker-compose.vllm.yml
       service: vllm
 
+  # Optional private metasearch for internet search. Opt in with
+  # `--profile search` and SEARXNG_SECRET; then Admin -> Settings -> Engine: SearXNG.
+  # Inline rather than `extends`, so installs without the secret still parse.
+  searxng:
+    profiles: ["search"]
+    image: docker.io/searxng/searxng:${SEARXNG_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    expose:
+      - "8080"
+
   app:
     build: .
     restart: unless-stopped
@@ -24,6 +39,8 @@ services:
       LLM_MAX_QUEUE: ${LLM_MAX_QUEUE:-64}
       LLM_QUEUE_TIMEOUT_MS: ${LLM_QUEUE_TIMEOUT_MS:-30000}
       LLM_REQUEST_TIMEOUT_MS: ${LLM_REQUEST_TIMEOUT_MS:-180000}
+      # Pre-fills the SearXNG URL in Admin; DuckDuckGo stays the engine until you switch.
+      SEARXNG_BASE_URL: http://searxng:8080
     volumes:
       - app-data:/app/data
     expose:
@@ -53,6 +70,7 @@ services:
         condition: service_healthy
 
 volumes:
+  searxng-cache:
   app-data:
   huggingface-cache:
   vllm-cache:

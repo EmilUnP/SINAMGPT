@@ -87,7 +87,13 @@ export type ToolLoopOptions = {
   recoverToolCalls?: (
     messages: ChatMessage[],
     content: string,
-  ) => LlmToolCall[];
+  ) => LlmToolCall[] | Promise<LlmToolCall[]>;
+  /**
+   * Checked after each tool round. True ends the loop so the caller streams
+   * the answer now, instead of asking the model (non-streamed) whether it
+   * wants more tools and then generating the answer a second time.
+   */
+  stopAfterTools?: (messages: ChatMessage[]) => boolean;
   /**
    * After tools run, skip the non-streaming final completion so the caller
    * can streamChat the answer.

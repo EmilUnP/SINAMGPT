@@ -132,7 +132,7 @@ export const runToolLoop = async (
     // Preempt high-confidence search intents; otherwise ask the model first.
     let toolCalls: LlmToolCall[] =
       iteration === 0
-        ? (options.recoverToolCalls?.(messages, "") ?? [])
+        ? ((await options.recoverToolCalls?.(messages, "")) ?? [])
         : [];
 
     if (!toolCalls.length) {
@@ -151,7 +151,7 @@ export const runToolLoop = async (
       toolCalls =
         completion.toolCalls.length > 0
           ? completion.toolCalls
-          : (options.recoverToolCalls?.(messages, completion.content) ?? []);
+          : ((await options.recoverToolCalls?.(messages, completion.content)) ?? []);
     }
 
     if (!toolCalls.length) {
@@ -336,6 +336,16 @@ export const runToolLoop = async (
         activitySites(call.name, output),
       );
       messages.push(toolResultMessage(call, output));
+    }
+
+    if (options.deferFinalStream && options.stopAfterTools?.(messages)) {
+      return {
+        content: "",
+        messages,
+        trace: boundToolTrace(trace),
+        reachedCap: false,
+        needsFinalStream: true,
+      };
     }
   }
 

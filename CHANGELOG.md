@@ -13,7 +13,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Provider tool calling requires server configuration confirmation. Native model ids, `/v1` URLs and image/audio inputs use the OpenAI-compatible protocol.
 - OpenCode works with default settings: the Developer API prompt budget defaults to 100,000 characters (installs still on the old 16,000/32,000 default are raised once; other admin values are kept), the production vLLM context is 32,768 tokens (standalone example 16,384), and the generated OpenCode config defaults to 32,768 context / 4,096 output.
 
+### Changed — smarter internet search
+- **Query planning.** Before a forced search, the chat model turns the conversation into 1–3 short keyword queries (follow-ups resolved, one English plus one local-language query, today's date and the admin's default place in view) — the approach Open WebUI and Perplexica use. A rule-based query is the fallback. Removes the hard-coded "Baku Absheron", "SINAM CEO" and "Azerbaijan news" queries; "bu gün sumqayıtda hava" now searches Sumqayıt.
+- **Reads the page, not the menu.** Pages are extracted with [Defuddle](https://github.com/kepano/defuddle) (main content as Markdown, tables kept), in a background worker so one search does not stall other users' replies. The model then gets the best-matching passages of each page (BM25), not the first 2 400 characters.
+- **More and better sources.** Up to three queries run in parallel and are merged with Reciprocal Rank Fusion; duplicate URLs (`www.`, `utm_…`) collapse. Four pages are read in parallel with a per-page timeout, and failed pages are replaced by the next result. Browser-like request headers and charset detection (windows-1251) let more sites through.
+- **Numbered citations.** Results reach the model as one numbered SOURCES block; answers cite `[1]`, `[2]`, which render as small links to the matching source chip (also while the answer streams).
+- **Faster answers.** When the first search already read good pages, the answer streams immediately instead of the model writing a hidden answer that was thrown away and regenerated.
+- **Search button in the chat box.** When Admin search is on and the model can call tools, a globe **Search** toggle next to the + menu makes every message search the web (until turned off), even when the question does not look like a live one.
+- **Admin → Internet search → Default location** (default `Baku, Azerbaijan`) for questions that need a place and name none. SearXNG falls back to DuckDuckGo when it fails; news questions use SearXNG's news category.
+
 ### Fixed
+- DuckDuckGo snippets were always empty (the parser looked 1 200 characters past each link; the snippet sits further down). A throttled HTML page now falls back to DuckDuckGo lite.
 - Production builds no longer copy the local `data/` folder (database, backups) into the standalone output.
 - Production builds use bundled Fraunces/Manrope files instead of requiring a Google Fonts download; original subsets, fallback metrics and font licenses are retained.
 - Developer Chat Completions accepts function tools and tool-result history, preserves streamed tool fragments and finish reasons, and assembles non-streamed parallel calls. Context errors retain HTTP 400 before SSE starts; tool schemas count toward the prompt budget.
@@ -22,6 +32,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Streaming usage is requested and recorded after the final usage event. Truncated streams report errors and cancellation closes the upstream request.
 
 ### Added
+- Optional private SearXNG: `docker-compose.searxng.yml`, `deploy/searxng/settings.yml`, and a `search` profile in the production stack. See `docs/SERVER-DEPLOYMENT.md#internet-search-searxng`.
 - Step-by-step Linux upgrade guide from a running Ollama install to vLLM, with an advance model download, short switch window, checklist and rollback. See `docs/UPGRADE-FROM-OLLAMA.md`.
 - One-server production Docker setup with HTTPS, persistent app data, private vLLM and an initial single-5090 profile. See `docs/SERVER-DEPLOYMENT.md`.
 - OpenCode v1 configuration in Developer > How to call, configurable coding prompt budgets up to 1,000,000 characters, protocol tests and `npm run test:api` for live tool-cycle acceptance.

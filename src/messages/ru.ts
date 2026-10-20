@@ -353,6 +353,9 @@ export const ru: Messages = {
     visionRequired:
       "Эта модель не поддерживает изображения. Выберите модель с изображениями.",
     toolsMenu: "Инструменты",
+    webSearchToggle: "Поиск",
+    webSearchOff: "Искать в интернете для этого сообщения",
+    webSearchOn: "Поиск в интернете включён: сообщения ищутся в интернете. Нажмите, чтобы выключить.",
     closeTools: "Закрыть инструменты",
     uploadImageHint: "JPEG, PNG, WebP или GIF",
     uploadImageNeedVision: "Выберите модель, которая читает изображения.",

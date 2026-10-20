@@ -1,4 +1,4 @@
-import { SendHorizonal, Square } from "lucide-react";
+import { Globe, SendHorizonal, Square } from "lucide-react";
 import type {
   ClipboardEvent,
   DragEvent,
@@ -40,6 +40,10 @@ type ChatComposerProps = {
   canUseMic: boolean;
   canAttachImages: boolean;
   canImportImages: boolean;
+  /** Admin search is on and the selected model can call tools. */
+  canSearchWeb: boolean;
+  webSearchOn: boolean;
+  onToggleWebSearch: () => void;
   model: string;
   models: ModelOption[];
   toolSections: ComposerToolSection[];
@@ -83,6 +87,9 @@ export const ChatComposer = ({
   canUseMic,
   canAttachImages,
   canImportImages,
+  canSearchWeb,
+  webSearchOn,
+  onToggleWebSearch,
   model,
   models,
   toolSections,
@@ -180,6 +187,27 @@ export const ChatComposer = ({
             closeLabel={t("chat.closeTools")}
           />
         </div>
+        {canSearchWeb ? (
+          <div className="order-2 shrink-0 sm:order-1">
+            <button
+              type="button"
+              onClick={onToggleWebSearch}
+              disabled={isReady && isSending}
+              aria-pressed={webSearchOn}
+              title={webSearchOn ? t("chat.webSearchOn") : t("chat.webSearchOff")}
+              aria-label={webSearchOn ? t("chat.webSearchOn") : t("chat.webSearchOff")}
+              className={`touch-target mb-0.5 inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition disabled:opacity-40 sm:h-10 ${
+                webSearchOn
+                  ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+                  : "text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+              }`}
+            >
+              <Globe size={16} aria-hidden="true" />
+              {/* Icon only on phones; the composer row is already full there. */}
+              <span className="hidden sm:inline">{t("chat.webSearchToggle")}</span>
+            </button>
+          </div>
+        ) : null}
         <textarea
           ref={textareaRef}
           value={input}

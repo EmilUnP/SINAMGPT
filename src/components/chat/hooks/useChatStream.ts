@@ -16,6 +16,8 @@ type UseChatStreamOptions = {
   pendingImages: PendingImage[];
   pendingAudio: PendingAudio | null;
   isRecording: boolean;
+  /** "Search the web" is on: the server searches whatever the message says. */
+  webSearch: boolean;
   lastUserMessage?: UiMessage;
   lastAssistantMessage?: UiMessage;
   editingId: string | null;
@@ -46,6 +48,7 @@ export const useChatStream = ({
   pendingImages,
   pendingAudio,
   isRecording,
+  webSearch,
   lastUserMessage,
   lastAssistantMessage,
   editingId,
@@ -96,7 +99,11 @@ export const useChatStream = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ ...options.body, locale }),
+        body: JSON.stringify({
+          ...options.body,
+          locale,
+          ...(webSearch ? { webSearch: true } : {}),
+        }),
       });
       if (!res.ok || !res.body) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -237,6 +244,16 @@ export const useChatStream = ({
                         ),
                       }
                     : message,
+                ),
+              );
+            }
+          }
+          if (parsed.event === "sources") {
+            const { sources } = parsed.data as { sources?: KnowledgeCitation[] | null };
+            if (sources?.length) {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === tempAssistantId ? { ...message, sources } : message,
                 ),
               );
             }

@@ -60,5 +60,6 @@ export const useChatModels = (t: Translate) => {
     supportsVision: Boolean(selected?.vision),
     supportsAudio: Boolean(selected?.audio),
     supportsTts: Boolean(selected?.tts),
+    supportsTools: Boolean(selected?.tools),
   };
 };

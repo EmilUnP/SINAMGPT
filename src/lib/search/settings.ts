@@ -13,6 +13,11 @@ export type WebSearchSettings = {
   fetchMaxChars: number;
   denyHosts: string[];
   dailyQuota: number;
+  /**
+   * Place assumed when a question needs one and names none ("will it rain
+   * today?"). Replaces a hard-coded Baku. Empty means "ask the web as is".
+   */
+  defaultLocation: string;
 };
 
 export const DEFAULT_WEB_SEARCH_SETTINGS: WebSearchSettings = {
@@ -23,6 +28,7 @@ export const DEFAULT_WEB_SEARCH_SETTINGS: WebSearchSettings = {
   fetchMaxChars: 12_000,
   denyHosts: [],
   dailyQuota: 30,
+  defaultLocation: "Baku, Azerbaijan",
 };
 
 const SETTINGS_TTL_MS = 2_000;
@@ -50,6 +56,11 @@ const parseDenyHosts = (value: unknown): string[] => {
   }
   return out;
 };
+
+const parseLocation = (value: unknown): string =>
+  typeof value === "string"
+    ? value.replace(/[\u0000-\u001f<>{}]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80)
+    : DEFAULT_WEB_SEARCH_SETTINGS.defaultLocation;
 
 const clampInt = (value: unknown, fallback: number, min: number, max: number): number => {
   const n = typeof value === "number" ? value : Number(value);
@@ -86,6 +97,8 @@ export const parseWebSearchSettings = (
     fetchMaxChars: clampInt(parsed.fetchMaxChars, 12_000, 1_000, 12_000),
     denyHosts: parseDenyHosts(parsed.denyHosts),
     dailyQuota: clampInt(parsed.dailyQuota, 30, 0, 500),
+    // Installs saved before this field existed keep the old Baku behaviour.
+    defaultLocation: parseLocation(parsed.defaultLocation),
   };
 };
 
@@ -120,6 +133,7 @@ export type WebSearchSettingsPatch = {
   fetchMaxChars?: number;
   denyHosts?: string[] | string;
   dailyQuota?: number;
+  defaultLocation?: string;
 };
 
 export const setWebSearchSettings = (
@@ -135,6 +149,7 @@ export const setWebSearchSettings = (
     fetchMaxChars: patch.fetchMaxChars ?? current.fetchMaxChars,
     denyHosts: patch.denyHosts ?? current.denyHosts,
     dailyQuota: patch.dailyQuota ?? current.dailyQuota,
+    defaultLocation: patch.defaultLocation ?? current.defaultLocation,
   };
   const next = parseWebSearchSettings(nextInput);
   if (next.engine === "searxng") {

@@ -47,6 +47,8 @@ export const ChatApp = ({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  // Stays on for following messages until turned off, like ChatGPT's Search.
+  const [webSearchOn, setWebSearchOn] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -75,6 +77,9 @@ export const ChatApp = ({
   const canUseMic =
     modelState.supportsAudio && features.microphone === true;
   const canListen = modelState.supportsAudio || modelState.supportsTts;
+  // Search runs through tool calling, so a model without it cannot search.
+  const canSearchWeb =
+    features.webSearch === true && modelState.supportsTools;
   const attachments = useAttachmentsAndMic({
     canAttachImages,
     canImportImages,
@@ -92,6 +97,7 @@ export const ChatApp = ({
     pendingImages: attachments.pendingImages,
     pendingAudio: attachments.pendingAudio,
     isRecording: attachments.isRecording,
+    webSearch: canSearchWeb && webSearchOn,
     lastUserMessage: conversations.lastUserMessage,
     lastAssistantMessage: conversations.lastAssistantMessage,
     editingId: conversations.editingId,
@@ -330,6 +336,9 @@ export const ChatApp = ({
           canUseMic={canUseMic}
           canAttachImages={canAttachImages}
           canImportImages={canImportImages}
+          canSearchWeb={canSearchWeb}
+          webSearchOn={webSearchOn}
+          onToggleWebSearch={() => setWebSearchOn((on) => !on)}
           toolSections={composerToolSections}
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}

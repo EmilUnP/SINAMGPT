@@ -1,0 +1,26 @@
+# SearXNG for SINAMGPT internet search. Docs: https://docs.searxng.org/admin/settings/
+# Private instance: only the app talks to it, so the bot limiter and the
+# image proxy stay off. Keep the default engine list (Google, Bing, DuckDuckGo,
+# Brave, Wikipedia, ...) — asking several engines at once is the point.
+use_default_settings: true
+
+server:
+  # Overridden by the SEARXNG_SECRET environment variable; SearXNG refuses to
+  # start while this placeholder is the real value.
+  secret_key: "set-SEARXNG_SECRET"
+  limiter: false
+  image_proxy: false
+  public_instance: false
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  # The app reads results as JSON. Without "json" here SearXNG answers 403.
+  formats:
+    - html
+    - json
+
+outgoing:
+  # A slow engine must not hold up the whole search.
+  request_timeout: 3.0
+  max_request_timeout: 6.0

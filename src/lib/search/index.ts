@@ -2,10 +2,10 @@ export {
   citationsFromSearchMessages,
   mergeCitations,
 } from "./citations";
-export { parseDuckDuckGoHtml } from "./duckduckgo";
+export { parseDuckDuckGoHtml, parseDuckDuckGoLite } from "./duckduckgo";
 export { htmlToText, wrapWebPage } from "./extract";
 export { takeSearchQuota } from "./quota";
-export { isJunkHost, rankSearchHits } from "./rank";
+export { isJunkHost, normalizeResultUrl, rankSearchHits } from "./rank";
 export { parseSearxngJson } from "./searxng";
 export {
   DEFAULT_WEB_SEARCH_SETTINGS,
@@ -23,6 +23,21 @@ export {
   normalizeSearchProviderUrl,
   PublicUrlError,
 } from "./ssrf";
-export { recoverLiveSearchCalls, looksLikeLiveWebQuery, buildLiveSearchQuery, compactToolMessagesForModel, withPostSearchAnswerHint, SEARCH_SYSTEM_RULES, POST_SEARCH_ANSWER_RULES } from "./intent";
+export {
+  buildLiveSearchQuery,
+  buildPostSearchAnswerRules,
+  buildSearchSystemRules,
+  compactToolMessagesForModel,
+  hasEnoughSearchResults,
+  looksLikeLiveWebQuery,
+  POST_SEARCH_ANSWER_RULES,
+  recoverLiveSearchCalls,
+  SEARCH_SYSTEM_RULES,
+  withPostSearchAnswerHint,
+} from "./intent";
+export { parsePlannerReply, planSearchQueries } from "./planner";
+export { selectPassages, splitIntoBlocks } from "./passages";
+export { cleanMarkdown, readHtmlPage } from "./readable";
+export { collectWebSources } from "./sources";
 export { createSearchTools, SEARCH_TOOL_TIMEOUT_MS } from "./tools";
 export { fetchPublicPage } from "./fetch-page";
