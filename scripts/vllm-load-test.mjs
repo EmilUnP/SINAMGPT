@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Run against a configured test deployment. Creates no users or provider settings.
-import { loadEnvConfig } from "@next/env";
+// @next/env is CommonJS; Node 22 cannot import its names directly.
+import nextEnv from "@next/env";
+const { loadEnvConfig } = nextEnv;
 import { performance } from "node:perf_hooks";
 loadEnvConfig(process.cwd());
 

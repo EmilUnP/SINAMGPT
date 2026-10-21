@@ -378,6 +378,15 @@ const openaiUsage = (result: {
   };
 };
 
+/**
+ * vLLM ends a forced tool call (a named or "required" tool_choice) with
+ * finish_reason "stop". OpenAI reports "tool_calls" whenever the model called a
+ * tool, and coding agents use that label to decide whether to run tools, so a
+ * forced call labelled "stop" can be dropped as a plain empty answer.
+ */
+const toolFinishReason = (reason: string, calledTools: boolean): string =>
+  calledTools && reason === "stop" ? "tool_calls" : reason;
+
 const consumeNdjson = async (
   upstreamRes: Response,
   onPiece?: (piece: string) => void,
@@ -436,7 +445,16 @@ const consumeNdjson = async (
     reader.releaseLock();
   }
 
-  return { content, reasoningContent, toolCalls: calls.result(), finishReason, tokensEval, tokensPrompt, evalDurationNs };
+  const toolCalls = calls.result();
+  return {
+    content,
+    reasoningContent,
+    toolCalls,
+    finishReason: toolFinishReason(finishReason, toolCalls.length > 0),
+    tokensEval,
+    tokensPrompt,
+    evalDurationNs,
+  };
 };
 
 const clampRuntime = (input: GatewayGenerateInput) => {
@@ -677,6 +695,7 @@ export const runGatewayGenerate = async (
   let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let sentRole = false;
   let finishReason = "stop";
+  let sawToolCalls = false;
   let streamCancelled = false;
 
   // Obtain upstream headers before committing a 200 SSE response. Coding clients
@@ -752,6 +771,7 @@ export const runGatewayGenerate = async (
             if (chunk.error) throw new Error(chunk.error);
             if (chunk.finish_reason) finishReason = chunk.finish_reason;
             const toolCalls = chunk.message?.tool_calls;
+            if (toolCalls?.length) sawToolCalls = true;
             const reasoning = chunk.message?.reasoning_content;
             if (format === "openai" && (toolCalls?.length || reasoning)) {
               const toolPiece = (toolCalls ?? []).map((call) => call.function?.arguments ?? "").join("");
@@ -815,7 +835,7 @@ export const runGatewayGenerate = async (
             object: "chat.completion.chunk",
             created,
             model: input.model,
-            choices: [{ index: 0, delta: {}, finish_reason: finishReason }],
+            choices: [{ index: 0, delta: {}, finish_reason: toolFinishReason(finishReason, sawToolCalls) }],
           });
           if (input.includeUsage) sendOpenAi({
             id: completionId, object: "chat.completion.chunk", created, model: input.model,

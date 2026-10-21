@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Live acceptance test: uses an existing user's key, creates no users/settings,
 // and simulates a harmless client tool. It never runs shell or filesystem tools.
-import { loadEnvConfig } from "@next/env";
+// @next/env is CommonJS; Node 22 cannot import its names directly.
+import nextEnv from "@next/env";
+const { loadEnvConfig } = nextEnv;
 import { randomBytes } from "node:crypto";
 loadEnvConfig(process.cwd());
 

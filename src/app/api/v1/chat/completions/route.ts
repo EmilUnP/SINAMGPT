@@ -42,7 +42,7 @@ const flattenMessage = (
   return {
     role: row.role === "developer" ? "system" : row.role,
     content: text, ...(images.length ? { images } : {}),
-    ...(row.tool_calls ? { toolCalls: row.tool_calls.map((call) => ({
+    ...(row.tool_calls?.length ? { toolCalls: row.tool_calls.map((call) => ({
       id: call.id, name: call.function.name, arguments: call.function.arguments,
     })) } : {}),
     ...(row.tool_call_id ? { toolCallId: row.tool_call_id } : {}),
@@ -67,11 +67,15 @@ export async function POST(request: Request) {
     const raw = await request.json();
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
+      // Name the field: "messages.3.tool_calls: Too small" is debuggable from a
+      // client's error box; "Too small" alone is not.
+      const first = parsed.error.issues[0];
+      const where = first?.path.length ? `${first.path.join(".")}: ` : "";
       return rejectGateway(
         request,
         gate.auth,
         gate.ip,
-        parsed.error.issues[0]?.message ?? "Invalid input",
+        first ? `${where}${first.message}` : "Invalid input",
         400,
         "openai",
       );
@@ -160,7 +164,7 @@ export async function POST(request: Request) {
       tools: parsedBody.tools,
       toolChoice: parsedBody.tool_choice,
       parallelToolCalls: parsedBody.parallel_tool_calls,
-      stop: parsedBody.stop ?? undefined,
+      stop: Array.isArray(parsedBody.stop) && !parsedBody.stop.length ? undefined : (parsedBody.stop ?? undefined),
       seed: parsedBody.seed,
       presencePenalty: parsedBody.presence_penalty,
       frequencyPenalty: parsedBody.frequency_penalty,

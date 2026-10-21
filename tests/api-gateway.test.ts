@@ -91,6 +91,55 @@ describe("developer gateway: real key, routing, adapter and usage with a simulat
     expect(text.endsWith("data: [DONE]\n\n")).toBe(true);
   });
 
+  it.each([false, true])("labels a forced tool call tool_calls even when vLLM says stop (stream=%s)", async (stream) => {
+    // Real vLLM ends a named or "required" tool_choice with finish_reason "stop";
+    // agents that read the label would treat the call as an empty answer.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sse(
+      { choices: [{ delta: { tool_calls: [{ index: 0, id: "call_9", type: "function", function: { name: "read_file", arguments: '{"path":"a"}' } }] } }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    )));
+    const response = await POST(request({ tools, stream, tool_choice: { type: "function", function: { name: "read_file" } } }));
+    if (stream) {
+      const chunks = (await response.text()).split("\n").filter((line) => line.startsWith("data: {")).map((line) => JSON.parse(line.slice(6)));
+      expect(chunks.at(-1).choices[0].finish_reason).toBe("tool_calls");
+    } else {
+      expect((await response.json()).choices[0].finish_reason).toBe("tool_calls");
+    }
+  });
+
+  it("accepts the empty lists Cursor's agent sends with a tool result", async () => {
+    // Second step of a Cursor tool round trip: content [] and tool_calls [] on
+    // assistant turns, stop []. "Too small: expected array" used to reject it.
+    const upstream = vi.fn().mockResolvedValue(sse({ choices: [{ delta: { content: "The plan has 3 steps." }, finish_reason: "stop" }] }));
+    vi.stubGlobal("fetch", upstream);
+    const call = { id: "call_c1", type: "function", function: { name: "read_file", arguments: '{"path":"plan.md"}' } };
+    const response = await POST(request({ tools, stop: [], messages: [
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "Hello!", tool_calls: [] },
+      { role: "user", content: [{ type: "text", text: "Open plan.md" }] },
+      { role: "assistant", content: [], tool_calls: [call] },
+      { role: "tool", tool_call_id: "call_c1", content: [{ type: "text", text: "1. a\n2. b\n3. c" }] },
+    ] }));
+    expect(response.status).toBe(200);
+    expect((await response.json()).choices[0].message.content).toBe("The plan has 3 steps.");
+    const forwarded = JSON.parse(upstream.mock.calls[0][1].body);
+    expect(forwarded.stop).toBeUndefined();
+    expect(forwarded.messages[1].tool_calls).toBeUndefined();
+    expect(forwarded.messages[3].tool_calls[0].id).toBe("call_c1");
+    expect(forwarded.messages[4]).toMatchObject({ role: "tool", tool_call_id: "call_c1", content: "1. a\n2. b\n3. c" });
+  });
+
+  it("names the field when it rejects a request", async () => {
+    const response = await POST(request({ messages: [{ role: "user", content: "hi" }], max_tokens: 0 }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toMatch(/^max_tokens: /);
+  });
+
+  it("keeps stop for a plain answer without tool calls", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sse({ choices: [{ delta: { content: "Hello" }, finish_reason: "stop" }] })));
+    expect((await (await POST(request({ tools }))).json()).choices[0].finish_reason).toBe("stop");
+  });
+
   it("preserves length finish reasons and structured output options", async () => {
     const upstream = vi.fn().mockResolvedValue(sse({ choices: [{ delta: { content: "partial" }, finish_reason: "length" }] }));
     vi.stubGlobal("fetch", upstream);
