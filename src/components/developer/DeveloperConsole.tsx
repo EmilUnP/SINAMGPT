@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, FlaskConical, KeyRound, Shield } from "lucide-react";
 import {
   AdminHint,
+  AdminPager,
   AdminPanelCard,
+  AdminRowsSelect,
   AdminSubtabs,
   adminBtnGhost,
   adminBtnPrimary,
@@ -38,12 +40,35 @@ type CatalogModel = {
 const snippetClass =
   "overflow-x-auto rounded-xl bg-[var(--admin-surface-soft)] p-3 text-xs leading-relaxed";
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+const pageSlice = <T,>(
+  rows: T[],
+  page: number,
+  pageSize: number,
+): { rows: T[]; page: number; totalPages: number } => {
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    rows: rows.slice(start, start + pageSize),
+    page: safePage,
+    totalPages,
+  };
+};
+
 export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const { locale, t } = useLocale();
   const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("keys");
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
+  const [keysPage, setKeysPage] = useState(1);
+  const [keysPageSize, setKeysPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [models, setModels] = useState<CatalogModel[]>([]);
+  const [modelsPage, setModelsPage] = useState(1);
+  const [modelsPageSize, setModelsPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [defaultModel, setDefaultModel] = useState("");
   const [exampleModel, setExampleModel] = useState("");
   const [maxKeys, setMaxKeys] = useState(5);
@@ -56,6 +81,11 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [requests, setRequests] = useState<ApiUsageEvent[]>([]);
+  const [requestPage, setRequestPage] = useState(1);
+  const [requestPageSize, setRequestPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
+  const [requestTotalPages, setRequestTotalPages] = useState(1);
+  const [requestTotal, setRequestTotal] = useState(0);
   const [snippetLang, setSnippetLang] = useState<SnippetLang>("python");
   const [streamExample, setStreamExample] = useState(false);
   // Matches the production vLLM profile (VLLM_MAX_MODEL_LEN=32768).
@@ -72,7 +102,9 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
     try {
       const [keysRes, usageRes, modelsRes] = await Promise.all([
         fetch("/api/developer/keys"),
-        fetch("/api/developer/usage?limit=40"),
+        fetch(
+          `/api/developer/usage?page=${requestPage}&limit=${requestPageSize}`,
+        ),
         fetch("/api/models"),
       ]);
       const keysData = (await keysRes.json()) as {
@@ -86,6 +118,9 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
       };
       const usageData = (await usageRes.json()) as {
         rows?: ApiUsageEvent[];
+        total?: number;
+        totalPages?: number;
+        page?: number;
       };
       const modelsData = (await modelsRes.json()) as {
         models?: CatalogModel[];
@@ -102,6 +137,11 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
         setRpm(keysData.settings.maxRequestsPerMinute);
       }
       setRequests(usageData.rows ?? []);
+      setRequestTotal(usageData.total ?? usageData.rows?.length ?? 0);
+      setRequestTotalPages(usageData.totalPages ?? 1);
+      if (usageData.page && usageData.page !== requestPage) {
+        setRequestPage(usageData.page);
+      }
       const catalog = modelsData.models ?? [];
       setModels(catalog);
       if (modelsData.defaultModel) setDefaultModel(modelsData.defaultModel);
@@ -112,7 +152,7 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
     } catch {
       setError(t("developer.loadFailed"));
     }
-  }, [t]);
+  }, [requestPage, requestPageSize, t]);
 
   useEffect(() => {
     void (async () => {
@@ -121,6 +161,8 @@ export const DeveloperConsole = ({ user, devLabEnabled = false }: Props) => {
   }, [load]);
 
   const activeCount = keys.filter((k) => !k.revokedAt).length;
+  const keyPages = pageSlice(keys, keysPage, keysPageSize);
+  const modelPages = pageSlice(models, modelsPage, modelsPageSize);
   const baseUrl = `${origin}/api/v1`;
   const sampleKey = secret || "sinam_YOUR_KEY";
   const modelId = exampleModel || defaultModel || "YOUR_MODEL_ID";
@@ -336,7 +378,7 @@ console.log(completion.choices[0].message.content);`;
                 {
                   id: "requests",
                   label: t("developer.requests"),
-                  count: requests.length,
+                  count: requestTotal,
                 },
                 { id: "howto", label: t("developer.howTo") },
               ]}
@@ -415,7 +457,7 @@ console.log(completion.choices[0].message.content);`;
                         </tr>
                       </thead>
                       <tbody>
-                        {keys.map((key) => (
+                        {keyPages.rows.map((key) => (
                           <tr
                             key={key.id}
                             className="border-t border-[var(--admin-border)]"
@@ -471,6 +513,22 @@ console.log(completion.choices[0].message.content);`;
                     </table>
                   </div>
                 )}
+                {keys.length > 0 ? (
+                  <AdminPager
+                    page={keyPages.page}
+                    totalPages={keyPages.totalPages}
+                    onPage={setKeysPage}
+                  >
+                    <AdminRowsSelect
+                      value={keysPageSize}
+                      options={PAGE_SIZE_OPTIONS}
+                      onChange={(size) => {
+                        setKeysPageSize(size);
+                        setKeysPage(1);
+                      }}
+                    />
+                  </AdminPager>
+                ) : null}
               </div>
             ) : null}
 
@@ -494,7 +552,7 @@ console.log(completion.choices[0].message.content);`;
                         </tr>
                       </thead>
                       <tbody>
-                        {models.map((model) => (
+                        {modelPages.rows.map((model) => (
                           <tr
                             key={model.name}
                             className="border-t border-[var(--admin-border)]"
@@ -535,6 +593,22 @@ console.log(completion.choices[0].message.content);`;
                     </table>
                   </div>
                 )}
+                {models.length > 0 ? (
+                  <AdminPager
+                    page={modelPages.page}
+                    totalPages={modelPages.totalPages}
+                    onPage={setModelsPage}
+                  >
+                    <AdminRowsSelect
+                      value={modelsPageSize}
+                      options={PAGE_SIZE_OPTIONS}
+                      onChange={(size) => {
+                        setModelsPageSize(size);
+                        setModelsPage(1);
+                      }}
+                    />
+                  </AdminPager>
+                ) : null}
               </div>
             ) : null}
 
@@ -588,6 +662,22 @@ console.log(completion.choices[0].message.content);`;
                   </table>
                 </div>
               )
+            ) : null}
+            {tab === "requests" && requests.length > 0 ? (
+              <AdminPager
+                page={Math.min(requestPage, requestTotalPages)}
+                totalPages={requestTotalPages}
+                onPage={setRequestPage}
+              >
+                <AdminRowsSelect
+                  value={requestPageSize}
+                  options={PAGE_SIZE_OPTIONS}
+                  onChange={(size) => {
+                    setRequestPageSize(size);
+                    setRequestPage(1);
+                  }}
+                />
+              </AdminPager>
             ) : null}
 
             {tab === "howto" ? (

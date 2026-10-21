@@ -916,8 +916,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
     : [];
   const booting = isLoading && settings === null;
   const statValue = (value: string) => (booting ? "…" : value);
-  const quickLinkClass =
-    "min-w-0 rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 text-left transition hover:border-[var(--accent)]/40 hover:bg-[var(--hover)]";
 
   return (
     <div className="admin-shell min-h-dvh bg-[var(--bg)] text-[var(--admin-fg)]">
@@ -1274,70 +1272,6 @@ export const AdminPanel = ({ admin }: AdminPanelProps) => {
                   </p>
                 )}
               </AdminPanelCard>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <button
-                type="button"
-                onClick={() => setTab("usage")}
-                className={quickLinkClass}
-              >
-                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.aiPerformance")}</p>
-                <p className="mt-1 text-lg font-semibold">{t("admin.overview.liveUsage")}</p>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {t("admin.overview.speedLoadHistory")}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("models")}
-                className={quickLinkClass}
-              >
-                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.models")}</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {t("admin.overview.enabledCount", { enabled: enabledModels })}
-                </p>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {t("admin.overview.toggleWhichModels")}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("knowledge")}
-                className={quickLinkClass}
-              >
-                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.companyKnowledge")}</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {t("admin.overview.docsCount", {
-                    n: meta?.knowledgeEnabled ?? "—",
-                  })}
-                </p>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {t("admin.overview.retrievalCitations")}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("settings")}
-                className={quickLinkClass}
-              >
-                <p className="text-xs text-[var(--admin-muted)]">{t("admin.overview.accessSettings")}</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {settings?.guestEnabled === false
-                    ? t("admin.overview.guestOff")
-                    : `${t("admin.overview.guestOn")} ${t("admin.overview.perDay", { n: settings?.guestDailyLimit ?? "—" })}`}
-                </p>
-                <p className="mt-1 text-sm text-[var(--admin-muted)]">
-                  {settings?.registrationEnabled === false
-                    ? t("admin.overview.registrationClosed")
-                    : t("admin.overview.registrationOpen")}{" "}
-                  · temp {settings?.temperature ?? "—"} · top-p{" "}
-                  {settings?.topP ?? "—"}
-                  {settings?.numPredict != null && settings.numPredict >= 0
-                    ? ` · max ${settings.numPredict} tok`
-                    : ""}
-                </p>
-              </button>
             </div>
           </div>
         ) : null}

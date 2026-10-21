@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   FlaskConical,
@@ -12,7 +12,9 @@ import {
 import {
   AdminHint,
   AdminPageHeader,
+  AdminPager,
   AdminPanelCard,
+  AdminRowsSelect,
   AdminStatCard,
   AdminStatGrid,
   AdminSubtabs,
@@ -54,6 +56,8 @@ type LiveRow = {
 const num = (value: number | null | undefined) =>
   value == null || Number.isNaN(value) ? "—" : String(value);
 
+const KEY_PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
 export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
   const { locale, t } = useLocale();
   const confirm = useConfirm();
@@ -61,6 +65,9 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
   const [, setSettings] = useState<ApiGatewaySettings | null>(null);
   const [draft, setDraft] = useState<ApiGatewaySettings | null>(null);
   const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
+  const [keysPage, setKeysPage] = useState(1);
+  const [keysPageSize, setKeysPageSize] =
+    useState<(typeof KEY_PAGE_SIZE_OPTIONS)[number]>(10);
   const [live, setLive] = useState<LiveRow[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [requests, setRequests] = useState<ApiUsageEvent[]>([]);
@@ -177,6 +184,13 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
       setSaving(false);
     }
   };
+
+  const keysTotalPages = Math.max(1, Math.ceil(keys.length / keysPageSize));
+  const safeKeysPage = Math.min(keysPage, keysTotalPages);
+  const pagedKeys = useMemo(() => {
+    const start = (safeKeysPage - 1) * keysPageSize;
+    return keys.slice(start, start + keysPageSize);
+  }, [keys, keysPageSize, safeKeysPage]);
 
   const summary = analytics?.summary ?? {};
   const keyStatus = (key: ApiKeyPublic) => {
@@ -341,7 +355,7 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {keys.map((key) => (
+                      {pagedKeys.map((key) => (
                         <tr
                           key={key.id}
                           className="border-t border-[var(--admin-border)]"
@@ -395,6 +409,22 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
                   </table>
                 </div>
               )
+            ) : null}
+            {tab === "keys" && keys.length > 0 ? (
+              <AdminPager
+                page={safeKeysPage}
+                totalPages={keysTotalPages}
+                onPage={setKeysPage}
+              >
+                <AdminRowsSelect
+                  value={keysPageSize}
+                  options={KEY_PAGE_SIZE_OPTIONS}
+                  onChange={(size) => {
+                    setKeysPageSize(size);
+                    setKeysPage(1);
+                  }}
+                />
+              </AdminPager>
             ) : null}
 
             {tab === "requests" ? (
@@ -480,29 +510,11 @@ export const DevLab = ({ admin, developerApiEnabled = false }: Props) => {
                     </table>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-xs text-[var(--admin-muted)]">
-                  <span>
-                    {t("devlab.pageOf", { page, total: totalPages })}
-                  </span>
-                  <span className="flex gap-2">
-                    <button
-                      type="button"
-                      className={adminBtnGhost}
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      {t("devlab.prev")}
-                    </button>
-                    <button
-                      type="button"
-                      className={adminBtnGhost}
-                      disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      {t("devlab.next")}
-                    </button>
-                  </span>
-                </div>
+                <AdminPager
+                  page={Math.min(page, totalPages)}
+                  totalPages={totalPages}
+                  onPage={setPage}
+                />
               </div>
             ) : null}
 
